@@ -54,6 +54,20 @@ export function subscribeToGifticons(
   );
 }
 
+export function subscribeToGifticon(
+  id: string,
+  onChange: (gifticon: Gifticon | null) => void,
+  onError?: (error: Error) => void,
+) {
+  return onSnapshot(
+    doc(db, COLLECTION, id),
+    (snapshot) => {
+      onChange(snapshot.exists() ? ({ id: snapshot.id, ...snapshot.data() } as Gifticon) : null);
+    },
+    onError,
+  );
+}
+
 export async function markGifticonUsed(id: string, isUsed: boolean) {
   await updateDoc(doc(db, COLLECTION, id), {
     isUsed,

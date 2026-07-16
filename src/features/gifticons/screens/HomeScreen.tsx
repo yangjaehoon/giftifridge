@@ -76,7 +76,7 @@ export default function HomeScreen({ navigation }: Props) {
           renderItem={({ item }) => (
             <GifticonCard
               gifticon={item}
-              onPress={() => navigation.navigate('GifticonDetail', { gifticon: item })}
+              onPress={() => navigation.navigate('GifticonDetail', { gifticonId: item.id })}
             />
           )}
           ListEmptyComponent={

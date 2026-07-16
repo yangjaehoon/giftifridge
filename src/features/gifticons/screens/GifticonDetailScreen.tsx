@@ -12,36 +12,45 @@ import {
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { deleteGifticon, markGifticonUsed } from '../services/gifticonService';
 import { cancelNotification } from '../services/notificationService';
+import { useGifticon } from '../hooks/useGifticon';
 import { CATEGORY_LABELS } from '../types';
 import { daysUntil, formatDate } from '../../../shared/utils/date';
+import { withTimeout, TimeoutError } from '../../../shared/utils/withTimeout';
 import type { RootStackParamList } from '../../../app/RootNavigator';
 import { getGifticonErrorMessage } from '../errors';
 import { colors } from '../../../shared/theme/colors';
 
+const WRITE_TIMEOUT_MS = 15000;
+
 type Props = NativeStackScreenProps<RootStackParamList, 'GifticonDetail'>;
 
 export default function GifticonDetailScreen({ route, navigation }: Props) {
-  const { gifticon } = route.params;
+  const { gifticonId } = route.params;
+  const { gifticon, loading, error } = useGifticon(gifticonId);
   const [busy, setBusy] = useState(false);
-  const days = daysUntil(gifticon.expiresAt);
 
   const toggleUsed = async () => {
+    if (!gifticon) return;
     setBusy(true);
     try {
       const nextUsed = !gifticon.isUsed;
-      await markGifticonUsed(gifticon.id, nextUsed);
+      await withTimeout(markGifticonUsed(gifticon.id, nextUsed), WRITE_TIMEOUT_MS);
       if (nextUsed) {
         await cancelNotification(gifticon.notificationId);
       }
       navigation.goBack();
-    } catch {
-      Alert.alert('오류', getGifticonErrorMessage('update'));
+    } catch (err) {
+      Alert.alert(
+        '오류',
+        getGifticonErrorMessage(err instanceof TimeoutError ? 'network' : 'update'),
+      );
     } finally {
       setBusy(false);
     }
   };
 
   const remove = () => {
+    if (!gifticon) return;
     Alert.alert('삭제', '이 기프티콘을 삭제할까요?', [
       { text: '취소', style: 'cancel' },
       {
@@ -51,10 +60,13 @@ export default function GifticonDetailScreen({ route, navigation }: Props) {
           setBusy(true);
           try {
             await cancelNotification(gifticon.notificationId);
-            await deleteGifticon(gifticon);
+            await withTimeout(deleteGifticon(gifticon), WRITE_TIMEOUT_MS);
             navigation.goBack();
-          } catch {
-            Alert.alert('오류', getGifticonErrorMessage('delete'));
+          } catch (err) {
+            Alert.alert(
+              '오류',
+              getGifticonErrorMessage(err instanceof TimeoutError ? 'network' : 'delete'),
+            );
           } finally {
             setBusy(false);
           }
@@ -62,6 +74,32 @@ export default function GifticonDetailScreen({ route, navigation }: Props) {
       },
     ]);
   };
+
+  if (loading) {
+    return (
+      <View style={styles.center}>
+        <ActivityIndicator color={colors.primary} />
+      </View>
+    );
+  }
+
+  if (error) {
+    return (
+      <View style={styles.center}>
+        <Text style={styles.emptyText}>{getGifticonErrorMessage('load')}</Text>
+      </View>
+    );
+  }
+
+  if (!gifticon) {
+    return (
+      <View style={styles.center}>
+        <Text style={styles.emptyText}>{getGifticonErrorMessage('notFound')}</Text>
+      </View>
+    );
+  }
+
+  const days = daysUntil(gifticon.expiresAt);
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
@@ -97,12 +135,14 @@ export default function GifticonDetailScreen({ route, navigation }: Props) {
 
 const styles = StyleSheet.create({
   container: { padding: 20, paddingBottom: 60 },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 20 },
   image: { width: '100%', aspectRatio: 1, borderRadius: 12, backgroundColor: colors.surfaceSubtle },
   section: { marginTop: 20, gap: 4 },
   brand: { fontSize: 13, color: colors.gray450 },
   name: { fontSize: 20, fontWeight: '700', color: colors.gray900 },
   expiry: { fontSize: 14, color: colors.gray700, marginTop: 6 },
   barcode: { fontSize: 13, color: colors.gray400, marginTop: 4 },
+  emptyText: { color: colors.gray400, fontSize: 14, textAlign: 'center' },
   primaryButton: {
     backgroundColor: colors.primary,
     borderRadius: 10,

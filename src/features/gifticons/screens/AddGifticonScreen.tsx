@@ -25,6 +25,7 @@ import { scheduleExpiryNotification } from '../services/notificationService';
 import type { GifticonCategory } from '../types';
 import { CATEGORY_LABELS } from '../types';
 import { formatDate } from '../../../shared/utils/date';
+import { withTimeout, TimeoutError } from '../../../shared/utils/withTimeout';
 import type { RootStackParamList } from '../../../app/RootNavigator';
 import { getGifticonErrorMessage } from '../errors';
 import { colors } from '../../../shared/theme/colors';
@@ -32,6 +33,7 @@ import { colors } from '../../../shared/theme/colors';
 type Props = NativeStackScreenProps<RootStackParamList, 'AddGifticon'>;
 
 const CATEGORIES = Object.keys(CATEGORY_LABELS) as GifticonCategory[];
+const WRITE_TIMEOUT_MS = 15000;
 
 const defaultExpiry = () => {
   const d = new Date();
@@ -99,27 +101,36 @@ export default function AddGifticonScreen({ navigation }: Props) {
 
     setSaving(true);
     try {
-      const uploadedUrl = await uploadGifticonImage(user.uid, imageUri);
-      const expiresAtIso = expiresAt.toISOString();
-      const id = await createGifticon(user.uid, {
-        name: name.trim(),
-        brand: brand.trim(),
-        category,
-        barcode: barcode.trim() || undefined,
-        imageUrl: uploadedUrl,
-        expiresAt: expiresAtIso,
-      });
-      const notificationId = await scheduleExpiryNotification({
-        name: name.trim(),
-        brand: brand.trim(),
-        expiresAt: expiresAtIso,
-      });
-      if (notificationId) {
-        await setGifticonNotificationId(id, notificationId);
-      }
+      await withTimeout(
+        (async () => {
+          const uploadedUrl = await uploadGifticonImage(user.uid, imageUri);
+          const expiresAtIso = expiresAt.toISOString();
+          const id = await createGifticon(user.uid, {
+            name: name.trim(),
+            brand: brand.trim(),
+            category,
+            barcode: barcode.trim() || undefined,
+            imageUrl: uploadedUrl,
+            expiresAt: expiresAtIso,
+          });
+          const notificationId = await scheduleExpiryNotification({
+            id,
+            name: name.trim(),
+            brand: brand.trim(),
+            expiresAt: expiresAtIso,
+          });
+          if (notificationId) {
+            await setGifticonNotificationId(id, notificationId);
+          }
+        })(),
+        WRITE_TIMEOUT_MS,
+      );
       navigation.goBack();
-    } catch {
-      Alert.alert('오류', getGifticonErrorMessage('save'));
+    } catch (err) {
+      Alert.alert(
+        '오류',
+        getGifticonErrorMessage(err instanceof TimeoutError ? 'network' : 'save'),
+      );
     } finally {
       setSaving(false);
     }

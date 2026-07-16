@@ -32,7 +32,7 @@ export async function ensureNotificationPermission(): Promise<boolean> {
 }
 
 export async function scheduleExpiryNotification(
-  gifticon: Pick<Gifticon, 'name' | 'brand' | 'expiresAt'>,
+  gifticon: Pick<Gifticon, 'id' | 'name' | 'brand' | 'expiresAt'>,
 ): Promise<string | null> {
   const granted = await ensureNotificationPermission();
   if (!granted) return null;
@@ -50,6 +50,7 @@ export async function scheduleExpiryNotification(
     content: {
       title: '기프티콘 유효기한 임박',
       body: `${gifticon.brand} ${gifticon.name}의 유효기한이 ${DAYS_BEFORE_EXPIRY}일 남았어요.`,
+      data: { gifticonId: gifticon.id },
     },
     trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: triggerDate },
   });
