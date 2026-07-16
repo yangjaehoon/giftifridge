@@ -179,7 +179,12 @@ const styles = StyleSheet.create({
   },
   retryButtonText: { color: colors.gray700, fontWeight: '700', fontSize: 14 },
   editLink: { color: colors.primary, fontSize: 13, marginRight: 4, fontWeight: '600' },
-  image: { width: '100%', aspectRatio: 1, borderRadius: 12, backgroundColor: colors.surfaceSubtle },
+  image: {
+    width: '100%',
+    aspectRatio: 3 / 4,
+    borderRadius: 12,
+    backgroundColor: colors.surfaceSubtle,
+  },
   section: { marginTop: 20, gap: 4 },
   brand: { fontSize: 13, color: colors.gray450 },
   name: { fontSize: 20, fontWeight: '700', color: colors.gray900 },

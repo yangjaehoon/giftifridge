@@ -404,7 +404,7 @@ export default function AddGifticonScreen({ navigation, route }: Props) {
 const styles = StyleSheet.create({
   container: { padding: 20, paddingBottom: 60 },
   imagePicker: {
-    height: 180,
+    aspectRatio: 3 / 4,
     borderRadius: 12,
     backgroundColor: colors.surfaceSubtle,
     alignItems: 'center',
