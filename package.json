@@ -38,6 +38,7 @@
   },
   "scripts": {
     "start": "expo start",
+    "predev": "node scripts/ensure-emulator.js",
     "dev": "expo start --dev-client --android",
     "android": "expo run:android",
     "ios": "expo run:ios",
