@@ -52,7 +52,11 @@ export default function RootNavigator() {
   const { user, initializing, authError, retryAnonymousSignIn } = useAuth();
 
   useEffect(() => {
-    Notifications.getLastNotificationResponseAsync().then(openGifticonFromNotification);
+    Notifications.getLastNotificationResponseAsync()
+      .then(openGifticonFromNotification)
+      .catch(() => {
+        // best-effort deep link; nothing to recover if this lookup fails
+      });
     const subscription = Notifications.addNotificationResponseReceivedListener(
       openGifticonFromNotification,
     );
@@ -60,7 +64,11 @@ export default function RootNavigator() {
   }, []);
 
   useEffect(() => {
-    Linking.getInitialURL().then(openJoinSpaceFromUrl);
+    Linking.getInitialURL()
+      .then(openJoinSpaceFromUrl)
+      .catch(() => {
+        // best-effort deep link; nothing to recover if this lookup fails
+      });
     const subscription = Linking.addEventListener('url', ({ url }) => openJoinSpaceFromUrl(url));
     return () => subscription.remove();
   }, []);

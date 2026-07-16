@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 import { getAuthErrorMessage } from '../errors';
-import { DUMMY_GIFTICON_COUNT, seedDummyGifticons } from '../../gifticons/services/devSeed';
+import { seedDummyGifticons } from '../../gifticons/services/devSeed';
 import {
   getNotificationOffsets,
   setNotificationOffsets,
@@ -29,13 +29,19 @@ function NotificationOffsetSettings() {
     getNotificationOffsets().then(setOffsets);
   }, []);
 
-  const toggle = (offset: number) => {
+  const toggle = async (offset: number) => {
     if (!offsets) return;
+    const previous = offsets;
     const next = offsets.includes(offset)
       ? offsets.filter((o) => o !== offset)
       : [...offsets, offset].sort((a, b) => b - a);
     setOffsets(next);
-    setNotificationOffsets(next);
+    try {
+      await setNotificationOffsets(next);
+    } catch {
+      setOffsets(previous);
+      Alert.alert('오류', '알림 설정을 저장하지 못했어요. 다시 시도해주세요.');
+    }
   };
 
   if (!offsets) return null;
@@ -75,12 +81,27 @@ export default function SettingsScreen() {
     if (!user) return;
     setSeeding(true);
     try {
-      await seedDummyGifticons(user.uid);
-      Alert.alert('완료', `더미 기프티콘 ${DUMMY_GIFTICON_COUNT}개를 추가했어요.`);
+      const { succeeded, failed } = await seedDummyGifticons(user.uid);
+      if (failed > 0) {
+        Alert.alert(
+          '일부만 완료',
+          `더미 기프티콘 ${succeeded}개를 추가했어요. ${failed}개는 실패했어요.`,
+        );
+      } else {
+        Alert.alert('완료', `더미 기프티콘 ${succeeded}개를 추가했어요.`);
+      }
     } catch {
       Alert.alert('오류', '더미 데이터 추가에 실패했어요.');
     } finally {
       setSeeding(false);
+    }
+  };
+
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+    } catch {
+      Alert.alert('오류', '로그아웃에 실패했어요. 다시 시도해주세요.');
     }
   };
 
@@ -110,7 +131,7 @@ export default function SettingsScreen() {
         <NotificationOffsetSettings />
         <Text style={styles.title}>계정</Text>
         <Text style={styles.subtitle}>{user?.email}로 로그인되어 있어요.</Text>
-        <TouchableOpacity style={[styles.button, styles.signOutButton]} onPress={() => signOut()}>
+        <TouchableOpacity style={[styles.button, styles.signOutButton]} onPress={handleSignOut}>
           <Text style={styles.buttonText}>로그아웃</Text>
         </TouchableOpacity>
         <TouchableOpacity

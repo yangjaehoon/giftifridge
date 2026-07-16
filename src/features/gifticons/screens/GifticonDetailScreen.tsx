@@ -37,7 +37,11 @@ export default function GifticonDetailScreen({ route, navigation }: Props) {
       const nextUsed = !gifticon.isUsed;
       await withTimeout(markGifticonUsed(gifticon.id, nextUsed), WRITE_TIMEOUT_MS);
       if (nextUsed) {
-        await cancelNotifications(gifticon.notificationIds);
+        try {
+          await withTimeout(cancelNotifications(gifticon.notificationIds), WRITE_TIMEOUT_MS);
+        } catch {
+          // usage state already saved; a stuck/failed notification cancel shouldn't block this
+        }
       }
       navigation.goBack();
     } catch (err) {
@@ -60,7 +64,11 @@ export default function GifticonDetailScreen({ route, navigation }: Props) {
         onPress: async () => {
           setBusy(true);
           try {
-            await cancelNotifications(gifticon.notificationIds);
+            try {
+              await withTimeout(cancelNotifications(gifticon.notificationIds), WRITE_TIMEOUT_MS);
+            } catch {
+              // best-effort cleanup; don't block the delete the user just confirmed
+            }
             await withTimeout(deleteGifticon(gifticon), WRITE_TIMEOUT_MS);
             navigation.goBack();
           } catch (err) {

@@ -50,8 +50,10 @@ function buildDummyGifticons(): (NewGifticon & { used?: boolean })[] {
   });
 }
 
-export async function seedDummyGifticons(ownerId: string) {
-  await Promise.all(
+export async function seedDummyGifticons(
+  ownerId: string,
+): Promise<{ succeeded: number; failed: number }> {
+  const results = await Promise.allSettled(
     buildDummyGifticons().map(async ({ used, ...data }) => {
       const id = await createGifticon(ownerId, data);
       if (used) {
@@ -59,4 +61,6 @@ export async function seedDummyGifticons(ownerId: string) {
       }
     }),
   );
+  const succeeded = results.filter((r) => r.status === 'fulfilled').length;
+  return { succeeded, failed: results.length - succeeded };
 }

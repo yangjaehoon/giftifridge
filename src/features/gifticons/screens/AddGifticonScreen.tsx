@@ -19,7 +19,7 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useAuth } from '../../auth/context/AuthContext';
 import {
   createGifticon,
-  saveGifticonImage,
+  encodeGifticonImage,
   setGifticonNotificationIds,
 } from '../services/gifticonService';
 import { scheduleExpiryNotifications } from '../services/notificationService';
@@ -154,37 +154,41 @@ export default function AddGifticonScreen({ navigation, route }: Props) {
 
     setSaving(true);
     try {
-      await withTimeout(
+      const expiresAtIso = expiresAt.toISOString();
+      const id = await withTimeout(
         (async () => {
-          const savedImageUri = await saveGifticonImage(user.uid, imageUri);
-          const expiresAtIso = expiresAt.toISOString();
-          const id = await createGifticon(user.uid, {
+          const imageUrl = await encodeGifticonImage(imageUri);
+          return createGifticon(user.uid, {
             name: name.trim(),
             brand: brand.trim(),
             category,
             barcode: barcode.trim() || undefined,
             amount: amount.trim() ? Number(amount) : undefined,
-            imageUrl: savedImageUri,
+            imageUrl,
             expiresAt: expiresAtIso,
             location: location ?? undefined,
-            ...(spaceId ? { spaceId } : {}),
+            spaceId,
           });
-          const offsets = await getNotificationOffsets();
-          const notificationIds = await scheduleExpiryNotifications(
-            {
-              id,
-              name: name.trim(),
-              brand: brand.trim(),
-              expiresAt: expiresAtIso,
-            },
-            offsets,
-          );
-          if (notificationIds.length > 0) {
-            await setGifticonNotificationIds(id, notificationIds);
-          }
         })(),
         WRITE_TIMEOUT_MS,
       );
+
+      // The gifticon itself is saved at this point. Scheduling reminders is a
+      // best-effort follow-up — if it fails, the user shouldn't be told the
+      // save failed and prompted to retry, which would create a duplicate.
+      try {
+        const offsets = await getNotificationOffsets();
+        const notificationIds = await scheduleExpiryNotifications(
+          { id, name: name.trim(), brand: brand.trim(), expiresAt: expiresAtIso },
+          offsets,
+        );
+        if (notificationIds.length > 0) {
+          await withTimeout(setGifticonNotificationIds(id, notificationIds), WRITE_TIMEOUT_MS);
+        }
+      } catch {
+        // gifticon already saved; reminder scheduling can't be retried from here
+      }
+
       navigation.goBack();
     } catch (err) {
       Alert.alert(
