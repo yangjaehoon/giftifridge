@@ -53,6 +53,22 @@ export async function createGifticon(ownerId: string, data: NewGifticon): Promis
   return docRef.id;
 }
 
+// updateDoc leaves fields it isn't given untouched, unlike addDoc — so an
+// optional field the user cleared (e.g. removed the barcode) must be written
+// as `null` here, not omitted, or the old value would silently stick around.
+export async function updateGifticon(id: string, data: NewGifticon): Promise<void> {
+  await updateDoc(doc(db, COLLECTION, id), {
+    name: data.name,
+    brand: data.brand,
+    category: data.category,
+    imageUrl: data.imageUrl,
+    expiresAt: data.expiresAt,
+    barcode: data.barcode ?? null,
+    amount: data.amount ?? null,
+    location: data.location ?? null,
+  });
+}
+
 export function subscribeToGifticons(
   ownerId: string,
   onChange: (items: Gifticon[]) => void,

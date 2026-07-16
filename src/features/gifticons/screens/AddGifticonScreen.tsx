@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -20,10 +20,13 @@ import {
   createGifticon,
   encodeGifticonImage,
   setGifticonNotificationIds,
+  updateGifticon,
 } from '../services/gifticonService';
-import { scheduleExpiryNotifications } from '../services/notificationService';
+import { cancelNotifications, scheduleExpiryNotifications } from '../services/notificationService';
 import { recognizeExpiryDate } from '../services/ocrService';
-import type { GifticonCategory } from '../types';
+import { useGifticon } from '../hooks/useGifticon';
+import GifticonDetailSkeleton from '../components/GifticonDetailSkeleton';
+import type { GifticonCategory, NewGifticon } from '../types';
 import { CATEGORY_LABELS } from '../types';
 import Chip from '../../../shared/components/Chip';
 import { formatDate } from '../../../shared/utils/date';
@@ -48,7 +51,12 @@ const defaultExpiry = () => {
 
 export default function AddGifticonScreen({ navigation, route }: Props) {
   const spaceId = route.params?.spaceId;
+  const gifticonId = route.params?.gifticonId;
+  const isEditing = Boolean(gifticonId);
   const { user } = useAuth();
+  const { gifticon: existing, loading: loadingExisting } = useGifticon(gifticonId);
+  const [hydrated, setHydrated] = useState(!isEditing);
+  const [originalImageUrl, setOriginalImageUrl] = useState<string | null>(null);
   const [imageUri, setImageUri] = useState<string | null>(null);
   const [name, setName] = useState('');
   const [brand, setBrand] = useState('');
@@ -69,6 +77,27 @@ export default function AddGifticonScreen({ navigation, route }: Props) {
   );
 
   const [permission, requestPermission] = useCameraPermissions();
+
+  useEffect(() => {
+    navigation.setOptions({ title: isEditing ? '기프티콘 수정' : '기프티콘 등록' });
+  }, [navigation, isEditing]);
+
+  useEffect(() => {
+    if (!existing || hydrated) return;
+    // Deferred so the hydration setState calls don't run synchronously inside the effect.
+    queueMicrotask(() => {
+      setImageUri(existing.imageUrl);
+      setOriginalImageUrl(existing.imageUrl);
+      setName(existing.name);
+      setBrand(existing.brand);
+      setAmount(existing.amount ? String(existing.amount) : '');
+      setCategory(existing.category);
+      setBarcode(existing.barcode ?? '');
+      setExpiresAt(new Date(existing.expiresAt));
+      setLocation(existing.location ?? null);
+      setHydrated(true);
+    });
+  }, [existing, hydrated]);
 
   const saveCurrentLocation = async () => {
     setLocationSaving(true);
@@ -162,10 +191,11 @@ export default function AddGifticonScreen({ navigation, route }: Props) {
     setSaving(true);
     try {
       const expiresAtIso = expiresAt.toISOString();
+      const imageChanged = imageUri !== originalImageUrl;
       const id = await withTimeout(
         (async () => {
-          const imageUrl = await encodeGifticonImage(imageUri);
-          return createGifticon(user.uid, {
+          const imageUrl = imageChanged ? await encodeGifticonImage(imageUri) : imageUri;
+          const data: NewGifticon = {
             name: name.trim(),
             brand: brand.trim(),
             category,
@@ -175,7 +205,12 @@ export default function AddGifticonScreen({ navigation, route }: Props) {
             expiresAt: expiresAtIso,
             location: location ?? undefined,
             spaceId,
-          });
+          };
+          if (isEditing && gifticonId) {
+            await updateGifticon(gifticonId, data);
+            return gifticonId;
+          }
+          return createGifticon(user.uid, data);
         })(),
         WRITE_TIMEOUT_MS,
       );
@@ -184,12 +219,15 @@ export default function AddGifticonScreen({ navigation, route }: Props) {
       // best-effort follow-up — if it fails, the user shouldn't be told the
       // save failed and prompted to retry, which would create a duplicate.
       try {
+        if (isEditing && existing?.notificationIds) {
+          await cancelNotifications(existing.notificationIds);
+        }
         const offsets = await getNotificationOffsets();
         const notificationIds = await scheduleExpiryNotifications(
           { id, name: name.trim(), brand: brand.trim(), expiresAt: expiresAtIso },
           offsets,
         );
-        if (notificationIds.length > 0) {
+        if (notificationIds.length > 0 || isEditing) {
           await withTimeout(setGifticonNotificationIds(id, notificationIds), WRITE_TIMEOUT_MS);
         }
       } catch {
@@ -205,6 +243,18 @@ export default function AddGifticonScreen({ navigation, route }: Props) {
       setSaving(false);
     }
   };
+
+  if (isEditing && loadingExisting) {
+    return <GifticonDetailSkeleton />;
+  }
+
+  if (isEditing && !loadingExisting && !existing) {
+    return (
+      <View style={styles.notFound}>
+        <Text style={styles.errorText}>{getGifticonErrorMessage('notFound')}</Text>
+      </View>
+    );
+  }
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
@@ -329,7 +379,7 @@ export default function AddGifticonScreen({ navigation, route }: Props) {
         {saving ? (
           <ActivityIndicator color={colors.surface} />
         ) : (
-          <Text style={styles.saveButtonText}>등록하기</Text>
+          <Text style={styles.saveButtonText}>{isEditing ? '저장하기' : '등록하기'}</Text>
         )}
       </TouchableOpacity>
 
@@ -368,6 +418,7 @@ const styles = StyleSheet.create({
   dateLabelRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   ocrHint: { fontSize: 12, color: colors.primary, marginTop: 6 },
   errorText: { fontSize: 12, color: colors.danger, marginTop: 6 },
+  notFound: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 20 },
   input: {
     borderWidth: 1,
     borderColor: colors.border,

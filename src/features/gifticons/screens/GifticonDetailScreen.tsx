@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -31,6 +31,21 @@ export default function GifticonDetailScreen({ route, navigation }: Props) {
   const { gifticonId } = route.params;
   const { gifticon, loading, error, refresh } = useGifticon(gifticonId);
   const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    if (!gifticon) return;
+    navigation.setOptions({
+      headerRight: () => (
+        <TouchableOpacity
+          onPress={() => navigation.navigate('AddGifticon', { gifticonId: gifticon.id })}
+          accessibilityRole="button"
+          accessibilityLabel="기프티콘 수정"
+        >
+          <Text style={styles.editLink}>수정</Text>
+        </TouchableOpacity>
+      ),
+    });
+  }, [navigation, gifticon]);
 
   const toggleUsed = async () => {
     if (!gifticon) return;
@@ -163,6 +178,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   retryButtonText: { color: colors.gray700, fontWeight: '700', fontSize: 14 },
+  editLink: { color: colors.primary, fontSize: 13, marginRight: 4, fontWeight: '600' },
   image: { width: '100%', aspectRatio: 1, borderRadius: 12, backgroundColor: colors.surfaceSubtle },
   section: { marginTop: 20, gap: 4 },
   brand: { fontSize: 13, color: colors.gray450 },

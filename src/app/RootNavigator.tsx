@@ -20,7 +20,7 @@ import { navigationRef } from './navigationRef';
 
 export type RootStackParamList = {
   Home: undefined;
-  AddGifticon: { spaceId?: string } | undefined;
+  AddGifticon: { spaceId?: string; gifticonId?: string } | undefined;
   GifticonDetail: { gifticonId: string };
   Settings: undefined;
   CreateSpace: undefined;
