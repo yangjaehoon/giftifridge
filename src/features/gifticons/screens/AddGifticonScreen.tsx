@@ -61,6 +61,9 @@ export default function AddGifticonScreen({ navigation }: Props) {
   const [dateManuallyEdited, setDateManuallyEdited] = useState(false);
   const [location, setLocation] = useState<{ latitude: number; longitude: number } | null>(null);
   const [locationSaving, setLocationSaving] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState<{ image?: string; name?: string; brand?: string }>(
+    {},
+  );
 
   const [permission, requestPermission] = useCameraPermissions();
 
@@ -104,6 +107,7 @@ export default function AddGifticonScreen({ navigation }: Props) {
     });
     if (!result.canceled) {
       setImageUri(result.assets[0].uri);
+      setFieldErrors((e) => ({ ...e, image: undefined }));
       setDateManuallyEdited(false);
       detectExpiryDate(result.assets[0].uri);
     }
@@ -113,6 +117,7 @@ export default function AddGifticonScreen({ navigation }: Props) {
     const result = await ImagePicker.launchCameraAsync({ quality: 0.8 });
     if (!result.canceled) {
       setImageUri(result.assets[0].uri);
+      setFieldErrors((e) => ({ ...e, image: undefined }));
       setDateManuallyEdited(false);
       detectExpiryDate(result.assets[0].uri);
     }
@@ -139,14 +144,12 @@ export default function AddGifticonScreen({ navigation }: Props) {
       Alert.alert('오류', '로그인 정보를 확인하지 못했어요. 앱을 다시 시작해주세요.');
       return;
     }
-    if (!imageUri) {
-      Alert.alert('알림', '기프티콘 사진을 등록해주세요.');
-      return;
-    }
-    if (!name.trim() || !brand.trim()) {
-      Alert.alert('알림', '상품명과 브랜드를 입력해주세요.');
-      return;
-    }
+    const nextFieldErrors: typeof fieldErrors = {};
+    if (!imageUri) nextFieldErrors.image = '기프티콘 사진을 등록해주세요.';
+    if (!name.trim()) nextFieldErrors.name = '상품명을 입력해주세요.';
+    if (!brand.trim()) nextFieldErrors.brand = '브랜드를 입력해주세요.';
+    setFieldErrors(nextFieldErrors);
+    if (Object.keys(nextFieldErrors).length > 0 || !imageUri) return;
 
     setSaving(true);
     try {
@@ -194,7 +197,7 @@ export default function AddGifticonScreen({ navigation }: Props) {
   return (
     <ScrollView contentContainerStyle={styles.container}>
       <TouchableOpacity
-        style={styles.imagePicker}
+        style={[styles.imagePicker, fieldErrors.image && styles.inputError]}
         onPress={pickFromLibrary}
         onLongPress={takePhoto}
       >
@@ -204,22 +207,31 @@ export default function AddGifticonScreen({ navigation }: Props) {
           <Text style={styles.imagePlaceholder}>탭하여 사진 선택{'\n'}(길게 눌러 카메라 촬영)</Text>
         )}
       </TouchableOpacity>
+      {fieldErrors.image && <Text style={styles.errorText}>{fieldErrors.image}</Text>}
 
       <Text style={styles.label}>상품명</Text>
       <TextInput
-        style={styles.input}
+        style={[styles.input, fieldErrors.name && styles.inputError]}
         value={name}
-        onChangeText={setName}
+        onChangeText={(v) => {
+          setName(v);
+          setFieldErrors((e) => ({ ...e, name: undefined }));
+        }}
         placeholder="아메리카노 Tall"
       />
+      {fieldErrors.name && <Text style={styles.errorText}>{fieldErrors.name}</Text>}
 
       <Text style={styles.label}>브랜드</Text>
       <TextInput
-        style={styles.input}
+        style={[styles.input, fieldErrors.brand && styles.inputError]}
         value={brand}
-        onChangeText={setBrand}
+        onChangeText={(v) => {
+          setBrand(v);
+          setFieldErrors((e) => ({ ...e, brand: undefined }));
+        }}
         placeholder="스타벅스"
       />
+      {fieldErrors.brand && <Text style={styles.errorText}>{fieldErrors.brand}</Text>}
 
       <Text style={styles.label}>금액 (선택)</Text>
       <TextInput
@@ -346,6 +358,7 @@ const styles = StyleSheet.create({
   label: { fontSize: 13, fontWeight: '600', color: colors.gray700, marginBottom: 6, marginTop: 14 },
   dateLabelRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   ocrHint: { fontSize: 12, color: colors.primary, marginTop: 6 },
+  errorText: { fontSize: 12, color: colors.danger, marginTop: 6 },
   input: {
     borderWidth: 1,
     borderColor: colors.border,
@@ -354,6 +367,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     fontSize: 15,
   },
+  inputError: { borderColor: colors.danger },
   chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   chip: {
     paddingHorizontal: 14,

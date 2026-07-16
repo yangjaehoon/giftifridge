@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
+  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -15,18 +16,27 @@ import GifticonCard from '../components/GifticonCard';
 import GifticonStats from '../components/GifticonStats';
 import NearbyGifticonBanner from '../components/NearbyGifticonBanner';
 import { getGifticonErrorMessage } from '../errors';
+import type { GifticonCategory } from '../types';
+import { CATEGORY_LABELS } from '../types';
 import type { RootStackParamList } from '../../../app/RootNavigator';
 import { colors } from '../../../shared/theme/colors';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Home'>;
 
 type FilterTab = 'active' | 'used';
+type CategoryFilter = GifticonCategory | 'all';
+
+const CATEGORY_FILTERS: CategoryFilter[] = [
+  'all',
+  ...(Object.keys(CATEGORY_LABELS) as GifticonCategory[]),
+];
 
 export default function HomeScreen({ navigation }: Props) {
   const { user } = useAuth();
   const { items, loading, error } = useGifticons(user?.uid);
   const nearbyItems = useNearbyGifticons(items);
   const [tab, setTab] = useState<FilterTab>('active');
+  const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>('all');
 
   useEffect(() => {
     navigation.setOptions({
@@ -39,8 +49,11 @@ export default function HomeScreen({ navigation }: Props) {
   }, [navigation]);
 
   const filtered = useMemo(
-    () => items.filter((item) => (tab === 'active' ? !item.isUsed : item.isUsed)),
-    [items, tab],
+    () =>
+      items
+        .filter((item) => (tab === 'active' ? !item.isUsed : item.isUsed))
+        .filter((item) => categoryFilter === 'all' || item.category === categoryFilter),
+    [items, tab, categoryFilter],
   );
 
   return (
@@ -66,6 +79,30 @@ export default function HomeScreen({ navigation }: Props) {
           </Text>
         </TouchableOpacity>
       </View>
+
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        style={styles.categoryScroll}
+        contentContainerStyle={styles.categoryRow}
+      >
+        {CATEGORY_FILTERS.map((c) => (
+          <TouchableOpacity
+            key={c}
+            style={[styles.categoryChip, categoryFilter === c && styles.categoryChipActive]}
+            onPress={() => setCategoryFilter(c)}
+          >
+            <Text
+              style={[
+                styles.categoryChipText,
+                categoryFilter === c && styles.categoryChipTextActive,
+              ]}
+            >
+              {c === 'all' ? '전체' : CATEGORY_LABELS[c]}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </ScrollView>
 
       {loading ? (
         <View style={styles.empty}>
@@ -117,6 +154,17 @@ const styles = StyleSheet.create({
   tabActive: { backgroundColor: colors.primary },
   tabText: { fontSize: 13, fontWeight: '600', color: colors.gray500 },
   tabTextActive: { color: colors.surface },
+  categoryScroll: { flexGrow: 0 },
+  categoryRow: { paddingHorizontal: 16, paddingTop: 10, gap: 8, alignItems: 'center' },
+  categoryChip: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: colors.surfaceMuted,
+  },
+  categoryChipActive: { backgroundColor: colors.primary },
+  categoryChipText: { fontSize: 13, color: colors.gray600, fontWeight: '600' },
+  categoryChipTextActive: { color: colors.surface },
   listContent: { paddingVertical: 8, paddingBottom: 100, flexGrow: 1 },
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: 80 },
   emptyText: { color: colors.gray400, fontSize: 14 },

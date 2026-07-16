@@ -4,7 +4,7 @@ Read the exact versioned docs at https://docs.expo.dev/versions/v57.0.0/ before 
 
 # Git workflow
 
-Always commit when a task is finished — don't leave completed work uncommitted. Write commit messages following Conventional Commits (`type(scope): description`, e.g. `feat:`, `fix:`, `refactor:`, `docs:`) — enforced on commit by commitlint via the `commit-msg` hook.
+Always commit when a task is finished — don't leave completed work uncommitted. Write commit messages following Conventional Commits (`type(scope): description`, e.g. `feat:`, `fix:`, `refactor:`, `docs:`) — enforced on commit by commitlint via the `commit-msg` hook. After committing, push to `origin/master` too — don't leave finished work sitting local-only.
 
 # Code conventions
 

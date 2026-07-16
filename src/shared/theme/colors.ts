@@ -2,6 +2,7 @@ export const colors = {
   primary: '#2FAF9E',
   primaryBright: '#4ECDC4',
   amber: '#F2994A',
+  danger: '#E0554F',
 
   background: '#F4FAF9',
   surface: '#ffffff',
