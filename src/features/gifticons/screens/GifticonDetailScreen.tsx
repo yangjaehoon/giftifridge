@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -9,6 +9,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import * as Clipboard from 'expo-clipboard';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { deleteGifticon, markGifticonUsed } from '../services/gifticonService';
 import { cancelNotifications } from '../services/notificationService';
@@ -31,6 +32,21 @@ export default function GifticonDetailScreen({ route, navigation }: Props) {
   const { gifticonId } = route.params;
   const { gifticon, loading, error, refresh } = useGifticon(gifticonId);
   const [busy, setBusy] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const copyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (copyTimeoutRef.current) clearTimeout(copyTimeoutRef.current);
+    };
+  }, []);
+
+  const copyBarcode = async () => {
+    if (!gifticon?.barcode) return;
+    await Clipboard.setStringAsync(gifticon.barcode);
+    setCopied(true);
+    copyTimeoutRef.current = setTimeout(() => setCopied(false), 1500);
+  };
 
   useEffect(() => {
     if (!gifticon) return;
@@ -148,7 +164,19 @@ export default function GifticonDetailScreen({ route, navigation }: Props) {
         <Text style={styles.expiry}>
           유효기한 {formatDate(gifticon.expiresAt)} ({days >= 0 ? `D-${days}` : '기한만료'})
         </Text>
-        {gifticon.barcode ? <Text style={styles.barcode}>바코드 {gifticon.barcode}</Text> : null}
+        {gifticon.barcode ? (
+          <View style={styles.barcodeRow}>
+            <Text style={styles.barcode}>바코드 {gifticon.barcode}</Text>
+            <TouchableOpacity
+              style={styles.copyButton}
+              onPress={copyBarcode}
+              accessibilityRole="button"
+              accessibilityLabel="바코드 번호 복사"
+            >
+              <Text style={styles.copyButtonText}>{copied ? '복사됨 ✓' : '복사'}</Text>
+            </TouchableOpacity>
+          </View>
+        ) : null}
       </View>
 
       <TouchableOpacity style={styles.primaryButton} onPress={toggleUsed} disabled={busy}>
@@ -190,7 +218,15 @@ const styles = StyleSheet.create({
   name: { fontSize: 20, fontWeight: '700', color: colors.gray900 },
   amount: { fontSize: 16, fontWeight: '700', color: colors.primary, marginTop: 2 },
   expiry: { fontSize: 14, color: colors.gray700, marginTop: 6 },
-  barcode: { fontSize: 13, color: colors.gray400, marginTop: 4 },
+  barcodeRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4 },
+  barcode: { fontSize: 13, color: colors.gray400 },
+  copyButton: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
+    backgroundColor: colors.surfaceMuted,
+  },
+  copyButtonText: { fontSize: 12, color: colors.gray700, fontWeight: '600' },
   emptyText: { color: colors.gray400, fontSize: 14, textAlign: 'center' },
   primaryButton: {
     backgroundColor: colors.primary,
