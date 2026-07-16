@@ -46,6 +46,30 @@ export function subscribeToGifticons(
   return onSnapshot(
     q,
     (snapshot) => {
+      // A doc missing spaceId entirely doesn't match `where('spaceId','==',null)`,
+      // so personal-vs-space filtering happens here instead of in the query.
+      const items = snapshot.docs
+        .map((d) => ({ id: d.id, ...d.data() }) as Gifticon)
+        .filter((item) => !item.spaceId);
+      onChange(items);
+    },
+    onError,
+  );
+}
+
+export function subscribeToSpaceGifticons(
+  spaceId: string,
+  onChange: (items: Gifticon[]) => void,
+  onError?: (error: Error) => void,
+) {
+  const q = query(
+    collection(db, COLLECTION),
+    where('spaceId', '==', spaceId),
+    orderBy('expiresAt', 'asc'),
+  );
+  return onSnapshot(
+    q,
+    (snapshot) => {
       const items = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }) as Gifticon);
       onChange(items);
     },

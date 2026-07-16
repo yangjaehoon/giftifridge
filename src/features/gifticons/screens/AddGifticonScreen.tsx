@@ -44,7 +44,8 @@ const defaultExpiry = () => {
   return d;
 };
 
-export default function AddGifticonScreen({ navigation }: Props) {
+export default function AddGifticonScreen({ navigation, route }: Props) {
+  const spaceId = route.params?.spaceId;
   const { user } = useAuth();
   const [imageUri, setImageUri] = useState<string | null>(null);
   const [name, setName] = useState('');
@@ -166,6 +167,7 @@ export default function AddGifticonScreen({ navigation }: Props) {
             imageUrl: savedImageUri,
             expiresAt: expiresAtIso,
             location: location ?? undefined,
+            ...(spaceId ? { spaceId } : {}),
           });
           const offsets = await getNotificationOffsets();
           const notificationIds = await scheduleExpiryNotifications(

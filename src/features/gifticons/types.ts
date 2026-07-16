@@ -22,6 +22,7 @@ export interface Gifticon {
   usedAt?: string;
   notificationIds?: string[];
   location?: { latitude: number; longitude: number };
+  spaceId?: string;
   createdAt: string;
 }
 

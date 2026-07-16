@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { ActivityIndicator, View } from 'react-native';
+import { ActivityIndicator, Linking, View } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import * as Notifications from 'expo-notifications';
@@ -9,6 +9,9 @@ import HomeScreen from '../features/gifticons/screens/HomeScreen';
 import AddGifticonScreen from '../features/gifticons/screens/AddGifticonScreen';
 import GifticonDetailScreen from '../features/gifticons/screens/GifticonDetailScreen';
 import SettingsScreen from '../features/auth/screens/SettingsScreen';
+import CreateSpaceScreen from '../features/spaces/screens/CreateSpaceScreen';
+import JoinSpaceScreen from '../features/spaces/screens/JoinSpaceScreen';
+import SpaceMembersScreen from '../features/spaces/screens/SpaceMembersScreen';
 import SetupRequiredScreen from './SetupRequiredScreen';
 import AuthErrorScreen from './AuthErrorScreen';
 import OfflineBanner from '../shared/components/OfflineBanner';
@@ -16,9 +19,12 @@ import { navigationRef } from './navigationRef';
 
 export type RootStackParamList = {
   Home: undefined;
-  AddGifticon: undefined;
+  AddGifticon: { spaceId?: string } | undefined;
   GifticonDetail: { gifticonId: string };
   Settings: undefined;
+  CreateSpace: undefined;
+  JoinSpace: { spaceId?: string } | undefined;
+  SpaceMembers: { spaceId: string };
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -30,6 +36,18 @@ function openGifticonFromNotification(response: Notifications.NotificationRespon
   }
 }
 
+function parseJoinSpaceId(url: string | null): string | undefined {
+  if (!url) return undefined;
+  return url.match(/^giftifridge:\/\/join\/([^/?#]+)/)?.[1];
+}
+
+function openJoinSpaceFromUrl(url: string | null) {
+  const spaceId = parseJoinSpaceId(url);
+  if (spaceId && navigationRef.isReady()) {
+    navigationRef.navigate('JoinSpace', { spaceId });
+  }
+}
+
 export default function RootNavigator() {
   const { user, initializing, authError, retryAnonymousSignIn } = useAuth();
 
@@ -38,6 +56,12 @@ export default function RootNavigator() {
     const subscription = Notifications.addNotificationResponseReceivedListener(
       openGifticonFromNotification,
     );
+    return () => subscription.remove();
+  }, []);
+
+  useEffect(() => {
+    Linking.getInitialURL().then(openJoinSpaceFromUrl);
+    const subscription = Linking.addEventListener('url', ({ url }) => openJoinSpaceFromUrl(url));
     return () => subscription.remove();
   }, []);
 
@@ -74,6 +98,21 @@ export default function RootNavigator() {
             options={{ title: '상세보기' }}
           />
           <Stack.Screen name="Settings" component={SettingsScreen} options={{ title: '설정' }} />
+          <Stack.Screen
+            name="CreateSpace"
+            component={CreateSpaceScreen}
+            options={{ title: '스페이스 만들기', presentation: 'modal' }}
+          />
+          <Stack.Screen
+            name="JoinSpace"
+            component={JoinSpaceScreen}
+            options={{ title: '스페이스 참여', presentation: 'modal' }}
+          />
+          <Stack.Screen
+            name="SpaceMembers"
+            component={SpaceMembersScreen}
+            options={{ title: '멤버 관리' }}
+          />
         </Stack.Navigator>
       </NavigationContainer>
     </>

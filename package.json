@@ -28,8 +28,10 @@
   "devDependencies": {
     "@commitlint/cli": "^21.2.1",
     "@commitlint/config-conventional": "^21.2.0",
+    "@firebase/rules-unit-testing": "^5.0.1",
     "@testing-library/react-native": "^14.0.1",
     "@types/jest": "29.5.14",
+    "@types/node": "^26.1.1",
     "@types/react": "~19.2.2",
     "eslint": "^9.0.0",
     "eslint-config-expo": "~57.0.0",
@@ -52,11 +54,16 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "test": "jest",
+    "test:rules": "firebase emulators:exec --only firestore \"jest --config jest.rules.config.js\"",
     "prepare": "husky"
   },
   "private": true,
   "jest": {
-    "preset": "jest-expo"
+    "preset": "jest-expo",
+    "testPathIgnorePatterns": [
+      "<rootDir>/node_modules/",
+      "<rootDir>/firestore.rules.test.ts"
+    ]
   },
   "lint-staged": {
     "*.{js,jsx,ts,tsx}": [

@@ -3,6 +3,7 @@
     "name": "기프티냉장콘",
     "slug": "giftifridge",
     "version": "1.0.0",
+    "scheme": "giftifridge",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",

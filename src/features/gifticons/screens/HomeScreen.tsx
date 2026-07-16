@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
@@ -11,7 +12,10 @@ import {
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useAuth } from '../../auth/context/AuthContext';
 import { useGifticons } from '../hooks/useGifticons';
+import { useSpaceGifticons } from '../hooks/useSpaceGifticons';
 import { useNearbyGifticons } from '../hooks/useNearbyGifticons';
+import { useMySpaces } from '../../spaces/hooks/useMySpaces';
+import SpaceSwitcher, { type HomeContext } from '../../spaces/components/SpaceSwitcher';
 import GifticonCard from '../components/GifticonCard';
 import GifticonStats from '../components/GifticonStats';
 import NearbyGifticonBanner from '../components/NearbyGifticonBanner';
@@ -33,7 +37,12 @@ const CATEGORY_FILTERS: CategoryFilter[] = [
 
 export default function HomeScreen({ navigation }: Props) {
   const { user } = useAuth();
-  const { items, loading, error } = useGifticons(user?.uid);
+  const [context, setContext] = useState<HomeContext>({ type: 'personal' });
+  const { spaces } = useMySpaces(user?.uid);
+  const personal = useGifticons(user?.uid);
+  const spaceGifticons = useSpaceGifticons(context.type === 'space' ? context.spaceId : undefined);
+  const { items, loading, refreshing, error, refresh } =
+    context.type === 'personal' ? personal : spaceGifticons;
   const nearbyItems = useNearbyGifticons(items);
   const [tab, setTab] = useState<FilterTab>('active');
   const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>('all');
@@ -58,6 +67,20 @@ export default function HomeScreen({ navigation }: Props) {
 
   return (
     <View style={styles.container}>
+      <SpaceSwitcher
+        spaces={spaces}
+        selected={context}
+        onSelect={setContext}
+        onCreatePress={() => navigation.navigate('CreateSpace')}
+      />
+      {context.type === 'space' && (
+        <TouchableOpacity
+          style={styles.membersLink}
+          onPress={() => navigation.navigate('SpaceMembers', { spaceId: context.spaceId })}
+        >
+          <Text style={styles.membersLinkText}>멤버 관리</Text>
+        </TouchableOpacity>
+      )}
       <GifticonStats items={items.filter((i) => !i.isUsed)} />
       <NearbyGifticonBanner items={nearbyItems} />
 
@@ -108,32 +131,65 @@ export default function HomeScreen({ navigation }: Props) {
         <View style={styles.empty}>
           <ActivityIndicator color={colors.primary} />
         </View>
-      ) : error ? (
-        <View style={styles.empty}>
-          <Text style={styles.emptyText}>{getGifticonErrorMessage('load')}</Text>
-        </View>
-      ) : (
-        <FlatList
-          data={filtered}
-          keyExtractor={(item) => item.id}
-          contentContainerStyle={styles.listContent}
-          renderItem={({ item }) => (
-            <GifticonCard
-              gifticon={item}
-              onPress={() => navigation.navigate('GifticonDetail', { gifticonId: item.id })}
+      ) : error && items.length === 0 ? (
+        <ScrollView
+          contentContainerStyle={styles.empty}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={refresh}
+              tintColor={colors.primary}
             />
-          )}
-          ListEmptyComponent={
-            <View style={styles.empty}>
-              <Text style={styles.emptyText}>
-                {tab === 'active' ? '등록된 기프티콘이 없어요' : '사용완료된 기프티콘이 없어요'}
+          }
+        >
+          <Text style={styles.emptyText}>{getGifticonErrorMessage('load')}</Text>
+        </ScrollView>
+      ) : (
+        <>
+          {error && (
+            <View style={styles.inlineError}>
+              <Text style={styles.inlineErrorText}>
+                최신 정보를 불러오지 못했어요. 화면을 당겨서 다시 시도해주세요.
               </Text>
             </View>
-          }
-        />
+          )}
+          <FlatList
+            data={filtered}
+            keyExtractor={(item) => item.id}
+            contentContainerStyle={styles.listContent}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={refresh}
+                tintColor={colors.primary}
+              />
+            }
+            renderItem={({ item }) => (
+              <GifticonCard
+                gifticon={item}
+                onPress={() => navigation.navigate('GifticonDetail', { gifticonId: item.id })}
+              />
+            )}
+            ListEmptyComponent={
+              <View style={styles.empty}>
+                <Text style={styles.emptyText}>
+                  {tab === 'active' ? '등록된 기프티콘이 없어요' : '사용완료된 기프티콘이 없어요'}
+                </Text>
+              </View>
+            }
+          />
+        </>
       )}
 
-      <TouchableOpacity style={styles.fab} onPress={() => navigation.navigate('AddGifticon')}>
+      <TouchableOpacity
+        style={styles.fab}
+        onPress={() =>
+          navigation.navigate(
+            'AddGifticon',
+            context.type === 'space' ? { spaceId: context.spaceId } : undefined,
+          )
+        }
+      >
         <Text style={styles.fabText}>+</Text>
       </TouchableOpacity>
     </View>
@@ -143,6 +199,8 @@ export default function HomeScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   settingsLink: { color: colors.primary, fontSize: 13, marginRight: 4 },
+  membersLink: { alignSelf: 'flex-end', marginRight: 16, marginTop: 6 },
+  membersLinkText: { color: colors.primary, fontSize: 12, fontWeight: '600' },
   tabs: { flexDirection: 'row', paddingHorizontal: 16, paddingTop: 12, gap: 8 },
   tab: {
     flex: 1,
@@ -168,6 +226,15 @@ const styles = StyleSheet.create({
   listContent: { paddingVertical: 8, paddingBottom: 100, flexGrow: 1 },
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: 80 },
   emptyText: { color: colors.gray400, fontSize: 14 },
+  inlineError: {
+    backgroundColor: colors.amber,
+    marginHorizontal: 16,
+    marginTop: 12,
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderRadius: 10,
+  },
+  inlineErrorText: { color: colors.surface, fontSize: 12, fontWeight: '700' },
   fab: {
     position: 'absolute',
     right: 20,

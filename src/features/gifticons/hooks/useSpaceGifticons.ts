@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
-import { subscribeToGifticons } from '../services/gifticonService';
+import { subscribeToSpaceGifticons } from '../services/gifticonService';
 import type { Gifticon } from '../types';
 
-export function useGifticons(ownerId: string | undefined) {
+export function useSpaceGifticons(spaceId: string | undefined) {
   const [items, setItems] = useState<Gifticon[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -10,9 +10,9 @@ export function useGifticons(ownerId: string | undefined) {
   const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
-    if (!ownerId) return;
-    const unsubscribe = subscribeToGifticons(
-      ownerId,
+    if (!spaceId) return;
+    const unsubscribe = subscribeToSpaceGifticons(
+      spaceId,
       (next) => {
         setItems(next);
         setLoading(false);
@@ -26,11 +26,11 @@ export function useGifticons(ownerId: string | undefined) {
       },
     );
     return unsubscribe;
-  }, [ownerId, refreshKey]);
+  }, [spaceId, refreshKey]);
 
   return {
-    items: ownerId ? items : [],
-    loading: ownerId ? loading : false,
+    items: spaceId ? items : [],
+    loading: spaceId ? loading : false,
     refreshing,
     error,
     refresh: () => {

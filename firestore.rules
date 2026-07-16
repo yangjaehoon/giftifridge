@@ -2,12 +2,59 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    match /gifticons/{gifticonId} {
-      allow read, update, delete: if request.auth != null
-        && request.auth.uid == resource.data.ownerId;
 
-      allow create: if request.auth != null
-        && request.auth.uid == request.resource.data.ownerId;
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isSpaceMember(spaceId) {
+      return isSignedIn()
+        && exists(/databases/$(database)/documents/spaces/$(spaceId))
+        && exists(/databases/$(database)/documents/spaces/$(spaceId)/members/$(request.auth.uid));
+    }
+
+    function canAccessGifticon(data) {
+      return request.auth.uid == data.ownerId
+        || (('spaceId' in data) && data.spaceId != null && isSpaceMember(data.spaceId));
+    }
+
+    match /spaces/{spaceId} {
+      // Anyone signed in can preview a space by id (invite links work before joining).
+      allow get: if isSignedIn();
+      // No collection scans — knowing the id is the invite; nobody can enumerate spaces.
+      allow list: if false;
+      allow create: if isSignedIn()
+        && request.resource.data.ownerId == request.auth.uid
+        && request.resource.data.keys().hasOnly(['name', 'ownerId', 'createdAt'])
+        && request.resource.data.name is string
+        && request.resource.data.name.size() > 0
+        && request.resource.data.name.size() <= 40;
+      allow update: if isSignedIn()
+        && request.auth.uid == resource.data.ownerId
+        && request.resource.data.ownerId == resource.data.ownerId;
+      allow delete: if isSignedIn() && request.auth.uid == resource.data.ownerId;
+
+      match /members/{memberId} {
+        allow get: if isSignedIn() && (request.auth.uid == memberId || isSpaceMember(spaceId));
+        allow list: if isSignedIn() && isSpaceMember(spaceId);
+        allow create: if isSignedIn()
+          && request.auth.uid == memberId
+          && request.resource.data.uid == request.auth.uid
+          && request.resource.data.role in ['owner', 'member']
+          && request.resource.data.keys().hasOnly(['uid', 'role', 'joinedAt']);
+        allow update: if false;
+        allow delete: if isSignedIn()
+          && (request.auth.uid == memberId
+              || (exists(/databases/$(database)/documents/spaces/$(spaceId))
+                  && get(/databases/$(database)/documents/spaces/$(spaceId)).data.ownerId == request.auth.uid));
+      }
+    }
+
+    match /gifticons/{gifticonId} {
+      allow read, update, delete: if isSignedIn() && canAccessGifticon(resource.data);
+      allow create: if isSignedIn()
+        && request.resource.data.ownerId == request.auth.uid
+        && (!('spaceId' in request.resource.data) || isSpaceMember(request.resource.data.spaceId));
     }
   }
 }
