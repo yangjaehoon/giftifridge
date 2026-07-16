@@ -1,9 +1,17 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import {
+  ActivityIndicator,
+  FlatList,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useAuth } from '../../auth/context/AuthContext';
 import { useGifticons } from '../hooks/useGifticons';
 import GifticonCard from '../components/GifticonCard';
+import { getGifticonErrorMessage } from '../errors';
 import type { RootStackParamList } from '../../../app/RootNavigator';
 import { colors } from '../../../shared/theme/colors';
 
@@ -13,7 +21,7 @@ type FilterTab = 'active' | 'used';
 
 export default function HomeScreen({ navigation }: Props) {
   const { user, signOut } = useAuth();
-  const { items } = useGifticons(user?.uid);
+  const { items, loading, error } = useGifticons(user?.uid);
   const [tab, setTab] = useState<FilterTab>('active');
 
   useEffect(() => {
@@ -52,24 +60,34 @@ export default function HomeScreen({ navigation }: Props) {
         </TouchableOpacity>
       </View>
 
-      <FlatList
-        data={filtered}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.listContent}
-        renderItem={({ item }) => (
-          <GifticonCard
-            gifticon={item}
-            onPress={() => navigation.navigate('GifticonDetail', { gifticon: item })}
-          />
-        )}
-        ListEmptyComponent={
-          <View style={styles.empty}>
-            <Text style={styles.emptyText}>
-              {tab === 'active' ? '등록된 기프티콘이 없어요' : '사용완료된 기프티콘이 없어요'}
-            </Text>
-          </View>
-        }
-      />
+      {loading ? (
+        <View style={styles.empty}>
+          <ActivityIndicator color={colors.primary} />
+        </View>
+      ) : error ? (
+        <View style={styles.empty}>
+          <Text style={styles.emptyText}>{getGifticonErrorMessage('load')}</Text>
+        </View>
+      ) : (
+        <FlatList
+          data={filtered}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={styles.listContent}
+          renderItem={({ item }) => (
+            <GifticonCard
+              gifticon={item}
+              onPress={() => navigation.navigate('GifticonDetail', { gifticon: item })}
+            />
+          )}
+          ListEmptyComponent={
+            <View style={styles.empty}>
+              <Text style={styles.emptyText}>
+                {tab === 'active' ? '등록된 기프티콘이 없어요' : '사용완료된 기프티콘이 없어요'}
+              </Text>
+            </View>
+          }
+        />
+      )}
 
       <TouchableOpacity style={styles.fab} onPress={() => navigation.navigate('AddGifticon')}>
         <Text style={styles.fabText}>+</Text>
