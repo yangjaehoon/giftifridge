@@ -20,6 +20,7 @@ export default function SpaceSwitcher({
     <ScrollView
       horizontal
       showsHorizontalScrollIndicator={false}
+      style={styles.scroll}
       contentContainerStyle={styles.row}
     >
       <Pill
@@ -51,6 +52,7 @@ function Pill({ label, active, onPress }: { label: string; active: boolean; onPr
 }
 
 const styles = StyleSheet.create({
+  scroll: { flexGrow: 0 },
   row: { flexDirection: 'row', paddingHorizontal: 16, paddingTop: 12, gap: 8 },
   pill: {
     paddingHorizontal: 14,
