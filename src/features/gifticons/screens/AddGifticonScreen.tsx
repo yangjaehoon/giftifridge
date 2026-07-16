@@ -12,7 +12,6 @@ import {
   View,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
-import * as Location from 'expo-location';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -26,7 +25,10 @@ import { scheduleExpiryNotifications } from '../services/notificationService';
 import { recognizeExpiryDate } from '../services/ocrService';
 import type { GifticonCategory } from '../types';
 import { CATEGORY_LABELS } from '../types';
+import Chip from '../../../shared/components/Chip';
 import { formatDate } from '../../../shared/utils/date';
+import { getCurrentLocation } from '../../../shared/utils/location';
+import { isPermissionDenied } from '../../../shared/utils/firebaseError';
 import { getNotificationOffsets } from '../../../shared/utils/notificationPrefs';
 import { withTimeout, TimeoutError } from '../../../shared/utils/withTimeout';
 import type { RootStackParamList } from '../../../app/RootNavigator';
@@ -71,15 +73,12 @@ export default function AddGifticonScreen({ navigation, route }: Props) {
   const saveCurrentLocation = async () => {
     setLocationSaving(true);
     try {
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== 'granted') {
+      const coords = await getCurrentLocation();
+      if (!coords) {
         Alert.alert('알림', '위치 접근 권한이 필요해요.');
         return;
       }
-      const position = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.Balanced,
-      });
-      setLocation({ latitude: position.coords.latitude, longitude: position.coords.longitude });
+      setLocation(coords);
     } catch {
       Alert.alert('오류', '위치를 가져오지 못했어요.');
     } finally {
@@ -199,10 +198,9 @@ export default function AddGifticonScreen({ navigation, route }: Props) {
 
       navigation.goBack();
     } catch (err) {
-      Alert.alert(
-        '오류',
-        getGifticonErrorMessage(err instanceof TimeoutError ? 'network' : 'save'),
-      );
+      const action =
+        err instanceof TimeoutError ? 'network' : isPermissionDenied(err) ? 'permission' : 'save';
+      Alert.alert('오류', getGifticonErrorMessage(action));
     } finally {
       setSaving(false);
     }
@@ -259,15 +257,12 @@ export default function AddGifticonScreen({ navigation, route }: Props) {
       <Text style={styles.label}>카테고리</Text>
       <View style={styles.chipRow}>
         {CATEGORIES.map((c) => (
-          <TouchableOpacity
+          <Chip
             key={c}
-            style={[styles.chip, category === c && styles.chipActive]}
+            label={CATEGORY_LABELS[c]}
+            active={category === c}
             onPress={() => setCategory(c)}
-          >
-            <Text style={[styles.chipText, category === c && styles.chipTextActive]}>
-              {CATEGORY_LABELS[c]}
-            </Text>
-          </TouchableOpacity>
+          />
         ))}
       </View>
 
@@ -383,15 +378,6 @@ const styles = StyleSheet.create({
   },
   inputError: { borderColor: colors.danger },
   chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  chip: {
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 20,
-    backgroundColor: colors.surfaceMuted,
-  },
-  chipActive: { backgroundColor: colors.primary },
-  chipText: { fontSize: 13, color: colors.gray600, fontWeight: '600' },
-  chipTextActive: { color: colors.surface },
   barcodeRow: { flexDirection: 'row', gap: 8, alignItems: 'center' },
   barcodeInput: { flex: 1 },
   scanButton: {

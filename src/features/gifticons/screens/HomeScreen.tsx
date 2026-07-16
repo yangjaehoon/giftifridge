@@ -1,6 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
-  ActivityIndicator,
   FlatList,
   RefreshControl,
   ScrollView,
@@ -16,7 +15,9 @@ import { useSpaceGifticons } from '../hooks/useSpaceGifticons';
 import { useNearbyGifticons } from '../hooks/useNearbyGifticons';
 import { useMySpaces } from '../../spaces/hooks/useMySpaces';
 import SpaceSwitcher, { type HomeContext } from '../../spaces/components/SpaceSwitcher';
+import Chip from '../../../shared/components/Chip';
 import GifticonCard from '../components/GifticonCard';
+import GifticonCardSkeleton from '../components/GifticonCardSkeleton';
 import GifticonStats from '../components/GifticonStats';
 import NearbyGifticonBanner from '../components/NearbyGifticonBanner';
 import { getGifticonErrorMessage } from '../errors';
@@ -141,26 +142,20 @@ export default function HomeScreen({ navigation }: Props) {
         contentContainerStyle={styles.categoryRow}
       >
         {CATEGORY_FILTERS.map((c) => (
-          <TouchableOpacity
+          <Chip
             key={c}
-            style={[styles.categoryChip, categoryFilter === c && styles.categoryChipActive]}
+            label={c === 'all' ? '전체' : CATEGORY_LABELS[c]}
+            active={categoryFilter === c}
             onPress={() => setCategoryFilter(c)}
-          >
-            <Text
-              style={[
-                styles.categoryChipText,
-                categoryFilter === c && styles.categoryChipTextActive,
-              ]}
-            >
-              {c === 'all' ? '전체' : CATEGORY_LABELS[c]}
-            </Text>
-          </TouchableOpacity>
+          />
         ))}
       </ScrollView>
 
       {loading ? (
-        <View style={styles.empty}>
-          <ActivityIndicator color={colors.primary} />
+        <View style={styles.listContent}>
+          {Array.from({ length: 5 }).map((_, i) => (
+            <GifticonCardSkeleton key={i} />
+          ))}
         </View>
       ) : error && items.length === 0 ? (
         <ScrollView
@@ -245,15 +240,6 @@ const styles = StyleSheet.create({
   tabTextActive: { color: colors.surface },
   categoryScroll: { flexGrow: 0, flexShrink: 0 },
   categoryRow: { paddingHorizontal: 16, paddingTop: 10, gap: 8, alignItems: 'center' },
-  categoryChip: {
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 20,
-    backgroundColor: colors.surfaceMuted,
-  },
-  categoryChipActive: { backgroundColor: colors.primary },
-  categoryChipText: { fontSize: 13, color: colors.gray600, fontWeight: '600' },
-  categoryChipTextActive: { color: colors.surface },
   listContent: { paddingVertical: 8, paddingBottom: 100, flexGrow: 1 },
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: 80 },
   emptyText: { color: colors.gray400, fontSize: 14 },

@@ -13,10 +13,12 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { deleteGifticon, markGifticonUsed } from '../services/gifticonService';
 import { cancelNotifications } from '../services/notificationService';
 import { useGifticon } from '../hooks/useGifticon';
+import GifticonDetailSkeleton from '../components/GifticonDetailSkeleton';
 import { CATEGORY_LABELS } from '../types';
 import { daysUntil, formatDate } from '../../../shared/utils/date';
 import { formatCurrency } from '../../../shared/utils/currency';
 import { withTimeout, TimeoutError } from '../../../shared/utils/withTimeout';
+import { isPermissionDenied } from '../../../shared/utils/firebaseError';
 import type { RootStackParamList } from '../../../app/RootNavigator';
 import { getGifticonErrorMessage } from '../errors';
 import { colors } from '../../../shared/theme/colors';
@@ -45,10 +47,9 @@ export default function GifticonDetailScreen({ route, navigation }: Props) {
       }
       navigation.goBack();
     } catch (err) {
-      Alert.alert(
-        '오류',
-        getGifticonErrorMessage(err instanceof TimeoutError ? 'network' : 'update'),
-      );
+      const action =
+        err instanceof TimeoutError ? 'network' : isPermissionDenied(err) ? 'permission' : 'update';
+      Alert.alert('오류', getGifticonErrorMessage(action));
     } finally {
       setBusy(false);
     }
@@ -72,10 +73,13 @@ export default function GifticonDetailScreen({ route, navigation }: Props) {
             await withTimeout(deleteGifticon(gifticon), WRITE_TIMEOUT_MS);
             navigation.goBack();
           } catch (err) {
-            Alert.alert(
-              '오류',
-              getGifticonErrorMessage(err instanceof TimeoutError ? 'network' : 'delete'),
-            );
+            const action =
+              err instanceof TimeoutError
+                ? 'network'
+                : isPermissionDenied(err)
+                  ? 'permission'
+                  : 'delete';
+            Alert.alert('오류', getGifticonErrorMessage(action));
           } finally {
             setBusy(false);
           }
@@ -85,11 +89,7 @@ export default function GifticonDetailScreen({ route, navigation }: Props) {
   };
 
   if (loading) {
-    return (
-      <View style={styles.center}>
-        <ActivityIndicator color={colors.primary} />
-      </View>
-    );
+    return <GifticonDetailSkeleton />;
   }
 
   if (error) {

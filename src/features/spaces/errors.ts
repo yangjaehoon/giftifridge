@@ -6,6 +6,7 @@ const SPACE_ERROR_MESSAGES = {
   load: '스페이스 정보를 불러오지 못했어요.',
   notFound: '스페이스를 찾을 수 없어요.',
   network: '네트워크 연결을 확인해주세요. 오프라인 상태일 수 있어요.',
+  permission: '이 스페이스에 대한 접근 권한이 없어요.',
 } as const;
 
 export function getSpaceErrorMessage(action: keyof typeof SPACE_ERROR_MESSAGES): string {

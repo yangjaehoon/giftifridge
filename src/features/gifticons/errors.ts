@@ -5,6 +5,7 @@ const GIFTICON_ERROR_MESSAGES = {
   load: '기프티콘을 불러오지 못했어요. 잠시 후 다시 시도해주세요.',
   notFound: '기프티콘을 찾을 수 없어요.',
   network: '네트워크 연결을 확인해주세요. 오프라인 상태일 수 있어요.',
+  permission: '이 기프티콘에 대한 접근 권한이 없어요. 스페이스에서 나가진 건 아닌지 확인해주세요.',
 } as const;
 
 export function getGifticonErrorMessage(action: keyof typeof GIFTICON_ERROR_MESSAGES): string {

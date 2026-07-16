@@ -1,8 +1,8 @@
 import { useCallback, useState } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
-import * as Location from 'expo-location';
 import type { Gifticon } from '../types';
 import { distanceInMeters } from '../../../shared/utils/geo';
+import { getCurrentLocation } from '../../../shared/utils/location';
 
 const NEARBY_RADIUS_METERS = 300;
 
@@ -27,22 +27,14 @@ export function useNearbyGifticons(items: Gifticon[]) {
         }
 
         try {
-          const current = await Location.getForegroundPermissionsAsync();
-          let granted = current.status === 'granted';
-          if (!granted && current.canAskAgain) {
-            const requested = await Location.requestForegroundPermissionsAsync();
-            granted = requested.status === 'granted';
-          }
-          if (!granted) {
+          const coords = await getCurrentLocation();
+          if (!coords) {
             if (!cancelled) setNearby([]);
             return;
           }
 
-          const position = await Location.getCurrentPositionAsync({
-            accuracy: Location.Accuracy.Balanced,
-          });
           const near = candidates.filter(
-            (item) => distanceInMeters(position.coords, item.location) <= NEARBY_RADIUS_METERS,
+            (item) => distanceInMeters(coords, item.location) <= NEARBY_RADIUS_METERS,
           );
           if (!cancelled) setNearby(near);
         } catch {
