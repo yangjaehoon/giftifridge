@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { ActivityIndicator, Linking, View } from 'react-native';
+import { Linking, StyleSheet, View } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import * as Notifications from 'expo-notifications';
@@ -8,6 +8,7 @@ import { isFirebaseConfigured } from '../lib/firebase/config';
 import HomeScreen from '../features/gifticons/screens/HomeScreen';
 import AddGifticonScreen from '../features/gifticons/screens/AddGifticonScreen';
 import GifticonDetailScreen from '../features/gifticons/screens/GifticonDetailScreen';
+import GifticonCardSkeleton from '../features/gifticons/components/GifticonCardSkeleton';
 import SettingsScreen from '../features/auth/screens/SettingsScreen';
 import CreateSpaceScreen from '../features/spaces/screens/CreateSpaceScreen';
 import JoinSpaceScreen from '../features/spaces/screens/JoinSpaceScreen';
@@ -79,8 +80,10 @@ export default function RootNavigator() {
 
   if (initializing) {
     return (
-      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-        <ActivityIndicator size="large" />
+      <View style={styles.initializing}>
+        {Array.from({ length: 5 }).map((_, i) => (
+          <GifticonCardSkeleton key={i} />
+        ))}
       </View>
     );
   }
@@ -126,3 +129,7 @@ export default function RootNavigator() {
     </>
   );
 }
+
+const styles = StyleSheet.create({
+  initializing: { flex: 1, justifyContent: 'center', paddingTop: 60 },
+});

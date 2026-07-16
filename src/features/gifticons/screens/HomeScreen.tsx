@@ -51,7 +51,7 @@ export default function HomeScreen({ navigation }: Props) {
   const { user } = useAuth();
   const [context, setContext] = useState<HomeContext>({ type: 'personal' });
   const { spaces } = useMySpaces(user?.uid);
-  const personal = useGifticons(user?.uid);
+  const personal = useGifticons(context.type === 'personal' ? user?.uid : undefined);
   const spaceGifticons = useSpaceGifticons(context.type === 'space' ? context.spaceId : undefined);
   const { items, loading, refreshing, error, refresh } =
     context.type === 'personal' ? personal : spaceGifticons;

@@ -12,6 +12,7 @@ import {
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useAuth } from '../../auth/context/AuthContext';
 import { useSpace } from '../hooks/useSpace';
+import SpaceMembersSkeleton from '../components/SpaceMembersSkeleton';
 import { deleteSpace, leaveSpace } from '../services/spaceService';
 import { getSpaceErrorMessage } from '../errors';
 import { withTimeout, TimeoutError } from '../../../shared/utils/withTimeout';
@@ -97,11 +98,7 @@ export default function SpaceMembersScreen({ route, navigation }: Props) {
   };
 
   if (loading) {
-    return (
-      <View style={styles.center}>
-        <ActivityIndicator color={colors.primary} />
-      </View>
-    );
+    return <SpaceMembersSkeleton />;
   }
 
   if (error) {
