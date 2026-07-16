@@ -49,7 +49,7 @@ export default function CreateSpaceScreen({ navigation }: Props) {
 
       <TouchableOpacity style={styles.saveButton} onPress={save} disabled={saving}>
         {saving ? (
-          <ActivityIndicator color="#fff" />
+          <ActivityIndicator color={colors.surface} />
         ) : (
           <Text style={styles.saveButtonText}>만들기</Text>
         )}

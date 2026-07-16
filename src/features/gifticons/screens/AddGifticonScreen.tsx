@@ -320,7 +320,7 @@ export default function AddGifticonScreen({ navigation, route }: Props) {
 
       <TouchableOpacity style={styles.saveButton} onPress={save} disabled={saving}>
         {saving ? (
-          <ActivityIndicator color="#fff" />
+          <ActivityIndicator color={colors.surface} />
         ) : (
           <Text style={styles.saveButtonText}>등록하기</Text>
         )}
@@ -385,10 +385,10 @@ const styles = StyleSheet.create({
   scanButton: {
     paddingHorizontal: 16,
     paddingVertical: 12,
-    backgroundColor: colors.surfaceStrong,
+    backgroundColor: colors.surfaceMuted,
     borderRadius: 10,
   },
-  scanButtonText: { color: colors.surface, fontWeight: '600', fontSize: 13 },
+  scanButtonText: { color: colors.gray700, fontWeight: '600', fontSize: 13 },
   locationButton: {
     borderWidth: 1,
     borderColor: colors.border,

@@ -218,6 +218,8 @@ export default function HomeScreen({ navigation }: Props) {
             context.type === 'space' ? { spaceId: context.spaceId } : undefined,
           )
         }
+        accessibilityRole="button"
+        accessibilityLabel="기프티콘 등록"
       >
         <Text style={styles.fabText}>+</Text>
       </TouchableOpacity>

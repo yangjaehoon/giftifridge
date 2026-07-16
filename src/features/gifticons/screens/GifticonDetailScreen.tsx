@@ -27,7 +27,7 @@ type Props = NativeStackScreenProps<RootStackParamList, 'GifticonDetail'>;
 
 export default function GifticonDetailScreen({ route, navigation }: Props) {
   const { gifticonId } = route.params;
-  const { gifticon, loading, error } = useGifticon(gifticonId);
+  const { gifticon, loading, error, refresh } = useGifticon(gifticonId);
   const [busy, setBusy] = useState(false);
 
   const toggleUsed = async () => {
@@ -88,6 +88,14 @@ export default function GifticonDetailScreen({ route, navigation }: Props) {
     return (
       <View style={styles.center}>
         <Text style={styles.emptyText}>{getGifticonErrorMessage('load')}</Text>
+        <TouchableOpacity
+          style={styles.retryButton}
+          onPress={refresh}
+          accessibilityRole="button"
+          accessibilityLabel="다시 시도"
+        >
+          <Text style={styles.retryButtonText}>다시 시도</Text>
+        </TouchableOpacity>
       </View>
     );
   }
@@ -122,7 +130,7 @@ export default function GifticonDetailScreen({ route, navigation }: Props) {
 
       <TouchableOpacity style={styles.primaryButton} onPress={toggleUsed} disabled={busy}>
         {busy ? (
-          <ActivityIndicator color="#fff" />
+          <ActivityIndicator color={colors.surface} />
         ) : (
           <Text style={styles.primaryButtonText}>
             {gifticon.isUsed ? '사용가능으로 되돌리기' : '사용완료로 표시'}
@@ -139,7 +147,14 @@ export default function GifticonDetailScreen({ route, navigation }: Props) {
 
 const styles = StyleSheet.create({
   container: { padding: 20, paddingBottom: 60 },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 20 },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 20, gap: 16 },
+  retryButton: {
+    backgroundColor: colors.surfaceMuted,
+    borderRadius: 10,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+  },
+  retryButtonText: { color: colors.gray700, fontWeight: '700', fontSize: 14 },
   image: { width: '100%', aspectRatio: 1, borderRadius: 12, backgroundColor: colors.surfaceSubtle },
   section: { marginTop: 20, gap: 4 },
   brand: { fontSize: 13, color: colors.gray450 },

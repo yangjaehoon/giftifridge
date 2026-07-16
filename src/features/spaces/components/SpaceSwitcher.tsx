@@ -36,14 +36,34 @@ export default function SpaceSwitcher({
           onPress={() => onSelect({ type: 'space', spaceId: space.id })}
         />
       ))}
-      <Pill label="+" active={false} onPress={onCreatePress} />
+      <Pill
+        label="+"
+        active={false}
+        onPress={onCreatePress}
+        accessibilityLabel="새 스페이스 만들기"
+      />
     </ScrollView>
   );
 }
 
-function Pill({ label, active, onPress }: { label: string; active: boolean; onPress: () => void }) {
+function Pill({
+  label,
+  active,
+  onPress,
+  accessibilityLabel,
+}: {
+  label: string;
+  active: boolean;
+  onPress: () => void;
+  accessibilityLabel?: string;
+}) {
   return (
-    <TouchableOpacity style={[styles.pill, active && styles.pillActive]} onPress={onPress}>
+    <TouchableOpacity
+      style={[styles.pill, active && styles.pillActive]}
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel ?? label}
+    >
       <Text style={[styles.pillText, active && styles.pillTextActive]} numberOfLines={1}>
         {label}
       </Text>

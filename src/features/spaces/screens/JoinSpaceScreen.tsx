@@ -100,7 +100,7 @@ export default function JoinSpaceScreen({ route, navigation }: Props) {
           <Text style={styles.previewName}>{preview.name}</Text>
           <TouchableOpacity style={styles.saveButton} onPress={join} disabled={joining}>
             {joining ? (
-              <ActivityIndicator color="#fff" />
+              <ActivityIndicator color={colors.surface} />
             ) : (
               <Text style={styles.saveButtonText}>참여하기</Text>
             )}
