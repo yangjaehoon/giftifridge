@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import {
+  createUserWithEmailAndPassword,
   EmailAuthProvider,
   linkWithCredential,
   onAuthStateChanged,
@@ -41,15 +42,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const value = useMemo<AuthContextValue>(
     () => ({
       user,
-      isAnonymous: user?.isAnonymous ?? false,
+      isAnonymous: user?.isAnonymous ?? true,
       initializing,
       signIn: async (email, password) => {
         await signInWithEmailAndPassword(auth, email, password);
       },
       linkEmail: async (email, password) => {
-        if (!auth.currentUser) throw new Error('No active session to link.');
-        const credential = EmailAuthProvider.credential(email, password);
-        await linkWithCredential(auth.currentUser, credential);
+        if (auth.currentUser?.isAnonymous) {
+          const credential = EmailAuthProvider.credential(email, password);
+          await linkWithCredential(auth.currentUser, credential);
+        } else {
+          await createUserWithEmailAndPassword(auth, email, password);
+        }
       },
       signOut: async () => {
         await firebaseSignOut(auth);

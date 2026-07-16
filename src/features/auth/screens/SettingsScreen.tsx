@@ -41,7 +41,7 @@ export default function SettingsScreen() {
     }
   };
 
-  if (!isAnonymous) {
+  if (user && !isAnonymous) {
     return (
       <View style={styles.container}>
         <Text style={styles.title}>계정</Text>
