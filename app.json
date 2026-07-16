@@ -43,6 +43,12 @@
         {
           "icon": "./assets/icon.png"
         }
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "자주 가는 매장 근처에서 미사용 기프티콘을 알려드리기 위해 위치 접근 권한이 필요해요."
+        }
       ]
     ]
   }

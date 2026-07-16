@@ -15,6 +15,8 @@ interface AuthContextValue {
   user: User | null;
   isAnonymous: boolean;
   initializing: boolean;
+  authError: string | null;
+  retryAnonymousSignIn: () => void;
   signIn: (email: string, password: string) => Promise<void>;
   linkEmail: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
@@ -25,14 +27,23 @@ const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [initializing, setInitializing] = useState(isFirebaseConfigured);
+  const [authError, setAuthError] = useState<string | null>(null);
+
+  const attemptAnonymousSignIn = () => {
+    signInAnonymously(auth).catch(() => {
+      setAuthError('로그인 정보를 확인하지 못했어요.');
+      setInitializing(false);
+    });
+  };
 
   useEffect(() => {
     if (!isFirebaseConfigured) return;
     const unsubscribe = onAuthStateChanged(auth, (u) => {
       if (!u) {
-        signInAnonymously(auth).catch(() => setInitializing(false));
+        attemptAnonymousSignIn();
         return;
       }
+      setAuthError(null);
       setUser(u);
       setInitializing(false);
     });
@@ -44,6 +55,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       user,
       isAnonymous: user?.isAnonymous ?? true,
       initializing,
+      authError,
+      retryAnonymousSignIn: () => {
+        setAuthError(null);
+        setInitializing(true);
+        attemptAnonymousSignIn();
+      },
       signIn: async (email, password) => {
         await signInWithEmailAndPassword(auth, email, password);
       },
@@ -59,7 +76,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         await firebaseSignOut(auth);
       },
     }),
-    [user, initializing],
+    [user, initializing, authError],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

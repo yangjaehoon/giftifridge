@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -13,7 +13,55 @@ import {
 import { useAuth } from '../context/AuthContext';
 import { getAuthErrorMessage } from '../errors';
 import { seedDummyGifticons } from '../../gifticons/services/devSeed';
+import {
+  getNotificationOffsets,
+  setNotificationOffsets,
+} from '../../../shared/utils/notificationPrefs';
 import { colors } from '../../../shared/theme/colors';
+
+const OFFSET_PRESETS = [7, 3, 1, 0];
+const OFFSET_LABELS: Record<number, string> = { 7: '7일 전', 3: '3일 전', 1: '1일 전', 0: '당일' };
+
+function NotificationOffsetSettings() {
+  const [offsets, setOffsets] = useState<number[] | null>(null);
+
+  useEffect(() => {
+    getNotificationOffsets().then(setOffsets);
+  }, []);
+
+  const toggle = (offset: number) => {
+    if (!offsets) return;
+    const next = offsets.includes(offset)
+      ? offsets.filter((o) => o !== offset)
+      : [...offsets, offset].sort((a, b) => b - a);
+    setOffsets(next);
+    setNotificationOffsets(next);
+  };
+
+  if (!offsets) return null;
+
+  return (
+    <View style={styles.notificationSection}>
+      <Text style={styles.sectionTitle}>알림</Text>
+      <Text style={styles.sectionSubtitle}>
+        유효기한 며칠 전에 알림을 받을지 선택하세요. 여러 개 선택할 수 있어요.
+      </Text>
+      <View style={styles.chipRow}>
+        {OFFSET_PRESETS.map((offset) => (
+          <TouchableOpacity
+            key={offset}
+            style={[styles.chip, offsets.includes(offset) && styles.chipActive]}
+            onPress={() => toggle(offset)}
+          >
+            <Text style={[styles.chipText, offsets.includes(offset) && styles.chipTextActive]}>
+              {OFFSET_LABELS[offset]}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+    </View>
+  );
+}
 
 export default function SettingsScreen() {
   const { user, isAnonymous, signIn, linkEmail, signOut } = useAuth();
@@ -59,6 +107,7 @@ export default function SettingsScreen() {
   if (user && !isAnonymous) {
     return (
       <View style={styles.container}>
+        <NotificationOffsetSettings />
         <Text style={styles.title}>계정</Text>
         <Text style={styles.subtitle}>{user?.email}로 로그인되어 있어요.</Text>
         <TouchableOpacity style={[styles.button, styles.signOutButton]} onPress={() => signOut()}>
@@ -84,6 +133,7 @@ export default function SettingsScreen() {
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
+      <NotificationOffsetSettings />
       <Text style={styles.title}>계정</Text>
       <Text style={styles.subtitle}>
         {mode === 'signUp'
@@ -141,6 +191,19 @@ export default function SettingsScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 24, paddingTop: 32, backgroundColor: colors.surface },
+  notificationSection: { marginBottom: 28 },
+  sectionTitle: { fontSize: 15, fontWeight: '700', color: colors.gray900, marginBottom: 4 },
+  sectionSubtitle: { fontSize: 13, color: colors.gray500, marginBottom: 12, lineHeight: 18 },
+  chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  chip: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: colors.surfaceMuted,
+  },
+  chipActive: { backgroundColor: colors.primary },
+  chipText: { fontSize: 13, color: colors.gray600, fontWeight: '600' },
+  chipTextActive: { color: colors.surface },
   title: { fontSize: 22, fontWeight: '800', color: colors.gray900 },
   subtitle: {
     fontSize: 14,

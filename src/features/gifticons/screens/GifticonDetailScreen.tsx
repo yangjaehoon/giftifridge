@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { deleteGifticon, markGifticonUsed } from '../services/gifticonService';
-import { cancelNotification } from '../services/notificationService';
+import { cancelNotifications } from '../services/notificationService';
 import { useGifticon } from '../hooks/useGifticon';
 import { CATEGORY_LABELS } from '../types';
 import { daysUntil, formatDate } from '../../../shared/utils/date';
@@ -37,7 +37,7 @@ export default function GifticonDetailScreen({ route, navigation }: Props) {
       const nextUsed = !gifticon.isUsed;
       await withTimeout(markGifticonUsed(gifticon.id, nextUsed), WRITE_TIMEOUT_MS);
       if (nextUsed) {
-        await cancelNotification(gifticon.notificationId);
+        await cancelNotifications(gifticon.notificationIds);
       }
       navigation.goBack();
     } catch (err) {
@@ -60,7 +60,7 @@ export default function GifticonDetailScreen({ route, navigation }: Props) {
         onPress: async () => {
           setBusy(true);
           try {
-            await cancelNotification(gifticon.notificationId);
+            await cancelNotifications(gifticon.notificationIds);
             await withTimeout(deleteGifticon(gifticon), WRITE_TIMEOUT_MS);
             navigation.goBack();
           } catch (err) {

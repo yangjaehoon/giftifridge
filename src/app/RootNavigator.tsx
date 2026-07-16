@@ -10,6 +10,7 @@ import AddGifticonScreen from '../features/gifticons/screens/AddGifticonScreen';
 import GifticonDetailScreen from '../features/gifticons/screens/GifticonDetailScreen';
 import SettingsScreen from '../features/auth/screens/SettingsScreen';
 import SetupRequiredScreen from './SetupRequiredScreen';
+import AuthErrorScreen from './AuthErrorScreen';
 import OfflineBanner from '../shared/components/OfflineBanner';
 import { navigationRef } from './navigationRef';
 
@@ -30,7 +31,7 @@ function openGifticonFromNotification(response: Notifications.NotificationRespon
 }
 
 export default function RootNavigator() {
-  const { initializing } = useAuth();
+  const { user, initializing, authError, retryAnonymousSignIn } = useAuth();
 
   useEffect(() => {
     Notifications.getLastNotificationResponseAsync().then(openGifticonFromNotification);
@@ -50,6 +51,10 @@ export default function RootNavigator() {
         <ActivityIndicator size="large" />
       </View>
     );
+  }
+
+  if (!user && authError) {
+    return <AuthErrorScreen message={authError} onRetry={retryAnonymousSignIn} />;
   }
 
   return (

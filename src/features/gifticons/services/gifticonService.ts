@@ -9,19 +9,18 @@ import {
   updateDoc,
   where,
 } from 'firebase/firestore';
-import { deleteObject, getDownloadURL, ref, uploadBytes } from 'firebase/storage';
-import { db, storage } from '../../../lib/firebase/config';
+import { Directory, File, Paths } from 'expo-file-system';
+import { db } from '../../../lib/firebase/config';
 import type { Gifticon, NewGifticon } from '../types';
 
 const COLLECTION = 'gifticons';
 
-export async function uploadGifticonImage(ownerId: string, localUri: string): Promise<string> {
-  const response = await fetch(localUri);
-  const blob = await response.blob();
-  const filename = `${Date.now()}.jpg`;
-  const storageRef = ref(storage, `gifticons/${ownerId}/${filename}`);
-  await uploadBytes(storageRef, blob);
-  return getDownloadURL(storageRef);
+export async function saveGifticonImage(ownerId: string, localUri: string): Promise<string> {
+  const directory = new Directory(Paths.document, 'gifticons', ownerId);
+  directory.create({ intermediates: true, idempotent: true });
+  const destination = new File(directory, `${Date.now()}.jpg`);
+  await new File(localUri).copy(destination);
+  return destination.uri;
 }
 
 export async function createGifticon(ownerId: string, data: NewGifticon): Promise<string> {
@@ -75,15 +74,15 @@ export async function markGifticonUsed(id: string, isUsed: boolean) {
   });
 }
 
-export async function setGifticonNotificationId(id: string, notificationId: string | null) {
-  await updateDoc(doc(db, COLLECTION, id), { notificationId });
+export async function setGifticonNotificationIds(id: string, notificationIds: string[]) {
+  await updateDoc(doc(db, COLLECTION, id), { notificationIds });
 }
 
 export async function deleteGifticon(gifticon: Gifticon) {
   await deleteDoc(doc(db, COLLECTION, gifticon.id));
-  if (gifticon.imageUrl) {
+  if (gifticon.imageUrl.startsWith(Paths.document.uri)) {
     try {
-      await deleteObject(ref(storage, gifticon.imageUrl));
+      new File(gifticon.imageUrl).delete();
     } catch {
       // image may already be removed; ignore
     }

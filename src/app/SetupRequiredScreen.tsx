@@ -12,7 +12,9 @@ export default function SetupRequiredScreen() {
       <View style={styles.steps}>
         <Text style={styles.step}>1. https://console.firebase.google.com 에서 프로젝트 생성</Text>
         <Text style={styles.step}>2. 웹 앱 추가 후 SDK 설정값 복사</Text>
-        <Text style={styles.step}>3. Authentication에서 이메일/비밀번호 로그인 활성화</Text>
+        <Text style={styles.step}>
+          3. Authentication → Sign-in method에서 익명 로그인과 이메일/비밀번호 로그인 활성화
+        </Text>
         <Text style={styles.step}>4. Firestore Database, Storage 생성</Text>
         <Text style={styles.step}>5. .env 파일에 값 입력 후 앱 재시작</Text>
       </View>

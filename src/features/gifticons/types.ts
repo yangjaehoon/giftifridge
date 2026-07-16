@@ -20,11 +20,12 @@ export interface Gifticon {
   expiresAt: string;
   isUsed: boolean;
   usedAt?: string;
-  notificationId?: string;
+  notificationIds?: string[];
+  location?: { latitude: number; longitude: number };
   createdAt: string;
 }
 
 export type NewGifticon = Omit<
   Gifticon,
-  'id' | 'ownerId' | 'createdAt' | 'isUsed' | 'usedAt' | 'notificationId'
+  'id' | 'ownerId' | 'createdAt' | 'isUsed' | 'usedAt' | 'notificationIds'
 >;

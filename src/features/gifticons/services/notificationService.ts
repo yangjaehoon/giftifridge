@@ -12,8 +12,6 @@ Notifications.setNotificationHandler({
   }),
 });
 
-const DAYS_BEFORE_EXPIRY = 3;
-
 export async function ensureNotificationPermission(): Promise<boolean> {
   if (!Device.isDevice) return false;
   const current = await Notifications.getPermissionsAsync();
@@ -31,36 +29,54 @@ export async function ensureNotificationPermission(): Promise<boolean> {
   return status === 'granted';
 }
 
-export async function scheduleExpiryNotification(
-  gifticon: Pick<Gifticon, 'id' | 'name' | 'brand' | 'expiresAt'>,
-): Promise<string | null> {
-  const granted = await ensureNotificationPermission();
-  if (!granted) return null;
-
-  const expiryDate = new Date(gifticon.expiresAt);
-  const triggerDate = new Date(expiryDate);
-  triggerDate.setDate(triggerDate.getDate() - DAYS_BEFORE_EXPIRY);
-  triggerDate.setHours(9, 0, 0, 0);
-
-  if (triggerDate.getTime() <= Date.now()) {
-    return null;
+function offsetBody(brand: string, name: string, daysBefore: number): string {
+  if (daysBefore <= 0) {
+    return `${brand} ${name}의 유효기한이 오늘 마감이에요.`;
   }
-
-  return Notifications.scheduleNotificationAsync({
-    content: {
-      title: '기프티콘 유효기한 임박',
-      body: `${gifticon.brand} ${gifticon.name}의 유효기한이 ${DAYS_BEFORE_EXPIRY}일 남았어요.`,
-      data: { gifticonId: gifticon.id },
-    },
-    trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: triggerDate },
-  });
+  return `${brand} ${name}의 유효기한이 ${daysBefore}일 남았어요.`;
 }
 
-export async function cancelNotification(notificationId?: string | null) {
-  if (!notificationId) return;
-  try {
-    await Notifications.cancelScheduledNotificationAsync(notificationId);
-  } catch {
-    // already cancelled or fired
+/**
+ * Schedules one local notification per offset (days before expiry, 9am).
+ * Offsets whose trigger time has already passed are silently skipped.
+ */
+export async function scheduleExpiryNotifications(
+  gifticon: Pick<Gifticon, 'id' | 'name' | 'brand' | 'expiresAt'>,
+  offsets: number[],
+): Promise<string[]> {
+  const granted = await ensureNotificationPermission();
+  if (!granted) return [];
+
+  const ids: string[] = [];
+  for (const daysBefore of offsets) {
+    const triggerDate = new Date(gifticon.expiresAt);
+    triggerDate.setDate(triggerDate.getDate() - daysBefore);
+    triggerDate.setHours(9, 0, 0, 0);
+
+    if (triggerDate.getTime() <= Date.now()) continue;
+
+    const id = await Notifications.scheduleNotificationAsync({
+      content: {
+        title: '기프티콘 유효기한 임박',
+        body: offsetBody(gifticon.brand, gifticon.name, daysBefore),
+        data: { gifticonId: gifticon.id },
+      },
+      trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: triggerDate },
+    });
+    ids.push(id);
   }
+  return ids;
+}
+
+export async function cancelNotifications(notificationIds?: string[] | null) {
+  if (!notificationIds?.length) return;
+  await Promise.all(
+    notificationIds.map(async (id) => {
+      try {
+        await Notifications.cancelScheduledNotificationAsync(id);
+      } catch {
+        // already cancelled or fired
+      }
+    }),
+  );
 }

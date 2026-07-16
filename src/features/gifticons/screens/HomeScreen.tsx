@@ -10,7 +10,10 @@ import {
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useAuth } from '../../auth/context/AuthContext';
 import { useGifticons } from '../hooks/useGifticons';
+import { useNearbyGifticons } from '../hooks/useNearbyGifticons';
 import GifticonCard from '../components/GifticonCard';
+import GifticonStats from '../components/GifticonStats';
+import NearbyGifticonBanner from '../components/NearbyGifticonBanner';
 import { getGifticonErrorMessage } from '../errors';
 import type { RootStackParamList } from '../../../app/RootNavigator';
 import { colors } from '../../../shared/theme/colors';
@@ -22,6 +25,7 @@ type FilterTab = 'active' | 'used';
 export default function HomeScreen({ navigation }: Props) {
   const { user } = useAuth();
   const { items, loading, error } = useGifticons(user?.uid);
+  const nearbyItems = useNearbyGifticons(items);
   const [tab, setTab] = useState<FilterTab>('active');
 
   useEffect(() => {
@@ -41,6 +45,9 @@ export default function HomeScreen({ navigation }: Props) {
 
   return (
     <View style={styles.container}>
+      <GifticonStats items={items.filter((i) => !i.isUsed)} />
+      <NearbyGifticonBanner items={nearbyItems} />
+
       <View style={styles.tabs}>
         <TouchableOpacity
           style={[styles.tab, tab === 'active' && styles.tabActive]}

@@ -12,19 +12,22 @@ import {
   View,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
+import * as Location from 'expo-location';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useAuth } from '../../auth/context/AuthContext';
 import {
   createGifticon,
-  setGifticonNotificationId,
-  uploadGifticonImage,
+  saveGifticonImage,
+  setGifticonNotificationIds,
 } from '../services/gifticonService';
-import { scheduleExpiryNotification } from '../services/notificationService';
+import { scheduleExpiryNotifications } from '../services/notificationService';
+import { recognizeExpiryDate } from '../services/ocrService';
 import type { GifticonCategory } from '../types';
 import { CATEGORY_LABELS } from '../types';
 import { formatDate } from '../../../shared/utils/date';
+import { getNotificationOffsets } from '../../../shared/utils/notificationPrefs';
 import { withTimeout, TimeoutError } from '../../../shared/utils/withTimeout';
 import type { RootStackParamList } from '../../../app/RootNavigator';
 import { getGifticonErrorMessage } from '../errors';
@@ -53,8 +56,46 @@ export default function AddGifticonScreen({ navigation }: Props) {
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showScanner, setShowScanner] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [recognizingDate, setRecognizingDate] = useState(false);
+  const [dateAutoDetected, setDateAutoDetected] = useState(false);
+  const [dateManuallyEdited, setDateManuallyEdited] = useState(false);
+  const [location, setLocation] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [locationSaving, setLocationSaving] = useState(false);
 
   const [permission, requestPermission] = useCameraPermissions();
+
+  const saveCurrentLocation = async () => {
+    setLocationSaving(true);
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('알림', '위치 접근 권한이 필요해요.');
+        return;
+      }
+      const position = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.Balanced,
+      });
+      setLocation({ latitude: position.coords.latitude, longitude: position.coords.longitude });
+    } catch {
+      Alert.alert('오류', '위치를 가져오지 못했어요.');
+    } finally {
+      setLocationSaving(false);
+    }
+  };
+
+  const detectExpiryDate = async (uri: string) => {
+    setDateAutoDetected(false);
+    setRecognizingDate(true);
+    try {
+      const isoDate = await recognizeExpiryDate(uri);
+      if (isoDate && !dateManuallyEdited) {
+        setExpiresAt(new Date(isoDate));
+        setDateAutoDetected(true);
+      }
+    } finally {
+      setRecognizingDate(false);
+    }
+  };
 
   const pickFromLibrary = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -63,6 +104,8 @@ export default function AddGifticonScreen({ navigation }: Props) {
     });
     if (!result.canceled) {
       setImageUri(result.assets[0].uri);
+      setDateManuallyEdited(false);
+      detectExpiryDate(result.assets[0].uri);
     }
   };
 
@@ -70,6 +113,8 @@ export default function AddGifticonScreen({ navigation }: Props) {
     const result = await ImagePicker.launchCameraAsync({ quality: 0.8 });
     if (!result.canceled) {
       setImageUri(result.assets[0].uri);
+      setDateManuallyEdited(false);
+      detectExpiryDate(result.assets[0].uri);
     }
   };
 
@@ -90,7 +135,10 @@ export default function AddGifticonScreen({ navigation }: Props) {
   };
 
   const save = async () => {
-    if (!user) return;
+    if (!user) {
+      Alert.alert('오류', '로그인 정보를 확인하지 못했어요. 앱을 다시 시작해주세요.');
+      return;
+    }
     if (!imageUri) {
       Alert.alert('알림', '기프티콘 사진을 등록해주세요.');
       return;
@@ -104,7 +152,7 @@ export default function AddGifticonScreen({ navigation }: Props) {
     try {
       await withTimeout(
         (async () => {
-          const uploadedUrl = await uploadGifticonImage(user.uid, imageUri);
+          const savedImageUri = await saveGifticonImage(user.uid, imageUri);
           const expiresAtIso = expiresAt.toISOString();
           const id = await createGifticon(user.uid, {
             name: name.trim(),
@@ -112,17 +160,22 @@ export default function AddGifticonScreen({ navigation }: Props) {
             category,
             barcode: barcode.trim() || undefined,
             amount: amount.trim() ? Number(amount) : undefined,
-            imageUrl: uploadedUrl,
+            imageUrl: savedImageUri,
             expiresAt: expiresAtIso,
+            location: location ?? undefined,
           });
-          const notificationId = await scheduleExpiryNotification({
-            id,
-            name: name.trim(),
-            brand: brand.trim(),
-            expiresAt: expiresAtIso,
-          });
-          if (notificationId) {
-            await setGifticonNotificationId(id, notificationId);
+          const offsets = await getNotificationOffsets();
+          const notificationIds = await scheduleExpiryNotifications(
+            {
+              id,
+              name: name.trim(),
+              brand: brand.trim(),
+              expiresAt: expiresAtIso,
+            },
+            offsets,
+          );
+          if (notificationIds.length > 0) {
+            await setGifticonNotificationIds(id, notificationIds);
           }
         })(),
         WRITE_TIMEOUT_MS,
@@ -206,10 +259,34 @@ export default function AddGifticonScreen({ navigation }: Props) {
         </TouchableOpacity>
       </View>
 
-      <Text style={styles.label}>유효기한</Text>
+      <Text style={styles.label}>매장 위치 (선택)</Text>
+      <TouchableOpacity
+        style={styles.locationButton}
+        onPress={saveCurrentLocation}
+        disabled={locationSaving}
+      >
+        {locationSaving ? (
+          <ActivityIndicator size="small" color={colors.primary} />
+        ) : (
+          <Text style={styles.locationButtonText}>
+            {location ? '현재 위치로 저장됨 ✓' : '지금 여기를 매장 위치로 저장'}
+          </Text>
+        )}
+      </TouchableOpacity>
+      {location && (
+        <Text style={styles.ocrHint}>근처에 다시 왔을 때 이 기프티콘을 알려드려요.</Text>
+      )}
+
+      <View style={styles.dateLabelRow}>
+        <Text style={styles.label}>유효기한</Text>
+        {recognizingDate && <ActivityIndicator size="small" color={colors.primary} />}
+      </View>
       <TouchableOpacity style={styles.input} onPress={() => setShowDatePicker(true)}>
         <Text>{formatDate(expiresAt.toISOString())}</Text>
       </TouchableOpacity>
+      {dateAutoDetected && (
+        <Text style={styles.ocrHint}>사진에서 유효기한을 자동으로 인식했어요. 확인해주세요.</Text>
+      )}
       {showDatePicker && (
         <DateTimePicker
           value={expiresAt}
@@ -218,7 +295,11 @@ export default function AddGifticonScreen({ navigation }: Props) {
           minimumDate={new Date()}
           onChange={(_, selected) => {
             setShowDatePicker(false);
-            if (selected) setExpiresAt(selected);
+            if (selected) {
+              setExpiresAt(selected);
+              setDateManuallyEdited(true);
+              setDateAutoDetected(false);
+            }
           }}
         />
       )}
@@ -263,6 +344,8 @@ const styles = StyleSheet.create({
   image: { width: '100%', height: '100%' },
   imagePlaceholder: { color: colors.gray400, textAlign: 'center', fontSize: 13, lineHeight: 20 },
   label: { fontSize: 13, fontWeight: '600', color: colors.gray700, marginBottom: 6, marginTop: 14 },
+  dateLabelRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  ocrHint: { fontSize: 12, color: colors.primary, marginTop: 6 },
   input: {
     borderWidth: 1,
     borderColor: colors.border,
@@ -290,6 +373,14 @@ const styles = StyleSheet.create({
     borderRadius: 10,
   },
   scanButtonText: { color: colors.surface, fontWeight: '600', fontSize: 13 },
+  locationButton: {
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 10,
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  locationButtonText: { color: colors.gray700, fontSize: 14, fontWeight: '600' },
   saveButton: {
     backgroundColor: colors.primary,
     borderRadius: 10,
