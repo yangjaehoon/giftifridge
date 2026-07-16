@@ -1,8 +1,9 @@
 import React from 'react';
 import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import type { Gifticon } from '../types/gifticon';
-import { CATEGORY_LABELS } from '../types/gifticon';
-import { daysUntil, formatDate } from '../utils/date';
+import type { Gifticon } from '../types';
+import { CATEGORY_LABELS } from '../types';
+import { daysUntil, formatDate } from '../../../shared/utils/date';
+import { colors } from '../../../shared/theme/colors';
 
 export default function GifticonCard({
   gifticon,
@@ -52,28 +53,28 @@ const styles = StyleSheet.create({
   card: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#fff',
+    backgroundColor: colors.surface,
     borderRadius: 12,
     padding: 10,
     marginHorizontal: 16,
     marginVertical: 6,
-    shadowColor: '#000',
+    shadowColor: colors.shadow,
     shadowOpacity: 0.06,
     shadowRadius: 6,
     shadowOffset: { width: 0, height: 2 },
     elevation: 2,
   },
-  thumbnail: { width: 56, height: 56, borderRadius: 8, backgroundColor: '#f0f0f0' },
+  thumbnail: { width: 56, height: 56, borderRadius: 8, backgroundColor: colors.surfaceSubtle },
   info: { flex: 1, marginLeft: 12 },
-  brand: { fontSize: 12, color: '#888' },
-  name: { fontSize: 15, fontWeight: '600', color: '#222', marginTop: 2 },
-  expiry: { fontSize: 12, color: '#aaa', marginTop: 2 },
+  brand: { fontSize: 12, color: colors.gray450 },
+  name: { fontSize: 15, fontWeight: '600', color: colors.gray900, marginTop: 2 },
+  expiry: { fontSize: 12, color: colors.gray350, marginTop: 2 },
   badgeArea: { marginLeft: 8, alignItems: 'flex-end' },
-  dDay: { fontSize: 13, fontWeight: '700', color: '#555' },
+  dDay: { fontSize: 13, fontWeight: '700', color: colors.gray700 },
   badge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
-  badgeUsed: { backgroundColor: '#eee' },
-  badgeExpired: { backgroundColor: '#ddd' },
-  badgeSoon: { backgroundColor: '#FF6B6B' },
-  badgeText: { fontSize: 11, fontWeight: '700', color: '#fff' },
-  badgeTextMuted: { fontSize: 11, fontWeight: '700', color: '#777' },
+  badgeUsed: { backgroundColor: colors.surfaceMuted },
+  badgeExpired: { backgroundColor: colors.border },
+  badgeSoon: { backgroundColor: colors.primary },
+  badgeText: { fontSize: 11, fontWeight: '700', color: colors.surface },
+  badgeTextMuted: { fontSize: 11, fontWeight: '700', color: colors.gray500 },
 });

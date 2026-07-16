@@ -2,10 +2,12 @@ import React, { useState } from 'react';
 import { ActivityIndicator, Alert, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { deleteGifticon, markGifticonUsed } from '../services/gifticonService';
-import { cancelNotification } from '../services/notifications';
-import { CATEGORY_LABELS } from '../types/gifticon';
-import { daysUntil, formatDate } from '../utils/date';
-import type { RootStackParamList } from '../navigation/RootNavigator';
+import { cancelNotification } from '../services/notificationService';
+import { CATEGORY_LABELS } from '../types';
+import { daysUntil, formatDate } from '../../../shared/utils/date';
+import type { RootStackParamList } from '../../../app/RootNavigator';
+import { getGifticonErrorMessage } from '../errors';
+import { colors } from '../../../shared/theme/colors';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'GifticonDetail'>;
 
@@ -24,7 +26,7 @@ export default function GifticonDetailScreen({ route, navigation }: Props) {
       }
       navigation.goBack();
     } catch {
-      Alert.alert('오류', '처리 중 문제가 발생했어요.');
+      Alert.alert('오류', getGifticonErrorMessage('update'));
     } finally {
       setBusy(false);
     }
@@ -43,7 +45,7 @@ export default function GifticonDetailScreen({ route, navigation }: Props) {
             await deleteGifticon(gifticon);
             navigation.goBack();
           } catch {
-            Alert.alert('오류', '삭제 중 문제가 발생했어요.');
+            Alert.alert('오류', getGifticonErrorMessage('delete'));
           } finally {
             setBusy(false);
           }
@@ -86,20 +88,20 @@ export default function GifticonDetailScreen({ route, navigation }: Props) {
 
 const styles = StyleSheet.create({
   container: { padding: 20, paddingBottom: 60 },
-  image: { width: '100%', aspectRatio: 1, borderRadius: 12, backgroundColor: '#f0f0f0' },
+  image: { width: '100%', aspectRatio: 1, borderRadius: 12, backgroundColor: colors.surfaceSubtle },
   section: { marginTop: 20, gap: 4 },
-  brand: { fontSize: 13, color: '#888' },
-  name: { fontSize: 20, fontWeight: '700', color: '#222' },
-  expiry: { fontSize: 14, color: '#555', marginTop: 6 },
-  barcode: { fontSize: 13, color: '#999', marginTop: 4 },
+  brand: { fontSize: 13, color: colors.gray450 },
+  name: { fontSize: 20, fontWeight: '700', color: colors.gray900 },
+  expiry: { fontSize: 14, color: colors.gray700, marginTop: 6 },
+  barcode: { fontSize: 13, color: colors.gray400, marginTop: 4 },
   primaryButton: {
-    backgroundColor: '#FF6B6B',
+    backgroundColor: colors.primary,
     borderRadius: 10,
     paddingVertical: 16,
     alignItems: 'center',
     marginTop: 32,
   },
-  primaryButtonText: { color: '#fff', fontWeight: '700', fontSize: 15 },
+  primaryButtonText: { color: colors.surface, fontWeight: '700', fontSize: 15 },
   deleteButton: { alignItems: 'center', paddingVertical: 16 },
-  deleteButtonText: { color: '#999', fontSize: 14 },
+  deleteButtonText: { color: colors.gray400, fontSize: 14 },
 });

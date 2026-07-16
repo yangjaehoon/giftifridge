@@ -6,7 +6,7 @@ import {
   signOut as firebaseSignOut,
   type User,
 } from 'firebase/auth';
-import { auth, isFirebaseConfigured } from '../firebase/config';
+import { auth, isFirebaseConfigured } from '../../../lib/firebase/config';
 
 interface AuthContextValue {
   user: User | null;

@@ -1,11 +1,11 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { useAuth } from '../context/AuthContext';
-import { subscribeToGifticons } from '../services/gifticonService';
-import type { Gifticon } from '../types/gifticon';
+import { useAuth } from '../../auth/context/AuthContext';
+import { useGifticons } from '../hooks/useGifticons';
 import GifticonCard from '../components/GifticonCard';
-import type { RootStackParamList } from '../navigation/RootNavigator';
+import type { RootStackParamList } from '../../../app/RootNavigator';
+import { colors } from '../../../shared/theme/colors';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Home'>;
 
@@ -13,14 +13,8 @@ type FilterTab = 'active' | 'used';
 
 export default function HomeScreen({ navigation }: Props) {
   const { user, signOut } = useAuth();
-  const [items, setItems] = useState<Gifticon[]>([]);
+  const { items } = useGifticons(user?.uid);
   const [tab, setTab] = useState<FilterTab>('active');
-
-  useEffect(() => {
-    if (!user) return;
-    const unsubscribe = subscribeToGifticons(user.uid, setItems);
-    return unsubscribe;
-  }, [user]);
 
   useEffect(() => {
     navigation.setOptions({
@@ -85,22 +79,22 @@ export default function HomeScreen({ navigation }: Props) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f7f7f8' },
-  logout: { color: '#FF6B6B', fontSize: 13, marginRight: 4 },
+  container: { flex: 1, backgroundColor: colors.background },
+  logout: { color: colors.primary, fontSize: 13, marginRight: 4 },
   tabs: { flexDirection: 'row', paddingHorizontal: 16, paddingTop: 12, gap: 8 },
   tab: {
     flex: 1,
     paddingVertical: 10,
     borderRadius: 10,
     alignItems: 'center',
-    backgroundColor: '#eee',
+    backgroundColor: colors.surfaceMuted,
   },
-  tabActive: { backgroundColor: '#FF6B6B' },
-  tabText: { fontSize: 13, fontWeight: '600', color: '#777' },
-  tabTextActive: { color: '#fff' },
+  tabActive: { backgroundColor: colors.primary },
+  tabText: { fontSize: 13, fontWeight: '600', color: colors.gray500 },
+  tabTextActive: { color: colors.surface },
   listContent: { paddingVertical: 8, paddingBottom: 100, flexGrow: 1 },
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: 80 },
-  emptyText: { color: '#999', fontSize: 14 },
+  emptyText: { color: colors.gray400, fontSize: 14 },
   fab: {
     position: 'absolute',
     right: 20,
@@ -108,14 +102,14 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: '#FF6B6B',
+    backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#000',
+    shadowColor: colors.shadow,
     shadowOpacity: 0.2,
     shadowRadius: 6,
     shadowOffset: { width: 0, height: 3 },
     elevation: 4,
   },
-  fabText: { color: '#fff', fontSize: 28, fontWeight: '400', marginTop: -2 },
+  fabText: { color: colors.surface, fontSize: 28, fontWeight: '400', marginTop: -2 },
 });

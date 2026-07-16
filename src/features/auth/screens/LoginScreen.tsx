@@ -11,24 +11,8 @@ import {
   View,
 } from 'react-native';
 import { useAuth } from '../context/AuthContext';
-
-function getAuthErrorMessage(error: unknown): string {
-  const code = (error as { code?: string })?.code ?? '';
-  switch (code) {
-    case 'auth/invalid-email':
-      return '이메일 형식이 올바르지 않아요.';
-    case 'auth/email-already-in-use':
-      return '이미 가입된 이메일이에요.';
-    case 'auth/weak-password':
-      return '비밀번호는 6자 이상이어야 해요.';
-    case 'auth/invalid-credential':
-    case 'auth/wrong-password':
-    case 'auth/user-not-found':
-      return '이메일 또는 비밀번호가 올바르지 않아요.';
-    default:
-      return '문제가 발생했어요. 다시 시도해주세요.';
-  }
-}
+import { getAuthErrorMessage } from '../errors';
+import { colors } from '../../../shared/theme/colors';
 
 export default function LoginScreen() {
   const { signIn, signUp } = useAuth();
@@ -101,12 +85,12 @@ export default function LoginScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, justifyContent: 'center', padding: 24, backgroundColor: '#fff' },
-  title: { fontSize: 28, fontWeight: '800', textAlign: 'center', color: '#222' },
-  subtitle: { fontSize: 14, textAlign: 'center', color: '#777', marginTop: 6, marginBottom: 32 },
+  container: { flex: 1, justifyContent: 'center', padding: 24, backgroundColor: colors.surface },
+  title: { fontSize: 28, fontWeight: '800', textAlign: 'center', color: colors.gray900 },
+  subtitle: { fontSize: 14, textAlign: 'center', color: colors.gray500, marginTop: 6, marginBottom: 32 },
   input: {
     borderWidth: 1,
-    borderColor: '#ddd',
+    borderColor: colors.border,
     borderRadius: 10,
     paddingHorizontal: 14,
     paddingVertical: 12,
@@ -114,13 +98,13 @@ const styles = StyleSheet.create({
     fontSize: 15,
   },
   button: {
-    backgroundColor: '#FF6B6B',
+    backgroundColor: colors.primary,
     borderRadius: 10,
     paddingVertical: 14,
     alignItems: 'center',
     marginTop: 8,
   },
-  buttonText: { color: '#fff', fontWeight: '700', fontSize: 15 },
+  buttonText: { color: colors.surface, fontWeight: '700', fontSize: 15 },
   switchMode: { marginTop: 20, alignItems: 'center' },
-  switchModeText: { color: '#666', fontSize: 13 },
+  switchModeText: { color: colors.gray600, fontSize: 13 },
 });

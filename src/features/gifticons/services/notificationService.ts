@@ -1,7 +1,7 @@
 import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
 import { Platform } from 'react-native';
-import type { Gifticon } from '../types/gifticon';
+import type { Gifticon } from '../types';
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({

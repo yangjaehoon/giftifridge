@@ -2,14 +2,14 @@ import React from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { useAuth } from '../context/AuthContext';
-import { isFirebaseConfigured } from '../firebase/config';
-import LoginScreen from '../screens/LoginScreen';
-import HomeScreen from '../screens/HomeScreen';
-import AddGifticonScreen from '../screens/AddGifticonScreen';
-import GifticonDetailScreen from '../screens/GifticonDetailScreen';
-import SetupRequiredScreen from '../screens/SetupRequiredScreen';
-import type { Gifticon } from '../types/gifticon';
+import { useAuth } from '../features/auth/context/AuthContext';
+import { isFirebaseConfigured } from '../lib/firebase/config';
+import LoginScreen from '../features/auth/screens/LoginScreen';
+import HomeScreen from '../features/gifticons/screens/HomeScreen';
+import AddGifticonScreen from '../features/gifticons/screens/AddGifticonScreen';
+import GifticonDetailScreen from '../features/gifticons/screens/GifticonDetailScreen';
+import SetupRequiredScreen from './SetupRequiredScreen';
+import type { Gifticon } from '../features/gifticons/types';
 
 export type RootStackParamList = {
   Login: undefined;

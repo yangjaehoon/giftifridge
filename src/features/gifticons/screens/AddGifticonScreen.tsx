@@ -15,13 +15,15 @@ import * as ImagePicker from 'expo-image-picker';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../../auth/context/AuthContext';
 import { createGifticon, setGifticonNotificationId, uploadGifticonImage } from '../services/gifticonService';
-import { scheduleExpiryNotification } from '../services/notifications';
-import type { GifticonCategory } from '../types/gifticon';
-import { CATEGORY_LABELS } from '../types/gifticon';
-import { formatDate } from '../utils/date';
-import type { RootStackParamList } from '../navigation/RootNavigator';
+import { scheduleExpiryNotification } from '../services/notificationService';
+import type { GifticonCategory } from '../types';
+import { CATEGORY_LABELS } from '../types';
+import { formatDate } from '../../../shared/utils/date';
+import type { RootStackParamList } from '../../../app/RootNavigator';
+import { getGifticonErrorMessage } from '../errors';
+import { colors } from '../../../shared/theme/colors';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'AddGifticon'>;
 
@@ -113,7 +115,7 @@ export default function AddGifticonScreen({ navigation }: Props) {
       }
       navigation.goBack();
     } catch (error) {
-      Alert.alert('오류', '저장 중 문제가 발생했어요. 다시 시도해주세요.');
+      Alert.alert('오류', getGifticonErrorMessage('save'));
     } finally {
       setSaving(false);
     }
@@ -208,54 +210,54 @@ const styles = StyleSheet.create({
   imagePicker: {
     height: 180,
     borderRadius: 12,
-    backgroundColor: '#f0f0f0',
+    backgroundColor: colors.surfaceSubtle,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 20,
     overflow: 'hidden',
   },
   image: { width: '100%', height: '100%' },
-  imagePlaceholder: { color: '#999', textAlign: 'center', fontSize: 13, lineHeight: 20 },
-  label: { fontSize: 13, fontWeight: '600', color: '#555', marginBottom: 6, marginTop: 14 },
+  imagePlaceholder: { color: colors.gray400, textAlign: 'center', fontSize: 13, lineHeight: 20 },
+  label: { fontSize: 13, fontWeight: '600', color: colors.gray700, marginBottom: 6, marginTop: 14 },
   input: {
     borderWidth: 1,
-    borderColor: '#ddd',
+    borderColor: colors.border,
     borderRadius: 10,
     paddingHorizontal: 14,
     paddingVertical: 12,
     fontSize: 15,
   },
   chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  chip: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, backgroundColor: '#eee' },
-  chipActive: { backgroundColor: '#FF6B6B' },
-  chipText: { fontSize: 13, color: '#666', fontWeight: '600' },
-  chipTextActive: { color: '#fff' },
+  chip: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, backgroundColor: colors.surfaceMuted },
+  chipActive: { backgroundColor: colors.primary },
+  chipText: { fontSize: 13, color: colors.gray600, fontWeight: '600' },
+  chipTextActive: { color: colors.surface },
   barcodeRow: { flexDirection: 'row', gap: 8, alignItems: 'center' },
   barcodeInput: { flex: 1 },
   scanButton: {
     paddingHorizontal: 16,
     paddingVertical: 12,
-    backgroundColor: '#333',
+    backgroundColor: colors.surfaceStrong,
     borderRadius: 10,
   },
-  scanButtonText: { color: '#fff', fontWeight: '600', fontSize: 13 },
+  scanButtonText: { color: colors.surface, fontWeight: '600', fontSize: 13 },
   saveButton: {
-    backgroundColor: '#FF6B6B',
+    backgroundColor: colors.primary,
     borderRadius: 10,
     paddingVertical: 16,
     alignItems: 'center',
     marginTop: 28,
   },
-  saveButtonText: { color: '#fff', fontWeight: '700', fontSize: 16 },
-  scannerContainer: { flex: 1, backgroundColor: '#000' },
+  saveButtonText: { color: colors.surface, fontWeight: '700', fontSize: 16 },
+  scannerContainer: { flex: 1, backgroundColor: colors.shadow },
   closeScanner: {
     position: 'absolute',
     bottom: 40,
     alignSelf: 'center',
-    backgroundColor: '#fff',
+    backgroundColor: colors.surface,
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 24,
   },
-  closeScannerText: { fontWeight: '700', color: '#222' },
+  closeScannerText: { fontWeight: '700', color: colors.gray900 },
 });

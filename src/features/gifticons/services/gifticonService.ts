@@ -10,8 +10,8 @@ import {
   where,
 } from 'firebase/firestore';
 import { deleteObject, getDownloadURL, ref, uploadBytes } from 'firebase/storage';
-import { db, storage } from '../firebase/config';
-import type { Gifticon, NewGifticon } from '../types/gifticon';
+import { db, storage } from '../../../lib/firebase/config';
+import type { Gifticon, NewGifticon } from '../types';
 
 const COLLECTION = 'gifticons';
 
