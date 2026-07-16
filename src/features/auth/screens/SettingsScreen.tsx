@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 import { getAuthErrorMessage } from '../errors';
+import { seedDummyGifticons } from '../../gifticons/services/devSeed';
 import { colors } from '../../../shared/theme/colors';
 
 export default function SettingsScreen() {
@@ -20,6 +21,20 @@ export default function SettingsScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [seeding, setSeeding] = useState(false);
+
+  const seedDummyData = async () => {
+    if (!user) return;
+    setSeeding(true);
+    try {
+      await seedDummyGifticons(user.uid);
+      Alert.alert('완료', '더미 기프티콘 5개를 추가했어요.');
+    } catch {
+      Alert.alert('오류', '더미 데이터 추가에 실패했어요.');
+    } finally {
+      setSeeding(false);
+    }
+  };
 
   const submit = async () => {
     if (!email || !password) {
@@ -49,6 +64,19 @@ export default function SettingsScreen() {
         <TouchableOpacity style={[styles.button, styles.signOutButton]} onPress={() => signOut()}>
           <Text style={styles.buttonText}>로그아웃</Text>
         </TouchableOpacity>
+        {__DEV__ && (
+          <TouchableOpacity
+            style={[styles.button, styles.devButton]}
+            onPress={seedDummyData}
+            disabled={seeding}
+          >
+            {seeding ? (
+              <ActivityIndicator color={colors.surface} />
+            ) : (
+              <Text style={styles.buttonText}>더미 기프티콘 추가 (dev)</Text>
+            )}
+          </TouchableOpacity>
+        )}
       </View>
     );
   }
@@ -97,6 +125,20 @@ export default function SettingsScreen() {
           {mode === 'signUp' ? '이미 계정이 있으신가요? 로그인' : '처음이신가요? 회원가입'}
         </Text>
       </TouchableOpacity>
+
+      {__DEV__ && (
+        <TouchableOpacity
+          style={[styles.button, styles.devButton]}
+          onPress={seedDummyData}
+          disabled={seeding}
+        >
+          {seeding ? (
+            <ActivityIndicator color={colors.surface} />
+          ) : (
+            <Text style={styles.buttonText}>더미 기프티콘 추가 (dev)</Text>
+          )}
+        </TouchableOpacity>
+      )}
     </KeyboardAvoidingView>
   );
 }
@@ -128,6 +170,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   signOutButton: { marginTop: 0 },
+  devButton: { marginTop: 12, backgroundColor: colors.gray400 },
   buttonText: { color: colors.surface, fontWeight: '700', fontSize: 15 },
   switchMode: { marginTop: 20, alignItems: 'center' },
   switchModeText: { color: colors.gray600, fontSize: 13 },
