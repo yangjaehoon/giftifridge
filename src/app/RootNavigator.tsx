@@ -57,7 +57,7 @@ export default function RootNavigator() {
       <OfflineBanner />
       <NavigationContainer ref={navigationRef}>
         <Stack.Navigator>
-          <Stack.Screen name="Home" component={HomeScreen} options={{ title: '기프티프리지' }} />
+          <Stack.Screen name="Home" component={HomeScreen} options={{ title: '기프티냉장콘' }} />
           <Stack.Screen
             name="AddGifticon"
             component={AddGifticonScreen}
