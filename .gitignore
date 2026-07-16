@@ -30,7 +30,12 @@ yarn-error.*
 .DS_Store
 *.pem
 
+# IDE
+.idea/
+.claude/settings.local.json
+
 # local env files
+.env
 .env*.local
 
 # typescript

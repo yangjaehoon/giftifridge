@@ -7,9 +7,11 @@
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.giftifridge.app"
     },
     "android": {
+      "package": "com.giftifridge.app",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/android-icon-foreground.png",
@@ -20,6 +22,28 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "plugins": [
+      "@react-native-community/datetimepicker",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "기프티콘 바코드를 스캔하기 위해 카메라 접근 권한이 필요해요."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "기프티콘 사진을 등록하기 위해 사진첩 접근 권한이 필요해요.",
+          "cameraPermission": "기프티콘 사진을 촬영하기 위해 카메라 접근 권한이 필요해요."
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/icon.png"
+        }
+      ]
+    ]
   }
 }
