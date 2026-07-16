@@ -15,6 +15,7 @@ export interface Gifticon {
   brand: string;
   category: GifticonCategory;
   barcode?: string;
+  amount?: number;
   imageUrl: string;
   expiresAt: string;
   isUsed: boolean;

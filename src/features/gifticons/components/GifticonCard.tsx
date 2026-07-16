@@ -3,6 +3,7 @@ import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import type { Gifticon } from '../types';
 import { CATEGORY_LABELS } from '../types';
 import { daysUntil, formatDate } from '../../../shared/utils/date';
+import { formatCurrency } from '../../../shared/utils/currency';
 import { colors } from '../../../shared/theme/colors';
 
 export default function GifticonCard({
@@ -26,6 +27,9 @@ export default function GifticonCard({
         <Text style={styles.name} numberOfLines={1}>
           {gifticon.name}
         </Text>
+        {gifticon.amount ? (
+          <Text style={styles.amount}>{formatCurrency(gifticon.amount)}</Text>
+        ) : null}
         <Text style={styles.expiry}>~{formatDate(gifticon.expiresAt)}</Text>
       </View>
       <View style={styles.badgeArea}>
@@ -68,6 +72,7 @@ const styles = StyleSheet.create({
   info: { flex: 1, marginLeft: 12 },
   brand: { fontSize: 12, color: colors.gray450 },
   name: { fontSize: 15, fontWeight: '600', color: colors.gray900, marginTop: 2 },
+  amount: { fontSize: 12, color: colors.gray350, marginTop: 2 },
   expiry: { fontSize: 12, color: colors.gray350, marginTop: 2 },
   badgeArea: { marginLeft: 8, alignItems: 'flex-end' },
   dDay: { fontSize: 13, fontWeight: '700', color: colors.gray700 },

@@ -15,6 +15,7 @@ import { cancelNotification } from '../services/notificationService';
 import { useGifticon } from '../hooks/useGifticon';
 import { CATEGORY_LABELS } from '../types';
 import { daysUntil, formatDate } from '../../../shared/utils/date';
+import { formatCurrency } from '../../../shared/utils/currency';
 import { withTimeout, TimeoutError } from '../../../shared/utils/withTimeout';
 import type { RootStackParamList } from '../../../app/RootNavigator';
 import { getGifticonErrorMessage } from '../errors';
@@ -110,6 +111,9 @@ export default function GifticonDetailScreen({ route, navigation }: Props) {
           {gifticon.brand} · {CATEGORY_LABELS[gifticon.category]}
         </Text>
         <Text style={styles.name}>{gifticon.name}</Text>
+        {gifticon.amount ? (
+          <Text style={styles.amount}>{formatCurrency(gifticon.amount)}</Text>
+        ) : null}
         <Text style={styles.expiry}>
           유효기한 {formatDate(gifticon.expiresAt)} ({days >= 0 ? `D-${days}` : '기한만료'})
         </Text>
@@ -140,6 +144,7 @@ const styles = StyleSheet.create({
   section: { marginTop: 20, gap: 4 },
   brand: { fontSize: 13, color: colors.gray450 },
   name: { fontSize: 20, fontWeight: '700', color: colors.gray900 },
+  amount: { fontSize: 16, fontWeight: '700', color: colors.primary, marginTop: 2 },
   expiry: { fontSize: 14, color: colors.gray700, marginTop: 6 },
   barcode: { fontSize: 13, color: colors.gray400, marginTop: 4 },
   emptyText: { color: colors.gray400, fontSize: 14, textAlign: 'center' },

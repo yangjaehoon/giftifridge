@@ -46,6 +46,7 @@ export default function AddGifticonScreen({ navigation }: Props) {
   const [imageUri, setImageUri] = useState<string | null>(null);
   const [name, setName] = useState('');
   const [brand, setBrand] = useState('');
+  const [amount, setAmount] = useState('');
   const [category, setCategory] = useState<GifticonCategory>('cafe');
   const [barcode, setBarcode] = useState('');
   const [expiresAt, setExpiresAt] = useState<Date>(defaultExpiry());
@@ -110,6 +111,7 @@ export default function AddGifticonScreen({ navigation }: Props) {
             brand: brand.trim(),
             category,
             barcode: barcode.trim() || undefined,
+            amount: amount.trim() ? Number(amount) : undefined,
             imageUrl: uploadedUrl,
             expiresAt: expiresAtIso,
           });
@@ -164,6 +166,15 @@ export default function AddGifticonScreen({ navigation }: Props) {
         value={brand}
         onChangeText={setBrand}
         placeholder="스타벅스"
+      />
+
+      <Text style={styles.label}>금액 (선택)</Text>
+      <TextInput
+        style={styles.input}
+        value={amount}
+        onChangeText={setAmount}
+        placeholder="10000"
+        keyboardType="number-pad"
       />
 
       <Text style={styles.label}>카테고리</Text>
