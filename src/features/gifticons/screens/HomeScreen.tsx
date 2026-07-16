@@ -20,15 +20,26 @@ import GifticonCard from '../components/GifticonCard';
 import GifticonStats from '../components/GifticonStats';
 import NearbyGifticonBanner from '../components/NearbyGifticonBanner';
 import { getGifticonErrorMessage } from '../errors';
-import type { GifticonCategory } from '../types';
+import type { Gifticon, GifticonCategory } from '../types';
 import { CATEGORY_LABELS } from '../types';
 import type { RootStackParamList } from '../../../app/RootNavigator';
 import { colors } from '../../../shared/theme/colors';
+import { daysUntil } from '../../../shared/utils/date';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Home'>;
 
-type FilterTab = 'active' | 'used';
+type FilterTab = 'active' | 'expired' | 'used';
 type CategoryFilter = GifticonCategory | 'all';
+
+const EMPTY_TEXT: Record<FilterTab, string> = {
+  active: '등록된 기프티콘이 없어요',
+  expired: '만료된 기프티콘이 없어요',
+  used: '사용완료된 기프티콘이 없어요',
+};
+
+function isExpired(item: Gifticon): boolean {
+  return daysUntil(item.expiresAt) < 0;
+}
 
 const CATEGORY_FILTERS: CategoryFilter[] = [
   'all',
@@ -57,10 +68,22 @@ export default function HomeScreen({ navigation }: Props) {
     });
   }, [navigation]);
 
+  const counts = useMemo(
+    () => ({
+      active: items.filter((item) => !item.isUsed && !isExpired(item)).length,
+      expired: items.filter((item) => !item.isUsed && isExpired(item)).length,
+      used: items.filter((item) => item.isUsed).length,
+    }),
+    [items],
+  );
+
   const filtered = useMemo(
     () =>
       items
-        .filter((item) => (tab === 'active' ? !item.isUsed : item.isUsed))
+        .filter((item) => {
+          if (tab === 'used') return item.isUsed;
+          return !item.isUsed && isExpired(item) === (tab === 'expired');
+        })
         .filter((item) => categoryFilter === 'all' || item.category === categoryFilter),
     [items, tab, categoryFilter],
   );
@@ -90,7 +113,15 @@ export default function HomeScreen({ navigation }: Props) {
           onPress={() => setTab('active')}
         >
           <Text style={[styles.tabText, tab === 'active' && styles.tabTextActive]}>
-            사용가능 ({items.filter((i) => !i.isUsed).length})
+            사용가능 ({counts.active})
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.tab, tab === 'expired' && styles.tabActive]}
+          onPress={() => setTab('expired')}
+        >
+          <Text style={[styles.tabText, tab === 'expired' && styles.tabTextActive]}>
+            기한만료 ({counts.expired})
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
@@ -98,7 +129,7 @@ export default function HomeScreen({ navigation }: Props) {
           onPress={() => setTab('used')}
         >
           <Text style={[styles.tabText, tab === 'used' && styles.tabTextActive]}>
-            사용완료 ({items.filter((i) => i.isUsed).length})
+            사용완료 ({counts.used})
           </Text>
         </TouchableOpacity>
       </View>
@@ -172,9 +203,7 @@ export default function HomeScreen({ navigation }: Props) {
             )}
             ListEmptyComponent={
               <View style={styles.empty}>
-                <Text style={styles.emptyText}>
-                  {tab === 'active' ? '등록된 기프티콘이 없어요' : '사용완료된 기프티콘이 없어요'}
-                </Text>
+                <Text style={styles.emptyText}>{EMPTY_TEXT[tab]}</Text>
               </View>
             }
           />
@@ -212,7 +241,7 @@ const styles = StyleSheet.create({
   tabActive: { backgroundColor: colors.primary },
   tabText: { fontSize: 13, fontWeight: '600', color: colors.gray500 },
   tabTextActive: { color: colors.surface },
-  categoryScroll: { flexGrow: 0 },
+  categoryScroll: { flexGrow: 0, flexShrink: 0 },
   categoryRow: { paddingHorizontal: 16, paddingTop: 10, gap: 8, alignItems: 'center' },
   categoryChip: {
     paddingHorizontal: 14,

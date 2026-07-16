@@ -1,5 +1,5 @@
 import { createGifticon, markGifticonUsed } from './gifticonService';
-import type { NewGifticon } from '../types';
+import type { GifticonCategory, NewGifticon } from '../types';
 
 function daysFromNow(days: number) {
   const d = new Date();
@@ -7,54 +7,56 @@ function daysFromNow(days: number) {
   return d.toISOString();
 }
 
-const DUMMY_GIFTICONS: (NewGifticon & { used?: boolean })[] = [
-  {
-    name: '아메리카노 Tall',
-    brand: '스타벅스',
-    category: 'cafe',
-    amount: 5000,
-    imageUrl: 'https://picsum.photos/seed/starbucks/200',
-    expiresAt: daysFromNow(20),
-  },
+const TEMPLATES: {
+  name: string;
+  brand: string;
+  category: GifticonCategory;
+  amount?: number;
+  seed: string;
+}[] = [
+  { name: '아메리카노 Tall', brand: '스타벅스', category: 'cafe', amount: 5000, seed: 'starbucks' },
+  { name: '카페라떼', brand: '이디야', category: 'cafe', amount: 4500, seed: 'ediya' },
   {
     name: '모바일 상품권 1만원',
     brand: 'GS25',
     category: 'convenience',
     amount: 10000,
-    imageUrl: 'https://picsum.photos/seed/gs25/200',
-    expiresAt: daysFromNow(2),
+    seed: 'gs25',
   },
-  {
-    name: '허니콤보',
-    brand: '교촌치킨',
-    category: 'restaurant',
-    amount: 20000,
-    imageUrl: 'https://picsum.photos/seed/kyochon/200',
-    expiresAt: daysFromNow(-3),
-  },
-  {
-    name: '영화관람권',
-    brand: 'CGV',
-    category: 'culture',
-    imageUrl: 'https://picsum.photos/seed/cgv/200',
-    expiresAt: daysFromNow(45),
-  },
-  {
-    name: '문화상품권 5만원',
-    brand: '이마트',
-    category: 'etc',
-    amount: 50000,
-    imageUrl: 'https://picsum.photos/seed/emart/200',
-    expiresAt: daysFromNow(-10),
-    used: true,
-  },
+  { name: '모바일 상품권 3만원', brand: 'CU', category: 'convenience', amount: 30000, seed: 'cu' },
+  { name: '허니콤보', brand: '교촌치킨', category: 'restaurant', amount: 20000, seed: 'kyochon' },
+  { name: '스테이크 세트', brand: 'VIPS', category: 'restaurant', amount: 35000, seed: 'vips' },
+  { name: '영화관람권', brand: 'CGV', category: 'culture', seed: 'cgv' },
+  { name: '영화관람권', brand: '메가박스', category: 'culture', seed: 'megabox' },
+  { name: '문화상품권 5만원', brand: '이마트', category: 'etc', amount: 50000, seed: 'emart' },
+  { name: '베이커리 세트', brand: '파리바게뜨', category: 'etc', amount: 15000, seed: 'paris' },
 ];
 
+export const DUMMY_GIFTICON_COUNT = 100;
+
+function buildDummyGifticons(): (NewGifticon & { used?: boolean })[] {
+  return Array.from({ length: DUMMY_GIFTICON_COUNT }, (_, i) => {
+    const template = TEMPLATES[i % TEMPLATES.length];
+    const expiresInDays = ((i * 7) % 60) - 15;
+    return {
+      name: template.name,
+      brand: template.brand,
+      category: template.category,
+      amount: template.amount,
+      imageUrl: `https://picsum.photos/seed/${template.seed}-${i}/200`,
+      expiresAt: daysFromNow(expiresInDays),
+      used: i % 5 === 0,
+    };
+  });
+}
+
 export async function seedDummyGifticons(ownerId: string) {
-  for (const { used, ...data } of DUMMY_GIFTICONS) {
-    const id = await createGifticon(ownerId, data);
-    if (used) {
-      await markGifticonUsed(id, true);
-    }
-  }
+  await Promise.all(
+    buildDummyGifticons().map(async ({ used, ...data }) => {
+      const id = await createGifticon(ownerId, data);
+      if (used) {
+        await markGifticonUsed(id, true);
+      }
+    }),
+  );
 }

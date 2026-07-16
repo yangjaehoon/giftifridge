@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 import { getAuthErrorMessage } from '../errors';
-import { seedDummyGifticons } from '../../gifticons/services/devSeed';
+import { DUMMY_GIFTICON_COUNT, seedDummyGifticons } from '../../gifticons/services/devSeed';
 import {
   getNotificationOffsets,
   setNotificationOffsets,
@@ -76,7 +76,7 @@ export default function SettingsScreen() {
     setSeeding(true);
     try {
       await seedDummyGifticons(user.uid);
-      Alert.alert('완료', '더미 기프티콘 5개를 추가했어요.');
+      Alert.alert('완료', `더미 기프티콘 ${DUMMY_GIFTICON_COUNT}개를 추가했어요.`);
     } catch {
       Alert.alert('오류', '더미 데이터 추가에 실패했어요.');
     } finally {

@@ -52,7 +52,7 @@ function Pill({ label, active, onPress }: { label: string; active: boolean; onPr
 }
 
 const styles = StyleSheet.create({
-  scroll: { flexGrow: 0 },
+  scroll: { flexGrow: 0, flexShrink: 0 },
   row: { flexDirection: 'row', paddingHorizontal: 16, paddingTop: 12, gap: 8 },
   pill: {
     paddingHorizontal: 14,
