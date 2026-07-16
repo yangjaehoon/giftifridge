@@ -64,19 +64,17 @@ export default function SettingsScreen() {
         <TouchableOpacity style={[styles.button, styles.signOutButton]} onPress={() => signOut()}>
           <Text style={styles.buttonText}>로그아웃</Text>
         </TouchableOpacity>
-        {__DEV__ && (
-          <TouchableOpacity
-            style={[styles.button, styles.devButton]}
-            onPress={seedDummyData}
-            disabled={seeding}
-          >
-            {seeding ? (
-              <ActivityIndicator color={colors.surface} />
-            ) : (
-              <Text style={styles.buttonText}>더미 기프티콘 추가 (dev)</Text>
-            )}
-          </TouchableOpacity>
-        )}
+        <TouchableOpacity
+          style={[styles.button, styles.devButton]}
+          onPress={seedDummyData}
+          disabled={seeding}
+        >
+          {seeding ? (
+            <ActivityIndicator color={colors.surface} />
+          ) : (
+            <Text style={styles.buttonText}>더미 기프티콘 추가</Text>
+          )}
+        </TouchableOpacity>
       </View>
     );
   }
@@ -126,19 +124,17 @@ export default function SettingsScreen() {
         </Text>
       </TouchableOpacity>
 
-      {__DEV__ && (
-        <TouchableOpacity
-          style={[styles.button, styles.devButton]}
-          onPress={seedDummyData}
-          disabled={seeding}
-        >
-          {seeding ? (
-            <ActivityIndicator color={colors.surface} />
-          ) : (
-            <Text style={styles.buttonText}>더미 기프티콘 추가 (dev)</Text>
-          )}
-        </TouchableOpacity>
-      )}
+      <TouchableOpacity
+        style={[styles.button, styles.devButton]}
+        onPress={seedDummyData}
+        disabled={seeding}
+      >
+        {seeding ? (
+          <ActivityIndicator color={colors.surface} />
+        ) : (
+          <Text style={styles.buttonText}>더미 기프티콘 추가</Text>
+        )}
+      </TouchableOpacity>
     </KeyboardAvoidingView>
   );
 }
