@@ -8,14 +8,15 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
+  View,
 } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 import { getAuthErrorMessage } from '../errors';
 import { colors } from '../../../shared/theme/colors';
 
-export default function LoginScreen() {
-  const { signIn, signUp } = useAuth();
-  const [mode, setMode] = useState<'signIn' | 'signUp'>('signIn');
+export default function SettingsScreen() {
+  const { user, isAnonymous, signIn, linkEmail, signOut } = useAuth();
+  const [mode, setMode] = useState<'signIn' | 'signUp'>('signUp');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -27,10 +28,11 @@ export default function LoginScreen() {
     }
     setLoading(true);
     try {
-      if (mode === 'signIn') {
-        await signIn(email.trim(), password);
+      if (mode === 'signUp') {
+        await linkEmail(email.trim(), password);
+        Alert.alert('완료', '계정이 연결되었어요. 이제 다른 기기에서도 로그인할 수 있어요.');
       } else {
-        await signUp(email.trim(), password);
+        await signIn(email.trim(), password);
       }
     } catch (error) {
       Alert.alert('오류', getAuthErrorMessage(error));
@@ -39,13 +41,29 @@ export default function LoginScreen() {
     }
   };
 
+  if (!isAnonymous) {
+    return (
+      <View style={styles.container}>
+        <Text style={styles.title}>계정</Text>
+        <Text style={styles.subtitle}>{user?.email}로 로그인되어 있어요.</Text>
+        <TouchableOpacity style={[styles.button, styles.signOutButton]} onPress={() => signOut()}>
+          <Text style={styles.buttonText}>로그아웃</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
   return (
     <KeyboardAvoidingView
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      <Text style={styles.title}>기프티프리지</Text>
-      <Text style={styles.subtitle}>기프티콘을 한곳에서 관리하세요</Text>
+      <Text style={styles.title}>계정</Text>
+      <Text style={styles.subtitle}>
+        {mode === 'signUp'
+          ? '로그인하면 다른 기기에서도 기프티콘을 확인할 수 있어요. 지금 등록된 기프티콘은 그대로 유지돼요.'
+          : '기존 계정으로 로그인해요. 이 기기에 저장된 기프티콘은 로그인 후 보이지 않을 수 있어요.'}
+      </Text>
 
       <TextInput
         style={styles.input}
@@ -65,18 +83,18 @@ export default function LoginScreen() {
 
       <TouchableOpacity style={styles.button} onPress={submit} disabled={loading}>
         {loading ? (
-          <ActivityIndicator color="#fff" />
+          <ActivityIndicator color={colors.surface} />
         ) : (
-          <Text style={styles.buttonText}>{mode === 'signIn' ? '로그인' : '회원가입'}</Text>
+          <Text style={styles.buttonText}>{mode === 'signUp' ? '회원가입' : '로그인'}</Text>
         )}
       </TouchableOpacity>
 
       <TouchableOpacity
-        onPress={() => setMode(mode === 'signIn' ? 'signUp' : 'signIn')}
+        onPress={() => setMode(mode === 'signUp' ? 'signIn' : 'signUp')}
         style={styles.switchMode}
       >
         <Text style={styles.switchModeText}>
-          {mode === 'signIn' ? '계정이 없으신가요? 회원가입' : '이미 계정이 있으신가요? 로그인'}
+          {mode === 'signUp' ? '이미 계정이 있으신가요? 로그인' : '처음이신가요? 회원가입'}
         </Text>
       </TouchableOpacity>
     </KeyboardAvoidingView>
@@ -84,14 +102,14 @@ export default function LoginScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, justifyContent: 'center', padding: 24, backgroundColor: colors.surface },
-  title: { fontSize: 28, fontWeight: '800', textAlign: 'center', color: colors.gray900 },
+  container: { flex: 1, padding: 24, paddingTop: 32, backgroundColor: colors.surface },
+  title: { fontSize: 22, fontWeight: '800', color: colors.gray900 },
   subtitle: {
     fontSize: 14,
-    textAlign: 'center',
     color: colors.gray500,
-    marginTop: 6,
-    marginBottom: 32,
+    marginTop: 8,
+    marginBottom: 28,
+    lineHeight: 20,
   },
   input: {
     borderWidth: 1,
@@ -109,6 +127,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: 8,
   },
+  signOutButton: { marginTop: 0 },
   buttonText: { color: colors.surface, fontWeight: '700', fontSize: 15 },
   switchMode: { marginTop: 20, alignItems: 'center' },
   switchModeText: { color: colors.gray600, fontSize: 13 },

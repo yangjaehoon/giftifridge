@@ -5,19 +5,19 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import * as Notifications from 'expo-notifications';
 import { useAuth } from '../features/auth/context/AuthContext';
 import { isFirebaseConfigured } from '../lib/firebase/config';
-import LoginScreen from '../features/auth/screens/LoginScreen';
 import HomeScreen from '../features/gifticons/screens/HomeScreen';
 import AddGifticonScreen from '../features/gifticons/screens/AddGifticonScreen';
 import GifticonDetailScreen from '../features/gifticons/screens/GifticonDetailScreen';
+import SettingsScreen from '../features/auth/screens/SettingsScreen';
 import SetupRequiredScreen from './SetupRequiredScreen';
 import OfflineBanner from '../shared/components/OfflineBanner';
 import { navigationRef } from './navigationRef';
 
 export type RootStackParamList = {
-  Login: undefined;
   Home: undefined;
   AddGifticon: undefined;
   GifticonDetail: { gifticonId: string };
+  Settings: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -30,7 +30,7 @@ function openGifticonFromNotification(response: Notifications.NotificationRespon
 }
 
 export default function RootNavigator() {
-  const { user, initializing } = useAuth();
+  const { initializing } = useAuth();
 
   useEffect(() => {
     Notifications.getLastNotificationResponseAsync().then(openGifticonFromNotification);
@@ -57,27 +57,18 @@ export default function RootNavigator() {
       <OfflineBanner />
       <NavigationContainer ref={navigationRef}>
         <Stack.Navigator>
-          {user ? (
-            <>
-              <Stack.Screen
-                name="Home"
-                component={HomeScreen}
-                options={{ title: '기프티프리지' }}
-              />
-              <Stack.Screen
-                name="AddGifticon"
-                component={AddGifticonScreen}
-                options={{ title: '기프티콘 등록', presentation: 'modal' }}
-              />
-              <Stack.Screen
-                name="GifticonDetail"
-                component={GifticonDetailScreen}
-                options={{ title: '상세보기' }}
-              />
-            </>
-          ) : (
-            <Stack.Screen name="Login" component={LoginScreen} options={{ headerShown: false }} />
-          )}
+          <Stack.Screen name="Home" component={HomeScreen} options={{ title: '기프티프리지' }} />
+          <Stack.Screen
+            name="AddGifticon"
+            component={AddGifticonScreen}
+            options={{ title: '기프티콘 등록', presentation: 'modal' }}
+          />
+          <Stack.Screen
+            name="GifticonDetail"
+            component={GifticonDetailScreen}
+            options={{ title: '상세보기' }}
+          />
+          <Stack.Screen name="Settings" component={SettingsScreen} options={{ title: '설정' }} />
         </Stack.Navigator>
       </NavigationContainer>
     </>

@@ -4,6 +4,7 @@ export function getAuthErrorMessage(error: unknown): string {
     case 'auth/invalid-email':
       return '이메일 형식이 올바르지 않아요.';
     case 'auth/email-already-in-use':
+    case 'auth/credential-already-in-use':
       return '이미 가입된 이메일이에요.';
     case 'auth/weak-password':
       return '비밀번호는 6자 이상이어야 해요.';

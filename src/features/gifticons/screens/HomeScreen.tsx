@@ -20,19 +20,19 @@ type Props = NativeStackScreenProps<RootStackParamList, 'Home'>;
 type FilterTab = 'active' | 'used';
 
 export default function HomeScreen({ navigation }: Props) {
-  const { user, signOut } = useAuth();
+  const { user } = useAuth();
   const { items, loading, error } = useGifticons(user?.uid);
   const [tab, setTab] = useState<FilterTab>('active');
 
   useEffect(() => {
     navigation.setOptions({
       headerRight: () => (
-        <TouchableOpacity onPress={() => signOut()}>
-          <Text style={styles.logout}>로그아웃</Text>
+        <TouchableOpacity onPress={() => navigation.navigate('Settings')}>
+          <Text style={styles.settingsLink}>설정</Text>
         </TouchableOpacity>
       ),
     });
-  }, [navigation, signOut]);
+  }, [navigation]);
 
   const filtered = useMemo(
     () => items.filter((item) => (tab === 'active' ? !item.isUsed : item.isUsed)),
@@ -98,7 +98,7 @@ export default function HomeScreen({ navigation }: Props) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
-  logout: { color: colors.primary, fontSize: 13, marginRight: 4 },
+  settingsLink: { color: colors.primary, fontSize: 13, marginRight: 4 },
   tabs: { flexDirection: 'row', paddingHorizontal: 16, paddingTop: 12, gap: 8 },
   tab: {
     flex: 1,
