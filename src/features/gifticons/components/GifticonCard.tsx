@@ -79,7 +79,7 @@ const styles = StyleSheet.create({
   badge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
   badgeUsed: { backgroundColor: colors.surfaceMuted },
   badgeExpired: { backgroundColor: colors.border },
-  badgeSoon: { backgroundColor: colors.primary },
+  badgeSoon: { backgroundColor: colors.amber },
   badgeText: { fontSize: 11, fontWeight: '700', color: colors.surface },
   badgeTextMuted: { fontSize: 11, fontWeight: '700', color: colors.gray500 },
 });
