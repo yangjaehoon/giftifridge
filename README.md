@@ -4,7 +4,7 @@
 
 ## 주요 기능
 
-- **로그인/인증** — Firebase Auth 기반 사용자 인증
+- **로그인/인증** — 앱 실행 시 Firebase 익명 계정으로 자동 시작, 설정 화면에서 원할 때 이메일 계정으로 로그인/연결
 - **기프티콘 등록** — 카메라 촬영 또는 사진첩 이미지로 기프티콘 등록, 브랜드/카테고리/유효기한 입력
 - **자동 만료 알림** — 유효기한 3일 전 오전 9시에 로컬 알림 예약 (expo-notifications)
 - **목록/상세 관리** — 유효기한 순 정렬, 카테고리(카페/편의점/음식점/문화·여가/기타) 분류, 사용 완료 처리, 삭제
@@ -49,6 +49,7 @@ EXPO_PUBLIC_FIREBASE_APP_ID=
 ### 3. 실행
 
 ```bash
+npm run dev      # Metro + Android 에뮬레이터(Pixel_8) 자동 부팅 후 실행 (dev-client)
 npm start        # Expo 개발 서버
 npm run android  # Android 에뮬레이터/기기
 npm run ios      # iOS 시뮬레이터/기기
@@ -59,12 +60,16 @@ npm run web      # 웹
 
 ```
 src/
-├── components/     # 재사용 UI 컴포넌트 (GifticonCard 등)
-├── context/        # AuthContext (인증 상태)
-├── firebase/       # Firebase 초기화
-├── navigation/      # RootNavigator (화면 라우팅)
-├── screens/        # Login, Home, AddGifticon, GifticonDetail, SetupRequired
-├── services/       # Firestore/Storage 연동, 알림 스케줄링
-├── types/          # 도메인 타입 (Gifticon 등)
-└── utils/          # 날짜 관련 유틸
+├── app/                  # RootNavigator, SetupRequiredScreen (앱 진입점/라우팅)
+├── features/
+│   ├── auth/
+│   │   ├── context/      # AuthContext (익명 로그인, 이메일 로그인/연결)
+│   │   └── screens/      # SettingsScreen
+│   └── gifticons/
+│       ├── components/   # GifticonCard 등
+│       ├── hooks/        # useGifticon, useGifticons
+│       ├── screens/      # Home, AddGifticon, GifticonDetail
+│       └── services/     # Firestore/Storage 연동, 알림 스케줄링
+├── lib/firebase/         # Firebase 초기화
+└── shared/               # 공용 컴포넌트/훅/테마/유틸 (OfflineBanner, colors, date 등)
 ```
