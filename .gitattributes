@@ -1,0 +1,11 @@
+* text=auto eol=lf
+
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.ico binary
+*.jks binary
+*.p8 binary
+*.p12 binary
+*.key binary
+*.mobileprovision binary

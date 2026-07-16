@@ -1,5 +1,14 @@
 import React, { useState } from 'react';
-import { ActivityIndicator, Alert, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Alert,
+  Image,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { deleteGifticon, markGifticonUsed } from '../services/gifticonService';
 import { cancelNotification } from '../services/notificationService';

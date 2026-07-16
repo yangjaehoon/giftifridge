@@ -24,10 +24,7 @@ export async function uploadGifticonImage(ownerId: string, localUri: string): Pr
   return getDownloadURL(storageRef);
 }
 
-export async function createGifticon(
-  ownerId: string,
-  data: NewGifticon
-): Promise<string> {
+export async function createGifticon(ownerId: string, data: NewGifticon): Promise<string> {
   const docRef = await addDoc(collection(db, COLLECTION), {
     ...data,
     ownerId,
@@ -40,20 +37,20 @@ export async function createGifticon(
 export function subscribeToGifticons(
   ownerId: string,
   onChange: (items: Gifticon[]) => void,
-  onError?: (error: Error) => void
+  onError?: (error: Error) => void,
 ) {
   const q = query(
     collection(db, COLLECTION),
     where('ownerId', '==', ownerId),
-    orderBy('expiresAt', 'asc')
+    orderBy('expiresAt', 'asc'),
   );
   return onSnapshot(
     q,
     (snapshot) => {
-      const items = snapshot.docs.map((d) => ({ id: d.id, ...d.data() } as Gifticon));
+      const items = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }) as Gifticon);
       onChange(items);
     },
-    onError
+    onError,
   );
 }
 

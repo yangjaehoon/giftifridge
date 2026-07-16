@@ -18,7 +18,7 @@ const firebaseConfig = {
 };
 
 export const isFirebaseConfigured = Boolean(
-  firebaseConfig.apiKey && firebaseConfig.projectId && firebaseConfig.appId
+  firebaseConfig.apiKey && firebaseConfig.projectId && firebaseConfig.appId,
 );
 
 // Firebase validates config eagerly, so we must not touch initializeApp/getAuth/etc.

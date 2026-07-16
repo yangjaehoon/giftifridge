@@ -24,11 +24,11 @@ export default function HomeScreen({ navigation }: Props) {
         </TouchableOpacity>
       ),
     });
-  }, [navigation]);
+  }, [navigation, signOut]);
 
   const filtered = useMemo(
     () => items.filter((item) => (tab === 'active' ? !item.isUsed : item.isUsed)),
-    [items, tab]
+    [items, tab],
   );
 
   return (

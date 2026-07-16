@@ -8,7 +8,6 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  View,
 } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 import { getAuthErrorMessage } from '../errors';
@@ -87,7 +86,13 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, justifyContent: 'center', padding: 24, backgroundColor: colors.surface },
   title: { fontSize: 28, fontWeight: '800', textAlign: 'center', color: colors.gray900 },
-  subtitle: { fontSize: 14, textAlign: 'center', color: colors.gray500, marginTop: 6, marginBottom: 32 },
+  subtitle: {
+    fontSize: 14,
+    textAlign: 'center',
+    color: colors.gray500,
+    marginTop: 6,
+    marginBottom: 32,
+  },
   input: {
     borderWidth: 1,
     borderColor: colors.border,

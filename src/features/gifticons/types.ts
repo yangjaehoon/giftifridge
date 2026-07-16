@@ -23,4 +23,7 @@ export interface Gifticon {
   createdAt: string;
 }
 
-export type NewGifticon = Omit<Gifticon, 'id' | 'ownerId' | 'createdAt' | 'isUsed' | 'usedAt' | 'notificationId'>;
+export type NewGifticon = Omit<
+  Gifticon,
+  'id' | 'ownerId' | 'createdAt' | 'isUsed' | 'usedAt' | 'notificationId'
+>;

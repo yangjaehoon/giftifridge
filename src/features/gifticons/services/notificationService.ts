@@ -31,7 +31,9 @@ export async function ensureNotificationPermission(): Promise<boolean> {
   return status === 'granted';
 }
 
-export async function scheduleExpiryNotification(gifticon: Pick<Gifticon, 'name' | 'brand' | 'expiresAt'>): Promise<string | null> {
+export async function scheduleExpiryNotification(
+  gifticon: Pick<Gifticon, 'name' | 'brand' | 'expiresAt'>,
+): Promise<string | null> {
   const granted = await ensureNotificationPermission();
   if (!granted) return null;
 

@@ -16,7 +16,11 @@ import { CameraView, useCameraPermissions } from 'expo-camera';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useAuth } from '../../auth/context/AuthContext';
-import { createGifticon, setGifticonNotificationId, uploadGifticonImage } from '../services/gifticonService';
+import {
+  createGifticon,
+  setGifticonNotificationId,
+  uploadGifticonImage,
+} from '../services/gifticonService';
 import { scheduleExpiryNotification } from '../services/notificationService';
 import type { GifticonCategory } from '../types';
 import { CATEGORY_LABELS } from '../types';
@@ -114,7 +118,7 @@ export default function AddGifticonScreen({ navigation }: Props) {
         await setGifticonNotificationId(id, notificationId);
       }
       navigation.goBack();
-    } catch (error) {
+    } catch {
       Alert.alert('오류', getGifticonErrorMessage('save'));
     } finally {
       setSaving(false);
@@ -123,7 +127,11 @@ export default function AddGifticonScreen({ navigation }: Props) {
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
-      <TouchableOpacity style={styles.imagePicker} onPress={pickFromLibrary} onLongPress={takePhoto}>
+      <TouchableOpacity
+        style={styles.imagePicker}
+        onPress={pickFromLibrary}
+        onLongPress={takePhoto}
+      >
         {imageUri ? (
           <Image source={{ uri: imageUri }} style={styles.image} />
         ) : (
@@ -132,10 +140,20 @@ export default function AddGifticonScreen({ navigation }: Props) {
       </TouchableOpacity>
 
       <Text style={styles.label}>상품명</Text>
-      <TextInput style={styles.input} value={name} onChangeText={setName} placeholder="아메리카노 Tall" />
+      <TextInput
+        style={styles.input}
+        value={name}
+        onChangeText={setName}
+        placeholder="아메리카노 Tall"
+      />
 
       <Text style={styles.label}>브랜드</Text>
-      <TextInput style={styles.input} value={brand} onChangeText={setBrand} placeholder="스타벅스" />
+      <TextInput
+        style={styles.input}
+        value={brand}
+        onChangeText={setBrand}
+        placeholder="스타벅스"
+      />
 
       <Text style={styles.label}>카테고리</Text>
       <View style={styles.chipRow}>
@@ -184,7 +202,11 @@ export default function AddGifticonScreen({ navigation }: Props) {
       )}
 
       <TouchableOpacity style={styles.saveButton} onPress={save} disabled={saving}>
-        {saving ? <ActivityIndicator color="#fff" /> : <Text style={styles.saveButtonText}>등록하기</Text>}
+        {saving ? (
+          <ActivityIndicator color="#fff" />
+        ) : (
+          <Text style={styles.saveButtonText}>등록하기</Text>
+        )}
       </TouchableOpacity>
 
       <Modal visible={showScanner} animationType="slide">
@@ -228,7 +250,12 @@ const styles = StyleSheet.create({
     fontSize: 15,
   },
   chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  chip: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, backgroundColor: colors.surfaceMuted },
+  chip: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: colors.surfaceMuted,
+  },
   chipActive: { backgroundColor: colors.primary },
   chipText: { fontSize: 13, color: colors.gray600, fontWeight: '600' },
   chipTextActive: { color: colors.surface },

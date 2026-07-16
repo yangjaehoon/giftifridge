@@ -20,13 +20,10 @@ const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
-  const [initializing, setInitializing] = useState(true);
+  const [initializing, setInitializing] = useState(isFirebaseConfigured);
 
   useEffect(() => {
-    if (!isFirebaseConfigured) {
-      setInitializing(false);
-      return;
-    }
+    if (!isFirebaseConfigured) return;
     const unsubscribe = onAuthStateChanged(auth, (u) => {
       setUser(u);
       setInitializing(false);
@@ -48,7 +45,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         await firebaseSignOut(auth);
       },
     }),
-    [user, initializing]
+    [user, initializing],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
