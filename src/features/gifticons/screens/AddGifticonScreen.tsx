@@ -102,25 +102,33 @@ export default function AddGifticonScreen({ navigation, route }: Props) {
   };
 
   const pickFromLibrary = async () => {
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['images'],
-      quality: 0.8,
-    });
-    if (!result.canceled) {
-      setImageUri(result.assets[0].uri);
-      setFieldErrors((e) => ({ ...e, image: undefined }));
-      setDateManuallyEdited(false);
-      detectExpiryDate(result.assets[0].uri);
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        quality: 0.8,
+      });
+      if (!result.canceled) {
+        setImageUri(result.assets[0].uri);
+        setFieldErrors((e) => ({ ...e, image: undefined }));
+        setDateManuallyEdited(false);
+        detectExpiryDate(result.assets[0].uri);
+      }
+    } catch {
+      Alert.alert('오류', '사진첩에 접근하지 못했어요. 권한을 확인해주세요.');
     }
   };
 
   const takePhoto = async () => {
-    const result = await ImagePicker.launchCameraAsync({ quality: 0.8 });
-    if (!result.canceled) {
-      setImageUri(result.assets[0].uri);
-      setFieldErrors((e) => ({ ...e, image: undefined }));
-      setDateManuallyEdited(false);
-      detectExpiryDate(result.assets[0].uri);
+    try {
+      const result = await ImagePicker.launchCameraAsync({ quality: 0.8 });
+      if (!result.canceled) {
+        setImageUri(result.assets[0].uri);
+        setFieldErrors((e) => ({ ...e, image: undefined }));
+        setDateManuallyEdited(false);
+        detectExpiryDate(result.assets[0].uri);
+      }
+    } catch {
+      Alert.alert('오류', '카메라를 사용하지 못했어요. 권한을 확인해주세요.');
     }
   };
 

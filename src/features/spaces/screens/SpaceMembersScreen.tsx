@@ -26,7 +26,7 @@ type Props = NativeStackScreenProps<RootStackParamList, 'SpaceMembers'>;
 export default function SpaceMembersScreen({ route, navigation }: Props) {
   const { spaceId } = route.params;
   const { user } = useAuth();
-  const { space, members, loading } = useSpace(spaceId);
+  const { space, members, loading, error, refresh } = useSpace(spaceId);
   const [busy, setBusy] = useState(false);
 
   const isOwner = space?.ownerId === user?.uid;
@@ -104,6 +104,22 @@ export default function SpaceMembersScreen({ route, navigation }: Props) {
     );
   }
 
+  if (error) {
+    return (
+      <View style={styles.center}>
+        <Text style={styles.emptyText}>{getSpaceErrorMessage('load')}</Text>
+        <TouchableOpacity
+          style={styles.retryButton}
+          onPress={refresh}
+          accessibilityRole="button"
+          accessibilityLabel="다시 시도"
+        >
+          <Text style={styles.retryButtonText}>다시 시도</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
       <Text style={styles.title}>{space?.name}</Text>
@@ -149,7 +165,15 @@ export default function SpaceMembersScreen({ route, navigation }: Props) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 20, backgroundColor: colors.surface },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 16, padding: 20 },
+  emptyText: { color: colors.gray400, fontSize: 14, textAlign: 'center' },
+  retryButton: {
+    backgroundColor: colors.surfaceMuted,
+    borderRadius: 10,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+  },
+  retryButtonText: { color: colors.gray700, fontWeight: '700', fontSize: 14 },
   title: { fontSize: 20, fontWeight: '800', color: colors.gray900, marginBottom: 16 },
   list: { flexGrow: 0, marginBottom: 20 },
   memberRow: {

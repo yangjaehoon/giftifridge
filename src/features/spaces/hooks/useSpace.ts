@@ -7,6 +7,7 @@ export function useSpace(spaceId: string | undefined) {
   const [members, setMembers] = useState<SpaceMember[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
     if (!spaceId) return;
@@ -15,6 +16,7 @@ export function useSpace(spaceId: string | undefined) {
       (next) => {
         setSpace(next);
         setLoading(false);
+        setError(null);
       },
       (err) => {
         setError(err);
@@ -26,12 +28,13 @@ export function useSpace(spaceId: string | undefined) {
       unsubscribeSpace();
       unsubscribeMembers();
     };
-  }, [spaceId]);
+  }, [spaceId, refreshKey]);
 
   return {
     space: spaceId ? space : null,
     members: spaceId ? members : [],
     loading: spaceId ? loading : false,
     error,
+    refresh: () => setRefreshKey((k) => k + 1),
   };
 }
