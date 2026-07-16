@@ -4,6 +4,7 @@ import {
   deleteDoc,
   doc,
   getDoc,
+  getDocs,
   onSnapshot,
   query,
   setDoc,
@@ -63,13 +64,40 @@ export async function leaveSpace(spaceId: string, uid: string): Promise<void> {
   await deleteDoc(doc(db, SPACES_COLLECTION, spaceId, MEMBERS_SUBCOLLECTION, uid));
 }
 
-export async function deleteSpace(spaceId: string, memberUids: string[]): Promise<void> {
-  const batch = writeBatch(db);
-  for (const uid of memberUids) {
-    batch.delete(doc(db, SPACES_COLLECTION, spaceId, MEMBERS_SUBCOLLECTION, uid));
+const BATCH_WRITE_LIMIT = 500;
+
+function chunk<T>(items: T[], size: number): T[][] {
+  const chunks: T[][] = [];
+  for (let i = 0; i < items.length; i += size) {
+    chunks.push(items.slice(i, i + size));
   }
-  batch.delete(doc(db, SPACES_COLLECTION, spaceId));
-  await batch.commit();
+  return chunks;
+}
+
+// Deleting a space must also delete its gifticons — otherwise they become
+// permanently orphaned (isSpaceMember() can never resolve true again for
+// anyone once the space doc is gone, but the docs themselves would linger).
+export async function deleteSpace(spaceId: string, memberUids: string[]): Promise<void> {
+  const gifticonsSnapshot = await getDocs(
+    query(collection(db, 'gifticons'), where('spaceId', '==', spaceId)),
+  );
+
+  const refsToDelete = [
+    ...memberUids.map((uid) => doc(db, SPACES_COLLECTION, spaceId, MEMBERS_SUBCOLLECTION, uid)),
+    ...gifticonsSnapshot.docs.map((d) => d.ref),
+  ];
+
+  // Chunk to stay under Firestore's 500-writes-per-batch limit; the space
+  // doc itself is deleted last, in its own chunk, once everything else is gone.
+  for (const group of chunk(refsToDelete, BATCH_WRITE_LIMIT)) {
+    const batch = writeBatch(db);
+    for (const ref of group) {
+      batch.delete(ref);
+    }
+    await batch.commit();
+  }
+
+  await deleteDoc(doc(db, SPACES_COLLECTION, spaceId));
 }
 
 export function subscribeToSpaceMembers(

@@ -51,7 +51,15 @@ service cloud.firestore {
     }
 
     match /gifticons/{gifticonId} {
-      allow read, update, delete: if isSignedIn() && canAccessGifticon(resource.data);
+      allow read, delete: if isSignedIn() && canAccessGifticon(resource.data);
+      // ownerId/spaceId are immutable on update — otherwise any member could
+      // reassign a shared gifticon's ownerId to themselves, or move it into
+      // a space they don't belong to, since canAccessGifticon alone only
+      // checks the *existing* doc, never the incoming write.
+      allow update: if isSignedIn()
+        && canAccessGifticon(resource.data)
+        && request.resource.data.ownerId == resource.data.ownerId
+        && request.resource.data.get('spaceId', null) == resource.data.get('spaceId', null);
       allow create: if isSignedIn()
         && request.resource.data.ownerId == request.auth.uid
         && (!('spaceId' in request.resource.data) || isSpaceMember(request.resource.data.spaceId));

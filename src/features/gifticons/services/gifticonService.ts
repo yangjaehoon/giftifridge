@@ -9,23 +9,43 @@ import {
   updateDoc,
   where,
 } from 'firebase/firestore';
-import { Directory, File, Paths } from 'expo-file-system';
+import * as ImageManipulator from 'expo-image-manipulator';
 import { db } from '../../../lib/firebase/config';
 import type { Gifticon, NewGifticon } from '../types';
 
 const COLLECTION = 'gifticons';
+const IMAGE_MAX_DIMENSION = 900;
+const IMAGE_COMPRESS_QUALITY = 0.5;
 
-export async function saveGifticonImage(ownerId: string, localUri: string): Promise<string> {
-  const directory = new Directory(Paths.document, 'gifticons', ownerId);
-  directory.create({ intermediates: true, idempotent: true });
-  const destination = new File(directory, `${Date.now()}.jpg`);
-  await new File(localUri).copy(destination);
-  return destination.uri;
+/**
+ * Resizes/compresses the image and returns it as a data: URL so it can be
+ * stored directly on the Firestore doc — needed for shared-space gifticons,
+ * since a local file:// path is only ever visible on the device that made it.
+ */
+export async function encodeGifticonImage(localUri: string): Promise<string> {
+  const result = await ImageManipulator.manipulateAsync(
+    localUri,
+    [{ resize: { width: IMAGE_MAX_DIMENSION } }],
+    { compress: IMAGE_COMPRESS_QUALITY, format: ImageManipulator.SaveFormat.JPEG, base64: true },
+  );
+  if (!result.base64) {
+    throw new Error('Failed to encode gifticon image');
+  }
+  return `data:image/jpeg;base64,${result.base64}`;
+}
+
+// Firestore rejects any field explicitly set to `undefined` (e.g. an unset
+// optional barcode/amount/location/spaceId) unless ignoreUndefinedProperties
+// is configured, which it isn't — so strip those keys before writing.
+function omitUndefined<T extends object>(data: T): Partial<T> {
+  return Object.fromEntries(
+    Object.entries(data).filter(([, value]) => value !== undefined),
+  ) as Partial<T>;
 }
 
 export async function createGifticon(ownerId: string, data: NewGifticon): Promise<string> {
   const docRef = await addDoc(collection(db, COLLECTION), {
-    ...data,
+    ...omitUndefined(data),
     ownerId,
     isUsed: false,
     createdAt: new Date().toISOString(),
@@ -104,11 +124,4 @@ export async function setGifticonNotificationIds(id: string, notificationIds: st
 
 export async function deleteGifticon(gifticon: Gifticon) {
   await deleteDoc(doc(db, COLLECTION, gifticon.id));
-  if (gifticon.imageUrl.startsWith(Paths.document.uri)) {
-    try {
-      new File(gifticon.imageUrl).delete();
-    } catch {
-      // image may already be removed; ignore
-    }
-  }
 }
