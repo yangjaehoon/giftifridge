@@ -164,6 +164,10 @@ export default function GifticonDetailScreen({ route, navigation }: Props) {
         <Text style={styles.expiry}>
           유효기한 {formatDate(gifticon.expiresAt)} ({days >= 0 ? `D-${days}` : '기한만료'})
         </Text>
+        <Text style={styles.meta}>등록일 {formatDate(gifticon.createdAt)}</Text>
+        {gifticon.isUsed && gifticon.usedAt ? (
+          <Text style={styles.meta}>사용일 {formatDate(gifticon.usedAt)}</Text>
+        ) : null}
         {gifticon.barcode ? (
           <View style={styles.barcodeRow}>
             <Text style={styles.barcode}>바코드 {gifticon.barcode}</Text>
@@ -218,6 +222,7 @@ const styles = StyleSheet.create({
   name: { fontSize: 20, fontWeight: '700', color: colors.gray900 },
   amount: { fontSize: 16, fontWeight: '700', color: colors.primary, marginTop: 2 },
   expiry: { fontSize: 14, color: colors.gray700, marginTop: 6 },
+  meta: { fontSize: 12, color: colors.gray450, marginTop: 2 },
   barcodeRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4 },
   barcode: { fontSize: 13, color: colors.gray400 },
   copyButton: {
