@@ -50,6 +50,14 @@ service cloud.firestore {
       }
     }
 
+    // collectionGroup('members') queries (useMySpaces/subscribeToMySpaces) don't
+    // match the nested rule above — Cloud Firestore only applies collection-group
+    // access to rules written with a recursive wildcard. This mirrors the query's
+    // own where('uid', '==', ...) filter so it stays provable without extra reads.
+    match /{path=**}/members/{memberId} {
+      allow list: if isSignedIn() && resource.data.uid == request.auth.uid;
+    }
+
     match /gifticons/{gifticonId} {
       allow read, delete: if isSignedIn() && canAccessGifticon(resource.data);
       // ownerId/spaceId are immutable on update — otherwise any member could
