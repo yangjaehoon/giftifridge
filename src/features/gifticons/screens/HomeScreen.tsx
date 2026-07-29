@@ -5,6 +5,7 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
@@ -58,6 +59,7 @@ export default function HomeScreen({ navigation }: Props) {
   const nearbyItems = useNearbyGifticons(items);
   const [tab, setTab] = useState<FilterTab>('active');
   const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>('all');
+  const [query, setQuery] = useState('');
 
   useEffect(() => {
     navigation.setOptions({
@@ -78,16 +80,21 @@ export default function HomeScreen({ navigation }: Props) {
     [items],
   );
 
-  const filtered = useMemo(
-    () =>
-      items
-        .filter((item) => {
-          if (tab === 'used') return item.isUsed;
-          return !item.isUsed && isExpired(item) === (tab === 'expired');
-        })
-        .filter((item) => categoryFilter === 'all' || item.category === categoryFilter),
-    [items, tab, categoryFilter],
-  );
+  const filtered = useMemo(() => {
+    const trimmedQuery = query.trim().toLowerCase();
+    return items
+      .filter((item) => {
+        if (tab === 'used') return item.isUsed;
+        return !item.isUsed && isExpired(item) === (tab === 'expired');
+      })
+      .filter((item) => categoryFilter === 'all' || item.category === categoryFilter)
+      .filter(
+        (item) =>
+          trimmedQuery === '' ||
+          item.name.toLowerCase().includes(trimmedQuery) ||
+          item.brand.toLowerCase().includes(trimmedQuery),
+      );
+  }, [items, tab, categoryFilter, query]);
 
   return (
     <View style={styles.container}>
@@ -151,6 +158,27 @@ export default function HomeScreen({ navigation }: Props) {
         ))}
       </ScrollView>
 
+      <View style={styles.searchRow}>
+        <TextInput
+          style={styles.searchInput}
+          value={query}
+          onChangeText={setQuery}
+          placeholder="상품명, 브랜드 검색"
+          placeholderTextColor={colors.gray400}
+          returnKeyType="search"
+        />
+        {query.length > 0 && (
+          <TouchableOpacity
+            style={styles.searchClear}
+            onPress={() => setQuery('')}
+            accessibilityRole="button"
+            accessibilityLabel="검색어 지우기"
+          >
+            <Text style={styles.searchClearText}>×</Text>
+          </TouchableOpacity>
+        )}
+      </View>
+
       {loading ? (
         <View style={styles.listContent}>
           {Array.from({ length: 5 }).map((_, i) => (
@@ -198,7 +226,9 @@ export default function HomeScreen({ navigation }: Props) {
             )}
             ListEmptyComponent={
               <View style={styles.empty}>
-                <Text style={styles.emptyText}>{EMPTY_TEXT[tab]}</Text>
+                <Text style={styles.emptyText}>
+                  {query.trim() ? '검색 결과가 없어요' : EMPTY_TEXT[tab]}
+                </Text>
               </View>
             }
           />
@@ -240,6 +270,20 @@ const styles = StyleSheet.create({
   tabTextActive: { color: colors.surface },
   categoryScroll: { flexGrow: 0, flexShrink: 0 },
   categoryRow: { paddingHorizontal: 16, paddingTop: 10, gap: 8, alignItems: 'center' },
+  searchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginHorizontal: 16,
+    marginTop: 10,
+    paddingHorizontal: 14,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 10,
+    backgroundColor: colors.surface,
+  },
+  searchInput: { flex: 1, paddingVertical: 10, fontSize: 14, color: colors.gray900 },
+  searchClear: { paddingLeft: 8, paddingVertical: 4 },
+  searchClearText: { fontSize: 18, color: colors.gray400, fontWeight: '700' },
   listContent: { paddingVertical: 8, paddingBottom: 100, flexGrow: 1 },
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: 80 },
   emptyText: { color: colors.gray400, fontSize: 14 },
