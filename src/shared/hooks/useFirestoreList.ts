@@ -2,6 +2,10 @@ import { useEffect, useRef, useState } from 'react';
 
 const MAX_RETRY_DELAY_MS = 30000;
 
+// Stable reference so consumers that depend on `items` (e.g. useCallback/useEffect
+// deps) don't re-run every render while `key` is unset.
+const EMPTY_ITEMS: never[] = [];
+
 type Unsubscribe = () => void;
 type Subscribe<T> = (
   key: string,
@@ -65,7 +69,7 @@ export function useFirestoreList<T>(key: string | undefined, subscribe: Subscrib
   }, [key, refreshKey]);
 
   return {
-    items: key ? items : [],
+    items: key ? items : EMPTY_ITEMS,
     loading: key ? loading : false,
     refreshing,
     error,
