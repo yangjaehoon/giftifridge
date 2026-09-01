@@ -50,8 +50,19 @@ const CATEGORY_FILTERS: CategoryFilter[] = [
 
 export default function HomeScreen({ navigation }: Props) {
   const { user } = useAuth();
-  const [context, setContext] = useState<HomeContext>({ type: 'personal' });
-  const { spaces } = useMySpaces(user?.uid);
+  const [selectedContext, setSelectedContext] = useState<HomeContext>({ type: 'personal' });
+  const { spaces, loading: spacesLoading } = useMySpaces(user?.uid);
+
+  // A space the user just left or an owner deleted disappears from `spaces`.
+  // Derive the context so it falls back to personal in that case — otherwise it
+  // stays pointed at the space and useSpaceGifticons retries a permission-denied
+  // subscription on a backoff loop forever.
+  const context: HomeContext =
+    selectedContext.type === 'space' &&
+    !spacesLoading &&
+    !spaces.some((s) => s.id === selectedContext.spaceId)
+      ? { type: 'personal' }
+      : selectedContext;
   const personal = useGifticons(context.type === 'personal' ? user?.uid : undefined);
   const spaceGifticons = useSpaceGifticons(context.type === 'space' ? context.spaceId : undefined);
   const { items, loading, refreshing, error, refresh } =
@@ -101,7 +112,7 @@ export default function HomeScreen({ navigation }: Props) {
       <SpaceSwitcher
         spaces={spaces}
         selected={context}
-        onSelect={setContext}
+        onSelect={setSelectedContext}
         onCreatePress={() => navigation.navigate('CreateSpace')}
       />
       {context.type === 'space' && (

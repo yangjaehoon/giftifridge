@@ -18,6 +18,35 @@ service cloud.firestore {
         || (('spaceId' in data) && data.spaceId != null && isSpaceMember(data.spaceId));
     }
 
+    // Shape guard for gifticon writes. Without this any signed-in caller — including
+    // a member of a shared space — could inject arbitrary fields or a multi-hundred-KB
+    // imageUrl that every other member's onSnapshot then downloads. request.resource.data
+    // is the full post-write doc on both create and update, so listing every allowed
+    // key here also pins the doc shape for partial updates.
+    function isValidGifticon(data) {
+      return data.keys().hasOnly(['ownerId', 'name', 'brand', 'category', 'imageUrl',
+          'expiresAt', 'isUsed', 'createdAt', 'barcode', 'amount', 'usedAt',
+          'notificationIds', 'location', 'spaceId'])
+        && data.ownerId is string
+        && data.name is string && data.name.size() > 0 && data.name.size() <= 200
+        && data.brand is string && data.brand.size() > 0 && data.brand.size() <= 200
+        && data.category in ['cafe', 'convenience', 'restaurant', 'culture', 'etc']
+        && data.imageUrl is string && data.imageUrl.size() > 0 && data.imageUrl.size() <= 700000
+        && data.expiresAt is string
+        && data.isUsed is bool
+        && data.createdAt is string
+        && (!('barcode' in data) || data.barcode == null
+            || (data.barcode is string && data.barcode.size() <= 200))
+        && (!('amount' in data) || data.amount == null || data.amount is number)
+        && (!('usedAt' in data) || data.usedAt == null || data.usedAt is string)
+        && (!('notificationIds' in data) || data.notificationIds is list)
+        && (!('location' in data) || data.location == null
+            || (data.location.keys().hasOnly(['latitude', 'longitude'])
+                && data.location.latitude is number
+                && data.location.longitude is number))
+        && (!('spaceId' in data) || data.spaceId is string);
+    }
+
     match /spaces/{spaceId} {
       // Anyone signed in can preview a space by id (invite links work before joining).
       allow get: if isSignedIn();
@@ -66,10 +95,12 @@ service cloud.firestore {
       // checks the *existing* doc, never the incoming write.
       allow update: if isSignedIn()
         && canAccessGifticon(resource.data)
+        && isValidGifticon(request.resource.data)
         && request.resource.data.ownerId == resource.data.ownerId
         && request.resource.data.get('spaceId', null) == resource.data.get('spaceId', null);
       allow create: if isSignedIn()
         && request.resource.data.ownerId == request.auth.uid
+        && isValidGifticon(request.resource.data)
         && (!('spaceId' in request.resource.data) || isSpaceMember(request.resource.data.spaceId));
     }
   }

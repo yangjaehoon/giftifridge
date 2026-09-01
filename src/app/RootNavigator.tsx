@@ -30,10 +30,30 @@ export type RootStackParamList = {
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
+// A notification tap or deep link can resolve before the NavigationContainer has
+// mounted — while auth is still initializing, RootNavigator renders a skeleton
+// and navigationRef.isReady() is false. Queue those navigations and flush them
+// from onReady instead of silently dropping them.
+const pendingNavigations: (() => void)[] = [];
+
+function navigateWhenReady(run: () => void) {
+  if (navigationRef.isReady()) {
+    run();
+  } else {
+    pendingNavigations.push(run);
+  }
+}
+
+function flushPendingNavigations() {
+  while (pendingNavigations.length > 0) {
+    pendingNavigations.shift()?.();
+  }
+}
+
 function openGifticonFromNotification(response: Notifications.NotificationResponse | null) {
   const gifticonId = response?.notification.request.content.data?.gifticonId;
-  if (typeof gifticonId === 'string' && navigationRef.isReady()) {
-    navigationRef.navigate('GifticonDetail', { gifticonId });
+  if (typeof gifticonId === 'string') {
+    navigateWhenReady(() => navigationRef.navigate('GifticonDetail', { gifticonId }));
   }
 }
 
@@ -44,8 +64,8 @@ function parseJoinSpaceId(url: string | null): string | undefined {
 
 function openJoinSpaceFromUrl(url: string | null) {
   const spaceId = parseJoinSpaceId(url);
-  if (spaceId && navigationRef.isReady()) {
-    navigationRef.navigate('JoinSpace', { spaceId });
+  if (spaceId) {
+    navigateWhenReady(() => navigationRef.navigate('JoinSpace', { spaceId }));
   }
 }
 
@@ -95,7 +115,7 @@ export default function RootNavigator() {
   return (
     <>
       <OfflineBanner />
-      <NavigationContainer ref={navigationRef}>
+      <NavigationContainer ref={navigationRef} onReady={flushPendingNavigations}>
         <Stack.Navigator>
           <Stack.Screen name="Home" component={HomeScreen} options={{ title: '기프티냉장콘' }} />
           <Stack.Screen

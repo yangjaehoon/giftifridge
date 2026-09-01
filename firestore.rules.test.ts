@@ -59,9 +59,25 @@ async function seedGifticon(id: string, data: Record<string, unknown>) {
   });
 }
 
+// A gifticon doc that satisfies isValidGifticon(), so tests can assert on
+// ownership/membership rules without tripping the shape guard by accident.
+function validGifticon(overrides: Record<string, unknown> = {}) {
+  return {
+    ownerId: 'alice',
+    name: 'coffee',
+    brand: 'Starbucks',
+    category: 'cafe',
+    imageUrl: 'data:image/jpeg;base64,AAAA',
+    expiresAt: '2099-01-01T00:00:00.000Z',
+    isUsed: false,
+    createdAt: '2020-01-01T00:00:00.000Z',
+    ...overrides,
+  };
+}
+
 describe('gifticons — personal ownership (unaffected by spaces)', () => {
   it('lets an owner read/update/delete their own gifticon', async () => {
-    await seedGifticon('g1', { ownerId: 'alice', name: 'coffee' });
+    await seedGifticon('g1', validGifticon({ ownerId: 'alice' }));
     const alice = testEnv.authenticatedContext('alice').firestore();
     await assertSucceeds(getDoc(doc(alice, 'gifticons', 'g1')));
     await assertSucceeds(updateDoc(doc(alice, 'gifticons', 'g1'), { isUsed: true }));
@@ -78,12 +94,31 @@ describe('gifticons — personal ownership (unaffected by spaces)', () => {
 describe('gifticon creation', () => {
   it('allows creating a personal gifticon when ownerId matches the caller', async () => {
     const alice = testEnv.authenticatedContext('alice').firestore();
-    await assertSucceeds(setDoc(doc(alice, 'gifticons', 'g7'), { ownerId: 'alice', name: 'x' }));
+    await assertSucceeds(
+      setDoc(doc(alice, 'gifticons', 'g7'), validGifticon({ ownerId: 'alice' })),
+    );
   });
 
   it('denies creating a gifticon with a spoofed ownerId', async () => {
     const alice = testEnv.authenticatedContext('alice').firestore();
-    await assertFails(setDoc(doc(alice, 'gifticons', 'g8'), { ownerId: 'bob', name: 'x' }));
+    await assertFails(setDoc(doc(alice, 'gifticons', 'g8'), validGifticon({ ownerId: 'bob' })));
+  });
+
+  it('denies creating a gifticon with an unknown field', async () => {
+    const alice = testEnv.authenticatedContext('alice').firestore();
+    await assertFails(
+      setDoc(doc(alice, 'gifticons', 'g9'), validGifticon({ ownerId: 'alice', hacked: true })),
+    );
+  });
+
+  it('denies creating a gifticon with an oversized imageUrl', async () => {
+    const alice = testEnv.authenticatedContext('alice').firestore();
+    await assertFails(
+      setDoc(
+        doc(alice, 'gifticons', 'g10'),
+        validGifticon({ ownerId: 'alice', imageUrl: 'x'.repeat(700001) }),
+      ),
+    );
   });
 });
 
@@ -98,12 +133,7 @@ describe('gifticons in a space', () => {
   it('lets a space member read and update a gifticon added by someone else', async () => {
     await seedSpaceWithOwner('space1', 'alice');
     await addMember('space1', 'bob');
-    await seedGifticon('g4', {
-      ownerId: 'alice',
-      spaceId: 'space1',
-      name: 'coffee',
-      isUsed: false,
-    });
+    await seedGifticon('g4', validGifticon({ ownerId: 'alice', spaceId: 'space1' }));
     const bob = testEnv.authenticatedContext('bob').firestore();
     await assertSucceeds(getDoc(doc(bob, 'gifticons', 'g4')));
     await assertSucceeds(updateDoc(doc(bob, 'gifticons', 'g4'), { isUsed: true }));
@@ -113,7 +143,7 @@ describe('gifticons in a space', () => {
     await seedSpaceWithOwner('space1', 'alice');
     const bob = testEnv.authenticatedContext('bob').firestore();
     await assertFails(
-      setDoc(doc(bob, 'gifticons', 'g5'), { ownerId: 'bob', spaceId: 'space1', name: 'x' }),
+      setDoc(doc(bob, 'gifticons', 'g5'), validGifticon({ ownerId: 'bob', spaceId: 'space1' })),
     );
   });
 });
