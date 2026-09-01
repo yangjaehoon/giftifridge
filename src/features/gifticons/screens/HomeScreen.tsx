@@ -32,6 +32,15 @@ type Props = NativeStackScreenProps<RootStackParamList, 'Home'>;
 
 type FilterTab = 'active' | 'expired' | 'used';
 type CategoryFilter = GifticonCategory | 'all';
+type SortKey = 'name' | 'createdAt' | 'expiresAt';
+type SortDir = 'asc' | 'desc';
+
+const SORT_LABELS: Record<SortKey, string> = {
+  name: '이름',
+  createdAt: '등록일',
+  expiresAt: '만료일',
+};
+const SORT_KEYS = Object.keys(SORT_LABELS) as SortKey[];
 
 const EMPTY_TEXT: Record<FilterTab, string> = {
   active: '등록된 기프티콘이 없어요',
@@ -71,6 +80,10 @@ export default function HomeScreen({ navigation }: Props) {
   const [tab, setTab] = useState<FilterTab>('active');
   const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>('all');
   const [query, setQuery] = useState('');
+  // Default matches the query's own orderBy('expiresAt','asc'), so the initial
+  // list order is unchanged until the user picks something else.
+  const [sortKey, setSortKey] = useState<SortKey>('expiresAt');
+  const [sortDir, setSortDir] = useState<SortDir>('asc');
 
   useEffect(() => {
     navigation.setOptions({
@@ -106,6 +119,17 @@ export default function HomeScreen({ navigation }: Props) {
           item.brand.toLowerCase().includes(trimmedQuery),
       );
   }, [items, tab, categoryFilter, query]);
+
+  const sorted = useMemo(() => {
+    const direction = sortDir === 'asc' ? 1 : -1;
+    return [...filtered].sort((a, b) => {
+      const diff =
+        sortKey === 'name'
+          ? a.name.localeCompare(b.name, 'ko')
+          : new Date(a[sortKey]).getTime() - new Date(b[sortKey]).getTime();
+      return diff * direction;
+    });
+  }, [filtered, sortKey, sortDir]);
 
   return (
     <View style={styles.container}>
@@ -190,6 +214,26 @@ export default function HomeScreen({ navigation }: Props) {
         )}
       </View>
 
+      <View style={styles.sortRow}>
+        <Text style={styles.sortLabel}>정렬</Text>
+        {SORT_KEYS.map((key) => (
+          <Chip
+            key={key}
+            label={SORT_LABELS[key]}
+            active={sortKey === key}
+            onPress={() => setSortKey(key)}
+          />
+        ))}
+        <TouchableOpacity
+          style={styles.sortDir}
+          onPress={() => setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))}
+          accessibilityRole="button"
+          accessibilityLabel={`정렬 방향 ${sortDir === 'asc' ? '오름차순' : '내림차순'}, 눌러서 전환`}
+        >
+          <Text style={styles.sortDirText}>{sortDir === 'asc' ? '↑ 오름차순' : '↓ 내림차순'}</Text>
+        </TouchableOpacity>
+      </View>
+
       {loading ? (
         <View style={styles.listContent}>
           {Array.from({ length: 5 }).map((_, i) => (
@@ -219,7 +263,7 @@ export default function HomeScreen({ navigation }: Props) {
             </View>
           )}
           <FlatList
-            data={filtered}
+            data={sorted}
             keyExtractor={(item) => item.id}
             contentContainerStyle={styles.listContent}
             refreshControl={
@@ -295,6 +339,24 @@ const styles = StyleSheet.create({
   searchInput: { flex: 1, paddingVertical: 10, fontSize: 14, color: colors.gray900 },
   searchClear: { paddingLeft: 8, paddingVertical: 4 },
   searchClearText: { fontSize: 18, color: colors.gray400, fontWeight: '700' },
+  sortRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginHorizontal: 16,
+    marginTop: 10,
+  },
+  sortLabel: { fontSize: 12, fontWeight: '600', color: colors.gray500 },
+  sortDir: {
+    marginLeft: 'auto',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  sortDirText: { fontSize: 12, fontWeight: '600', color: colors.gray700 },
   listContent: { paddingVertical: 8, paddingBottom: 100, flexGrow: 1 },
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: 80 },
   emptyText: { color: colors.gray400, fontSize: 14 },
