@@ -26,6 +26,8 @@ import {
 import { cancelNotifications, scheduleExpiryNotifications } from '../services/notificationService';
 import { recognizeExpiryDate } from '../services/ocrService';
 import { useGifticon } from '../hooks/useGifticon';
+import { useGifticons } from '../hooks/useGifticons';
+import { useSpaceGifticons } from '../hooks/useSpaceGifticons';
 import GifticonDetailSkeleton from '../components/GifticonDetailSkeleton';
 import type { GifticonCategory, NewGifticon } from '../types';
 import { CATEGORY_LABELS } from '../types';
@@ -44,6 +46,20 @@ type Props = NativeStackScreenProps<RootStackParamList, 'AddGifticon'>;
 const CATEGORIES = Object.keys(CATEGORY_LABELS) as GifticonCategory[];
 const WRITE_TIMEOUT_MS = 15000;
 
+function confirmAsync(title: string, message: string): Promise<boolean> {
+  return new Promise((resolve) => {
+    Alert.alert(
+      title,
+      message,
+      [
+        { text: '취소', style: 'cancel', onPress: () => resolve(false) },
+        { text: '계속', onPress: () => resolve(true) },
+      ],
+      { cancelable: true, onDismiss: () => resolve(false) },
+    );
+  });
+}
+
 const defaultExpiry = () => {
   const d = new Date();
   d.setMonth(d.getMonth() + 1);
@@ -56,6 +72,13 @@ export default function AddGifticonScreen({ navigation, route }: Props) {
   const isEditing = Boolean(gifticonId);
   const { user } = useAuth();
   const { gifticon: existing, loading: loadingExisting } = useGifticon(gifticonId);
+  // The list for whichever context this gifticon belongs to, used only to warn
+  // about a duplicate barcode on save. On the edit path the route carries no
+  // spaceId, so fall back to the loaded gifticon's own.
+  const contextSpaceId = spaceId ?? existing?.spaceId;
+  const personalList = useGifticons(contextSpaceId ? undefined : user?.uid);
+  const spaceList = useSpaceGifticons(contextSpaceId);
+  const contextGifticons = contextSpaceId ? spaceList.items : personalList.items;
   // Fixed for the life of the screen so a save retried after a timeout targets
   // the same doc id instead of creating a duplicate. Unused when editing.
   const [draftId] = useState(newGifticonId);
@@ -194,6 +217,20 @@ export default function AddGifticonScreen({ navigation, route }: Props) {
     if (!brand.trim()) nextFieldErrors.brand = '브랜드를 입력해주세요.';
     setFieldErrors(nextFieldErrors);
     if (Object.keys(nextFieldErrors).length > 0 || !imageUri) return;
+
+    const trimmedBarcode = barcode.trim();
+    if (trimmedBarcode) {
+      const duplicate = contextGifticons.find(
+        (g) => g.id !== gifticonId && g.barcode === trimmedBarcode,
+      );
+      if (duplicate) {
+        const proceed = await confirmAsync(
+          '이미 등록된 번호예요',
+          `"${duplicate.brand} ${duplicate.name}"와(과) 바코드 번호가 같아요. 그래도 등록할까요?`,
+        );
+        if (!proceed) return;
+      }
+    }
 
     setSaving(true);
     try {
