@@ -12,8 +12,9 @@ export default function GifticonStats({ items }: { items: Gifticon[] }) {
     let totalAmount = 0;
     let expiringSoonCount = 0;
     for (const item of items) {
-      if (item.amount) totalAmount += item.amount;
       const days = daysUntil(item.expiresAt);
+      // An expired gifticon can't be spent, so it doesn't count toward "보유 금액".
+      if (item.amount && days >= 0) totalAmount += item.amount;
       if (days >= 0 && days <= EXPIRING_SOON_WITHIN_DAYS) expiringSoonCount += 1;
     }
     return { totalAmount, expiringSoonCount, totalCount: items.length };

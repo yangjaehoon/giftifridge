@@ -48,6 +48,17 @@ describe('GifticonStats', () => {
     expect(getByText('1개')).toBeTruthy();
   });
 
+  it('excludes an expired gifticon from the total amount', async () => {
+    const items: Gifticon[] = [
+      makeGifticon({ id: '1', amount: 10000, expiresAt: daysFromNow(5) }),
+      makeGifticon({ id: '2', amount: 8000, expiresAt: daysFromNow(-2) }),
+    ];
+
+    const { getByText } = await render(<GifticonStats items={items} />);
+
+    expect(getByText('10,000원')).toBeTruthy();
+  });
+
   it('shows zero values for an empty list', async () => {
     const { getByText, getAllByText } = await render(<GifticonStats items={[]} />);
 

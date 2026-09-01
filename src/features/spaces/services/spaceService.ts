@@ -82,9 +82,13 @@ export async function deleteSpace(spaceId: string, memberUids: string[]): Promis
     query(collection(db, 'gifticons'), where('spaceId', '==', spaceId)),
   );
 
+  // Gifticons first: deleting a member's shared gifticon needs isSpaceMember()
+  // to still resolve true, which it can't once that member's doc is gone. With
+  // >500 total writes the member docs would otherwise land in an earlier chunk
+  // and strand the rest.
   const refsToDelete = [
-    ...memberUids.map((uid) => doc(db, SPACES_COLLECTION, spaceId, MEMBERS_SUBCOLLECTION, uid)),
     ...gifticonsSnapshot.docs.map((d) => d.ref),
+    ...memberUids.map((uid) => doc(db, SPACES_COLLECTION, spaceId, MEMBERS_SUBCOLLECTION, uid)),
   ];
 
   // Chunk to stay under Firestore's 500-writes-per-batch limit; the space

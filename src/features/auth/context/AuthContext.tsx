@@ -1,6 +1,5 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import {
-  createUserWithEmailAndPassword,
   EmailAuthProvider,
   linkWithCredential,
   onAuthStateChanged,
@@ -65,12 +64,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         await signInWithEmailAndPassword(auth, email, password);
       },
       linkEmail: async (email, password) => {
-        if (auth.currentUser?.isAnonymous) {
-          const credential = EmailAuthProvider.credential(email, password);
-          await linkWithCredential(auth.currentUser, credential);
-        } else {
-          await createUserWithEmailAndPassword(auth, email, password);
+        const current = auth.currentUser;
+        // linkEmail only ever upgrades the current anonymous account. The old
+        // fallback here called createUserWithEmailAndPassword, which silently
+        // signed into a brand-new account and stranded the anonymous one (and
+        // every gifticon on it). The Settings UI only offers this while
+        // anonymous, so anything else is a bug, not a sign-up path.
+        if (!current || !current.isAnonymous) {
+          throw new Error('linkEmail: no anonymous account to upgrade');
         }
+        const credential = EmailAuthProvider.credential(email, password);
+        await linkWithCredential(current, credential);
       },
       signOut: async () => {
         await firebaseSignOut(auth);

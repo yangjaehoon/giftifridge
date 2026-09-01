@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -73,7 +73,10 @@ export default function AddGifticonScreen({ navigation, route }: Props) {
   const [saving, setSaving] = useState(false);
   const [recognizingDate, setRecognizingDate] = useState(false);
   const [dateAutoDetected, setDateAutoDetected] = useState(false);
-  const [dateManuallyEdited, setDateManuallyEdited] = useState(false);
+  // A ref, not state: detectExpiryDate() reads it after an await and must see
+  // the current value, not the one captured when the image was picked (the same
+  // handler flips it just before kicking OCR off). Nothing renders from it.
+  const dateManuallyEditedRef = useRef(false);
   const [location, setLocation] = useState<{ latitude: number; longitude: number } | null>(null);
   const [locationSaving, setLocationSaving] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<{ image?: string; name?: string; brand?: string }>(
@@ -124,7 +127,7 @@ export default function AddGifticonScreen({ navigation, route }: Props) {
     setRecognizingDate(true);
     try {
       const isoDate = await recognizeExpiryDate(uri);
-      if (isoDate && !dateManuallyEdited) {
+      if (isoDate && !dateManuallyEditedRef.current) {
         setExpiresAt(new Date(isoDate));
         setDateAutoDetected(true);
       }
@@ -142,7 +145,7 @@ export default function AddGifticonScreen({ navigation, route }: Props) {
       if (!result.canceled) {
         setImageUri(result.assets[0].uri);
         setFieldErrors((e) => ({ ...e, image: undefined }));
-        setDateManuallyEdited(false);
+        dateManuallyEditedRef.current = false;
         detectExpiryDate(result.assets[0].uri);
       }
     } catch {
@@ -156,7 +159,7 @@ export default function AddGifticonScreen({ navigation, route }: Props) {
       if (!result.canceled) {
         setImageUri(result.assets[0].uri);
         setFieldErrors((e) => ({ ...e, image: undefined }));
-        setDateManuallyEdited(false);
+        dateManuallyEditedRef.current = false;
         detectExpiryDate(result.assets[0].uri);
       }
     } catch {
@@ -383,7 +386,7 @@ export default function AddGifticonScreen({ navigation, route }: Props) {
             setShowDatePicker(false);
             if (selected) {
               setExpiresAt(selected);
-              setDateManuallyEdited(true);
+              dateManuallyEditedRef.current = true;
               setDateAutoDetected(false);
             }
           }}

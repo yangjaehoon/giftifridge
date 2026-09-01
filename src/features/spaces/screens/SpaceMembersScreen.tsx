@@ -34,8 +34,14 @@ export default function SpaceMembersScreen({ route, navigation }: Props) {
 
   const shareInvite = async () => {
     try {
+      // A giftifridge:// link isn't tappable in most messengers, so lead with the
+      // code the user can paste into "코드로 참여" and keep the scheme link as a
+      // convenience for anyone who already has the app.
       await Share.share({
-        message: `기프티냉장콘 "${space?.name}" 스페이스에 초대할게요!\ngiftifridge://join/${spaceId}`,
+        message:
+          `기프티냉장콘 "${space?.name}" 스페이스에 초대할게요!\n\n` +
+          `앱에서 "코드로 참여"를 눌러 아래 코드를 입력하세요:\n${spaceId}\n\n` +
+          `앱이 설치돼 있다면: giftifridge://join/${spaceId}`,
       });
     } catch {
       // user dismissed the share sheet; nothing to do
