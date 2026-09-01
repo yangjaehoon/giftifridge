@@ -259,7 +259,11 @@ export default function AddGifticonScreen({ navigation, route }: Props) {
   return (
     <ScrollView contentContainerStyle={styles.container}>
       <TouchableOpacity
-        style={[styles.imagePicker, fieldErrors.image && styles.inputError]}
+        style={[
+          styles.imagePicker,
+          !imageUri && styles.imagePickerEmpty,
+          fieldErrors.image && styles.inputError,
+        ]}
         onPress={pickFromLibrary}
         onLongPress={takePhoto}
       >
@@ -411,6 +415,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginBottom: 20,
     overflow: 'hidden',
+  },
+  // Before a photo is chosen there's nothing to preview, so the picker is a
+  // compact tap target instead of a full 3:4 placeholder box.
+  imagePickerEmpty: {
+    aspectRatio: undefined,
+    height: 96,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
   image: { width: '100%', height: '100%' },
   imagePlaceholder: { color: colors.gray400, textAlign: 'center', fontSize: 13, lineHeight: 20 },
