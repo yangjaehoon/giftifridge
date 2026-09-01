@@ -5,6 +5,7 @@ import { distanceInMeters } from '../../../shared/utils/geo';
 import { getCurrentLocation } from '../../../shared/utils/location';
 
 const NEARBY_RADIUS_METERS = 300;
+const LOCATION_MAX_AGE_MS = 5 * 60 * 1000;
 
 function isUnusedWithLocation(
   item: Gifticon,
@@ -15,28 +16,39 @@ function isUnusedWithLocation(
 export function useNearbyGifticons(items: Gifticon[]) {
   const [nearby, setNearby] = useState<Gifticon[]>([]);
 
+  const candidates = items.filter(isUnusedWithLocation);
+  // Firestore's realtime snapshots hand back a fresh `items` array on every
+  // write, which would otherwise re-run this (and re-hit the GPS) on every
+  // snapshot. Key off the located set's contents so it only re-runs when that
+  // actually changes.
+  const candidatesKey = candidates
+    .map((item) => `${item.id}:${item.location.latitude},${item.location.longitude}`)
+    .sort()
+    .join('|');
+
   useFocusEffect(
     useCallback(() => {
       let cancelled = false;
 
-      (async () => {
-        const candidates = items.filter(isUnusedWithLocation);
-        if (candidates.length === 0) {
-          if (!cancelled) setNearby([]);
-          return;
-        }
+      if (candidates.length === 0) {
+        setNearby([]);
+        return;
+      }
 
+      (async () => {
         try {
-          const coords = await getCurrentLocation();
+          const coords = await getCurrentLocation({ maxAgeMs: LOCATION_MAX_AGE_MS });
+          if (cancelled) return;
           if (!coords) {
-            if (!cancelled) setNearby([]);
+            setNearby([]);
             return;
           }
 
-          const near = candidates.filter(
-            (item) => distanceInMeters(coords, item.location) <= NEARBY_RADIUS_METERS,
+          setNearby(
+            candidates.filter(
+              (item) => distanceInMeters(coords, item.location) <= NEARBY_RADIUS_METERS,
+            ),
           );
-          if (!cancelled) setNearby(near);
         } catch {
           if (!cancelled) setNearby([]);
         }
@@ -45,7 +57,8 @@ export function useNearbyGifticons(items: Gifticon[]) {
       return () => {
         cancelled = true;
       };
-    }, [items]),
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [candidatesKey]),
   );
 
   return nearby;

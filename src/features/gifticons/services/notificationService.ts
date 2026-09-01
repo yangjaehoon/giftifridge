@@ -36,9 +36,15 @@ function offsetBody(brand: string, name: string, daysBefore: number): string {
   return `${brand} ${name}의 유효기한이 ${daysBefore}일 남았어요.`;
 }
 
+// iOS keeps at most 64 pending local notifications and silently drops the
+// oldest once that's exceeded. Stay comfortably under it and, when close,
+// schedule this gifticon's soonest reminders first.
+const IOS_PENDING_LIMIT = 60;
+
 /**
- * Schedules one local notification per offset (days before expiry, 9am).
- * Offsets whose trigger time has already passed are silently skipped.
+ * Schedules one local notification per offset (days before expiry, 9am),
+ * soonest first. Offsets whose trigger time has already passed are skipped, and
+ * on iOS scheduling stops once the app is at the pending-notification limit.
  */
 export async function scheduleExpiryNotifications(
   gifticon: Pick<Gifticon, 'id' | 'name' | 'brand' | 'expiresAt'>,
@@ -47,21 +53,34 @@ export async function scheduleExpiryNotifications(
   const granted = await ensureNotificationPermission();
   if (!granted) return [];
 
+  const triggers = offsets
+    .map((daysBefore) => {
+      const date = new Date(gifticon.expiresAt);
+      date.setDate(date.getDate() - daysBefore);
+      date.setHours(9, 0, 0, 0);
+      return { daysBefore, date };
+    })
+    .filter((trigger) => trigger.date.getTime() > Date.now())
+    .sort((a, b) => a.date.getTime() - b.date.getTime());
+
+  if (triggers.length === 0) return [];
+
+  let budget = triggers.length;
+  if (Platform.OS === 'ios') {
+    const pending = await Notifications.getAllScheduledNotificationsAsync();
+    budget = Math.max(0, IOS_PENDING_LIMIT - pending.length);
+  }
+
   const ids: string[] = [];
-  for (const daysBefore of offsets) {
-    const triggerDate = new Date(gifticon.expiresAt);
-    triggerDate.setDate(triggerDate.getDate() - daysBefore);
-    triggerDate.setHours(9, 0, 0, 0);
-
-    if (triggerDate.getTime() <= Date.now()) continue;
-
+  for (const trigger of triggers) {
+    if (ids.length >= budget) break;
     const id = await Notifications.scheduleNotificationAsync({
       content: {
         title: '기프티콘 유효기한 임박',
-        body: offsetBody(gifticon.brand, gifticon.name, daysBefore),
+        body: offsetBody(gifticon.brand, gifticon.name, trigger.daysBefore),
         data: { gifticonId: gifticon.id },
       },
-      trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: triggerDate },
+      trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: trigger.date },
     });
     ids.push(id);
   }

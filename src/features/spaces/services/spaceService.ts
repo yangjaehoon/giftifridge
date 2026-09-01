@@ -127,12 +127,18 @@ export function subscribeToMySpaces(
         snapshot.docs.map(async (memberDoc) => {
           const spaceRef = memberDoc.ref.parent.parent;
           if (!spaceRef) return null;
-          const spaceSnap = await getDoc(spaceRef);
-          return spaceSnap.exists() ? ({ id: spaceSnap.id, ...spaceSnap.data() } as Space) : null;
+          try {
+            const spaceSnap = await getDoc(spaceRef);
+            return spaceSnap.exists() ? ({ id: spaceSnap.id, ...spaceSnap.data() } as Space) : null;
+          } catch {
+            // One space that's momentarily unreadable (a race with leaving it,
+            // a transient error) shouldn't blank the whole switcher.
+            return null;
+          }
         }),
       ).then((spaces) => {
         onChange(spaces.filter((space): space is Space => space !== null));
-      }, onError);
+      });
     },
     onError,
   );

@@ -1,13 +1,14 @@
 import {
-  addDoc,
   collection,
   deleteDoc,
   doc,
   onSnapshot,
   orderBy,
   query,
+  setDoc,
   updateDoc,
   where,
+  type DocumentData,
 } from 'firebase/firestore';
 import * as ImageManipulator from 'expo-image-manipulator';
 import { db } from '../../../lib/firebase/config';
@@ -43,14 +44,44 @@ function omitUndefined<T extends object>(data: T): Partial<T> {
   ) as Partial<T>;
 }
 
-export async function createGifticon(ownerId: string, data: NewGifticon): Promise<string> {
-  const docRef = await addDoc(collection(db, COLLECTION), {
+// Firestore only guarantees the field types the security rules enforce going
+// forward; a doc written before those rules (or by a future schema change) can
+// still be missing required strings, which would render as `D-NaN` and crash
+// date math downstream. Drop anything that isn't a usable Gifticon.
+function toGifticon(id: string, data: DocumentData): Gifticon | null {
+  if (
+    typeof data.ownerId !== 'string' ||
+    typeof data.name !== 'string' ||
+    typeof data.brand !== 'string' ||
+    typeof data.category !== 'string' ||
+    typeof data.imageUrl !== 'string' ||
+    typeof data.expiresAt !== 'string' ||
+    Number.isNaN(new Date(data.expiresAt).getTime())
+  ) {
+    return null;
+  }
+  return { id, ...(data as Omit<Gifticon, 'id'>) };
+}
+
+// A client-side id, so a create that is retried after a timeout (which doesn't
+// cancel the original write) overwrites the same doc instead of inserting a
+// duplicate.
+export function newGifticonId(): string {
+  return doc(collection(db, COLLECTION)).id;
+}
+
+export async function createGifticon(
+  id: string,
+  ownerId: string,
+  data: NewGifticon,
+): Promise<string> {
+  await setDoc(doc(db, COLLECTION, id), {
     ...omitUndefined(data),
     ownerId,
     isUsed: false,
     createdAt: new Date().toISOString(),
   });
-  return docRef.id;
+  return id;
 }
 
 // updateDoc leaves fields it isn't given untouched, unlike addDoc — so an
@@ -85,8 +116,8 @@ export function subscribeToGifticons(
       // A doc missing spaceId entirely doesn't match `where('spaceId','==',null)`,
       // so personal-vs-space filtering happens here instead of in the query.
       const items = snapshot.docs
-        .map((d) => ({ id: d.id, ...d.data() }) as Gifticon)
-        .filter((item) => !item.spaceId);
+        .map((d) => toGifticon(d.id, d.data()))
+        .filter((item): item is Gifticon => item !== null && !item.spaceId);
       onChange(items);
     },
     onError,
@@ -106,7 +137,9 @@ export function subscribeToSpaceGifticons(
   return onSnapshot(
     q,
     (snapshot) => {
-      const items = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }) as Gifticon);
+      const items = snapshot.docs
+        .map((d) => toGifticon(d.id, d.data()))
+        .filter((item): item is Gifticon => item !== null);
       onChange(items);
     },
     onError,
@@ -121,7 +154,7 @@ export function subscribeToGifticon(
   return onSnapshot(
     doc(db, COLLECTION, id),
     (snapshot) => {
-      onChange(snapshot.exists() ? ({ id: snapshot.id, ...snapshot.data() } as Gifticon) : null);
+      onChange(snapshot.exists() ? toGifticon(snapshot.id, snapshot.data()) : null);
     },
     onError,
   );

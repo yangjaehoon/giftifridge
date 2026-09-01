@@ -1,4 +1,4 @@
-import { createGifticon, markGifticonUsed } from './gifticonService';
+import { createGifticon, markGifticonUsed, newGifticonId } from './gifticonService';
 import type { GifticonCategory, NewGifticon } from '../types';
 
 function daysFromNow(days: number) {
@@ -55,7 +55,7 @@ export async function seedDummyGifticons(
 ): Promise<{ succeeded: number; failed: number }> {
   const results = await Promise.allSettled(
     buildDummyGifticons().map(async ({ used, ...data }) => {
-      const id = await createGifticon(ownerId, data);
+      const id = await createGifticon(newGifticonId(), ownerId, data);
       if (used) {
         await markGifticonUsed(id, true);
       }

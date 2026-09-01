@@ -9,6 +9,7 @@ jest.mock('expo-notifications', () => ({
   setNotificationChannelAsync: jest.fn(),
   scheduleNotificationAsync: jest.fn(),
   cancelScheduledNotificationAsync: jest.fn(),
+  getAllScheduledNotificationsAsync: jest.fn(),
   AndroidImportance: { DEFAULT: 3 },
   SchedulableTriggerInputTypes: { DATE: 'date' },
 }));
@@ -25,6 +26,7 @@ describe('scheduleExpiryNotifications', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockedNotifications.getPermissionsAsync.mockResolvedValue({ status: 'granted' } as never);
+    mockedNotifications.getAllScheduledNotificationsAsync.mockResolvedValue([] as never);
     let counter = 0;
     mockedNotifications.scheduleNotificationAsync.mockImplementation(async () => `id-${++counter}`);
   });
@@ -45,6 +47,27 @@ describe('scheduleExpiryNotifications', () => {
     );
     expect(ids).toHaveLength(1);
     expect(mockedNotifications.scheduleNotificationAsync).toHaveBeenCalledTimes(1);
+  });
+
+  it('stops scheduling once the iOS pending-notification limit is reached', async () => {
+    const nearlyFull = Array.from({ length: 59 }, (_, i) => ({ identifier: `x${i}` }));
+    mockedNotifications.getAllScheduledNotificationsAsync.mockResolvedValue(nearlyFull as never);
+
+    const ids = await scheduleExpiryNotifications(
+      { id: 'g1', name: '아메리카노', brand: '스타벅스', expiresAt: daysFromNow(30) },
+      [7, 3, 1, 0],
+    );
+
+    // Only room for one more (60 - 59), and it should be the soonest trigger.
+    expect(ids).toHaveLength(1);
+    expect(mockedNotifications.scheduleNotificationAsync).toHaveBeenCalledTimes(1);
+    const [{ trigger }] = mockedNotifications.scheduleNotificationAsync.mock.calls[0] as [
+      { trigger: { date: Date } },
+    ];
+    const expectedSoonest = new Date(daysFromNow(30));
+    expectedSoonest.setDate(expectedSoonest.getDate() - 7);
+    expectedSoonest.setHours(9, 0, 0, 0);
+    expect(trigger.date.getTime()).toBe(expectedSoonest.getTime());
   });
 
   it('returns an empty array when notification permission is not granted', async () => {

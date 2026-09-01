@@ -19,6 +19,7 @@ import { useAuth } from '../../auth/context/AuthContext';
 import {
   createGifticon,
   encodeGifticonImage,
+  newGifticonId,
   setGifticonNotificationIds,
   updateGifticon,
 } from '../services/gifticonService';
@@ -55,6 +56,9 @@ export default function AddGifticonScreen({ navigation, route }: Props) {
   const isEditing = Boolean(gifticonId);
   const { user } = useAuth();
   const { gifticon: existing, loading: loadingExisting } = useGifticon(gifticonId);
+  // Fixed for the life of the screen so a save retried after a timeout targets
+  // the same doc id instead of creating a duplicate. Unused when editing.
+  const [draftId] = useState(newGifticonId);
   const [hydrated, setHydrated] = useState(!isEditing);
   const [originalImageUrl, setOriginalImageUrl] = useState<string | null>(null);
   const [imageUri, setImageUri] = useState<string | null>(null);
@@ -210,7 +214,7 @@ export default function AddGifticonScreen({ navigation, route }: Props) {
             await updateGifticon(gifticonId, data);
             return gifticonId;
           }
-          return createGifticon(user.uid, data);
+          return createGifticon(draftId, user.uid, data);
         })(),
         WRITE_TIMEOUT_MS,
       );
@@ -218,20 +222,27 @@ export default function AddGifticonScreen({ navigation, route }: Props) {
       // The gifticon itself is saved at this point. Scheduling reminders is a
       // best-effort follow-up — if it fails, the user shouldn't be told the
       // save failed and prompted to retry, which would create a duplicate.
-      try {
-        if (isEditing && existing?.notificationIds) {
-          await cancelNotifications(existing.notificationIds);
+      //
+      // Reminders are local to this device and their ids live on the shared doc,
+      // so only the owner touches them — otherwise two members editing the same
+      // shared gifticon clobber each other's ids and can no longer cancel.
+      const isOwnGifticon = !isEditing || existing?.ownerId === user.uid;
+      if (isOwnGifticon) {
+        try {
+          if (isEditing && existing?.notificationIds) {
+            await cancelNotifications(existing.notificationIds);
+          }
+          const offsets = await getNotificationOffsets();
+          const notificationIds = await scheduleExpiryNotifications(
+            { id, name: name.trim(), brand: brand.trim(), expiresAt: expiresAtIso },
+            offsets,
+          );
+          if (notificationIds.length > 0 || isEditing) {
+            await withTimeout(setGifticonNotificationIds(id, notificationIds), WRITE_TIMEOUT_MS);
+          }
+        } catch {
+          // gifticon already saved; reminder scheduling can't be retried from here
         }
-        const offsets = await getNotificationOffsets();
-        const notificationIds = await scheduleExpiryNotifications(
-          { id, name: name.trim(), brand: brand.trim(), expiresAt: expiresAtIso },
-          offsets,
-        );
-        if (notificationIds.length > 0 || isEditing) {
-          await withTimeout(setGifticonNotificationIds(id, notificationIds), WRITE_TIMEOUT_MS);
-        }
-      } catch {
-        // gifticon already saved; reminder scheduling can't be retried from here
       }
 
       navigation.goBack();

@@ -1,19 +1,11 @@
 import * as ImageManipulator from 'expo-image-manipulator';
-import {
-  addDoc,
-  collection,
-  deleteDoc,
-  doc,
-  onSnapshot,
-  orderBy,
-  updateDoc,
-  where,
-} from 'firebase/firestore';
+import { deleteDoc, doc, onSnapshot, orderBy, setDoc, updateDoc, where } from 'firebase/firestore';
 import {
   createGifticon,
   deleteGifticon,
   encodeGifticonImage,
   markGifticonUsed,
+  newGifticonId,
   setGifticonNotificationIds,
   subscribeToGifticon,
   subscribeToGifticons,
@@ -24,13 +16,15 @@ import type { Gifticon, NewGifticon } from '../types';
 jest.mock('../../../lib/firebase/config', () => ({ db: 'mock-db' }));
 
 jest.mock('firebase/firestore', () => ({
-  addDoc: jest.fn(),
   collection: jest.fn((_db, name) => `collection:${name}`),
   deleteDoc: jest.fn(),
-  doc: jest.fn((_db, name, id) => `doc:${name}/${id}`),
+  doc: jest.fn((_db, name, id) =>
+    id === undefined ? { id: 'generated-id' } : `doc:${name}/${id}`,
+  ),
   onSnapshot: jest.fn(),
   orderBy: jest.fn((field, direction) => `orderBy:${field}:${direction}`),
   query: jest.fn((...args) => ['query', ...args]),
+  setDoc: jest.fn(),
   updateDoc: jest.fn(),
   where: jest.fn((field, op, value) => `where:${field}${op}${value}`),
 }));
@@ -40,7 +34,7 @@ jest.mock('expo-image-manipulator', () => ({
   SaveFormat: { JPEG: 'jpeg' },
 }));
 
-const mockedAddDoc = addDoc as jest.Mock;
+const mockedSetDoc = setDoc as jest.Mock;
 const mockedDeleteDoc = deleteDoc as jest.Mock;
 const mockedOnSnapshot = onSnapshot as jest.Mock;
 const mockedUpdateDoc = updateDoc as jest.Mock;
@@ -57,40 +51,68 @@ function makeNewGifticon(overrides: Partial<NewGifticon> = {}): NewGifticon {
   };
 }
 
+// A stored gifticon doc shape that passes toGifticon()'s validity guard.
+function storedDoc(overrides: Record<string, unknown> = {}) {
+  return {
+    ownerId: 'owner-1',
+    name: '아메리카노',
+    brand: '스타벅스',
+    category: 'cafe',
+    imageUrl: 'data:image/jpeg;base64,xyz',
+    expiresAt: '2026-08-01T00:00:00.000Z',
+    isUsed: false,
+    createdAt: '2026-01-01T00:00:00.000Z',
+    ...overrides,
+  };
+}
+
 beforeEach(() => {
   jest.clearAllMocks();
 });
 
+describe('newGifticonId', () => {
+  it('returns a client-side id from an empty doc ref', () => {
+    expect(newGifticonId()).toBe('generated-id');
+  });
+});
+
 describe('createGifticon', () => {
-  it('writes ownerId, isUsed:false, and a createdAt timestamp', async () => {
-    mockedAddDoc.mockResolvedValue({ id: 'new-id' });
+  it('writes to the given id with ownerId, isUsed:false, and a createdAt timestamp', async () => {
+    const id = await createGifticon('gift-x', 'owner-1', makeNewGifticon());
 
-    const id = await createGifticon('owner-1', makeNewGifticon());
-
-    expect(id).toBe('new-id');
-    expect(collection).toHaveBeenCalledWith('mock-db', 'gifticons');
-    const [, written] = mockedAddDoc.mock.calls[0];
+    expect(id).toBe('gift-x');
+    expect(doc).toHaveBeenCalledWith('mock-db', 'gifticons', 'gift-x');
+    const [ref, written] = mockedSetDoc.mock.calls[0];
+    expect(ref).toBe('doc:gifticons/gift-x');
     expect(written).toMatchObject({ ownerId: 'owner-1', isUsed: false });
     expect(typeof written.createdAt).toBe('string');
   });
 
   it('omits undefined optional fields instead of writing them as undefined', async () => {
-    mockedAddDoc.mockResolvedValue({ id: 'new-id' });
+    await createGifticon(
+      'gift-x',
+      'owner-1',
+      makeNewGifticon({ amount: undefined, barcode: undefined }),
+    );
 
-    await createGifticon('owner-1', makeNewGifticon({ amount: undefined, barcode: undefined }));
-
-    const [, written] = mockedAddDoc.mock.calls[0];
+    const [, written] = mockedSetDoc.mock.calls[0];
     expect('amount' in written).toBe(false);
     expect('barcode' in written).toBe(false);
   });
 
   it('keeps defined optional fields', async () => {
-    mockedAddDoc.mockResolvedValue({ id: 'new-id' });
+    await createGifticon('gift-x', 'owner-1', makeNewGifticon({ amount: 5000 }));
 
-    await createGifticon('owner-1', makeNewGifticon({ amount: 5000 }));
-
-    const [, written] = mockedAddDoc.mock.calls[0];
+    const [, written] = mockedSetDoc.mock.calls[0];
     expect(written.amount).toBe(5000);
+  });
+
+  it('reuses the same doc id when retried (idempotent under timeout)', async () => {
+    await createGifticon('gift-x', 'owner-1', makeNewGifticon());
+    await createGifticon('gift-x', 'owner-1', makeNewGifticon());
+
+    expect(mockedSetDoc.mock.calls[0][0]).toBe('doc:gifticons/gift-x');
+    expect(mockedSetDoc.mock.calls[1][0]).toBe('doc:gifticons/gift-x');
   });
 });
 
@@ -109,12 +131,28 @@ describe('subscribeToGifticons', () => {
 
     onSuccess({
       docs: [
-        { id: 'a', data: () => ({ name: 'personal' }) },
-        { id: 'b', data: () => ({ name: 'shared', spaceId: 'space-1' }) },
+        { id: 'a', data: () => storedDoc({ name: 'personal' }) },
+        { id: 'b', data: () => storedDoc({ name: 'shared', spaceId: 'space-1' }) },
       ],
     });
 
-    expect(onChange).toHaveBeenCalledWith([{ id: 'a', name: 'personal' }]);
+    expect(onChange).toHaveBeenCalledWith([expect.objectContaining({ id: 'a', name: 'personal' })]);
+  });
+
+  it('drops docs that are missing required fields instead of yielding them', () => {
+    const onChange = jest.fn();
+    subscribeToGifticons('owner-1', onChange);
+    const [, onSuccess] = mockedOnSnapshot.mock.calls[0];
+
+    onSuccess({
+      docs: [
+        { id: 'a', data: () => storedDoc() },
+        { id: 'bad', data: () => ({ name: 'no owner, no dates' }) },
+        { id: 'baddate', data: () => storedDoc({ expiresAt: 'not-a-date' }) },
+      ],
+    });
+
+    expect(onChange).toHaveBeenCalledWith([expect.objectContaining({ id: 'a' })]);
   });
 
   it('forwards listener errors to onError', () => {
@@ -135,9 +173,11 @@ describe('subscribeToSpaceGifticons', () => {
 
     const [, onSuccess] = mockedOnSnapshot.mock.calls[0];
     onSuccess({
-      docs: [{ id: 'a', data: () => ({ name: 'shared', spaceId: 'space-1' }) }],
+      docs: [{ id: 'a', data: () => storedDoc({ name: 'shared', spaceId: 'space-1' }) }],
     });
-    expect(onChange).toHaveBeenCalledWith([{ id: 'a', name: 'shared', spaceId: 'space-1' }]);
+    expect(onChange).toHaveBeenCalledWith([
+      expect.objectContaining({ id: 'a', name: 'shared', spaceId: 'space-1' }),
+    ]);
   });
 });
 
@@ -147,9 +187,19 @@ describe('subscribeToGifticon', () => {
     subscribeToGifticon('gift-1', onChange);
     const [, onSuccess] = mockedOnSnapshot.mock.calls[0];
 
+    onSuccess({ exists: () => true, id: 'gift-1', data: () => storedDoc({ name: 'x' }) });
+
+    expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ id: 'gift-1', name: 'x' }));
+  });
+
+  it('passes null when the stored doc is malformed', () => {
+    const onChange = jest.fn();
+    subscribeToGifticon('gift-1', onChange);
+    const [, onSuccess] = mockedOnSnapshot.mock.calls[0];
+
     onSuccess({ exists: () => true, id: 'gift-1', data: () => ({ name: 'x' }) });
 
-    expect(onChange).toHaveBeenCalledWith({ id: 'gift-1', name: 'x' });
+    expect(onChange).toHaveBeenCalledWith(null);
   });
 
   it('passes null when the doc does not exist', () => {
