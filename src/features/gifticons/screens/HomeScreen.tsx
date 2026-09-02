@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   FlatList,
   RefreshControl,
@@ -14,6 +14,7 @@ import { useAuth } from '../../auth/context/AuthContext';
 import { useGifticons } from '../hooks/useGifticons';
 import { useSpaceGifticons } from '../hooks/useSpaceGifticons';
 import { useNearbyGifticons } from '../hooks/useNearbyGifticons';
+import { useGifticonListView } from '../hooks/useGifticonListView';
 import { useMySpaces } from '../../spaces/hooks/useMySpaces';
 import SpaceSwitcher, { type HomeContext } from '../../spaces/components/SpaceSwitcher';
 import Chip from '../../../shared/components/Chip';
@@ -22,40 +23,12 @@ import GifticonCardSkeleton from '../components/GifticonCardSkeleton';
 import GifticonStats from '../components/GifticonStats';
 import NearbyGifticonBanner from '../components/NearbyGifticonBanner';
 import { getGifticonErrorMessage } from '../errors';
-import type { Gifticon, GifticonCategory } from '../types';
 import { CATEGORY_LABELS } from '../types';
+import { CATEGORY_FILTERS, EMPTY_TEXT, SORT_KEYS, SORT_LABELS } from '../gifticonFilters';
 import type { RootStackParamList } from '../../../app/RootNavigator';
 import { colors } from '../../../shared/theme/colors';
-import { daysUntil } from '../../../shared/utils/date';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Home'>;
-
-type FilterTab = 'active' | 'expired' | 'used';
-type CategoryFilter = GifticonCategory | 'all';
-type SortKey = 'name' | 'createdAt' | 'expiresAt';
-type SortDir = 'asc' | 'desc';
-
-const SORT_LABELS: Record<SortKey, string> = {
-  name: '이름',
-  createdAt: '등록일',
-  expiresAt: '만료일',
-};
-const SORT_KEYS = Object.keys(SORT_LABELS) as SortKey[];
-
-const EMPTY_TEXT: Record<FilterTab, string> = {
-  active: '등록된 기프티콘이 없어요',
-  expired: '만료된 기프티콘이 없어요',
-  used: '사용완료된 기프티콘이 없어요',
-};
-
-function isExpired(item: Gifticon): boolean {
-  return daysUntil(item.expiresAt) < 0;
-}
-
-const CATEGORY_FILTERS: CategoryFilter[] = [
-  'all',
-  ...(Object.keys(CATEGORY_LABELS) as GifticonCategory[]),
-];
 
 export default function HomeScreen({ navigation }: Props) {
   const { user } = useAuth();
@@ -77,13 +50,21 @@ export default function HomeScreen({ navigation }: Props) {
   const { items, loading, refreshing, error, refresh } =
     context.type === 'personal' ? personal : spaceGifticons;
   const nearbyItems = useNearbyGifticons(items);
-  const [tab, setTab] = useState<FilterTab>('active');
-  const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>('all');
-  const [query, setQuery] = useState('');
-  // Default matches the query's own orderBy('expiresAt','asc'), so the initial
-  // list order is unchanged until the user picks something else.
-  const [sortKey, setSortKey] = useState<SortKey>('expiresAt');
-  const [sortDir, setSortDir] = useState<SortDir>('asc');
+  const {
+    visible,
+    counts,
+    tab,
+    setTab,
+    category,
+    setCategory,
+    query,
+    setQuery,
+    sortKey,
+    setSortKey,
+    sortDir,
+    toggleSortDir,
+    isSearching,
+  } = useGifticonListView(items);
 
   useEffect(() => {
     navigation.setOptions({
@@ -94,42 +75,6 @@ export default function HomeScreen({ navigation }: Props) {
       ),
     });
   }, [navigation]);
-
-  const counts = useMemo(
-    () => ({
-      active: items.filter((item) => !item.isUsed && !isExpired(item)).length,
-      expired: items.filter((item) => !item.isUsed && isExpired(item)).length,
-      used: items.filter((item) => item.isUsed).length,
-    }),
-    [items],
-  );
-
-  const filtered = useMemo(() => {
-    const trimmedQuery = query.trim().toLowerCase();
-    return items
-      .filter((item) => {
-        if (tab === 'used') return item.isUsed;
-        return !item.isUsed && isExpired(item) === (tab === 'expired');
-      })
-      .filter((item) => categoryFilter === 'all' || item.category === categoryFilter)
-      .filter(
-        (item) =>
-          trimmedQuery === '' ||
-          item.name.toLowerCase().includes(trimmedQuery) ||
-          item.brand.toLowerCase().includes(trimmedQuery),
-      );
-  }, [items, tab, categoryFilter, query]);
-
-  const sorted = useMemo(() => {
-    const direction = sortDir === 'asc' ? 1 : -1;
-    return [...filtered].sort((a, b) => {
-      const diff =
-        sortKey === 'name'
-          ? a.name.localeCompare(b.name, 'ko')
-          : new Date(a[sortKey]).getTime() - new Date(b[sortKey]).getTime();
-      return diff * direction;
-    });
-  }, [filtered, sortKey, sortDir]);
 
   return (
     <View style={styles.container}>
@@ -187,8 +132,8 @@ export default function HomeScreen({ navigation }: Props) {
           <Chip
             key={c}
             label={c === 'all' ? '전체' : CATEGORY_LABELS[c]}
-            active={categoryFilter === c}
-            onPress={() => setCategoryFilter(c)}
+            active={category === c}
+            onPress={() => setCategory(c)}
           />
         ))}
       </ScrollView>
@@ -226,7 +171,7 @@ export default function HomeScreen({ navigation }: Props) {
         ))}
         <TouchableOpacity
           style={styles.sortDir}
-          onPress={() => setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))}
+          onPress={toggleSortDir}
           accessibilityRole="button"
           accessibilityLabel={`정렬 방향 ${sortDir === 'asc' ? '오름차순' : '내림차순'}, 눌러서 전환`}
         >
@@ -263,7 +208,7 @@ export default function HomeScreen({ navigation }: Props) {
             </View>
           )}
           <FlatList
-            data={sorted}
+            data={visible}
             keyExtractor={(item) => item.id}
             contentContainerStyle={styles.listContent}
             refreshControl={
@@ -282,7 +227,7 @@ export default function HomeScreen({ navigation }: Props) {
             ListEmptyComponent={
               <View style={styles.empty}>
                 <Text style={styles.emptyText}>
-                  {query.trim() ? '검색 결과가 없어요' : EMPTY_TEXT[tab]}
+                  {isSearching ? '검색 결과가 없어요' : EMPTY_TEXT[tab]}
                 </Text>
               </View>
             }
