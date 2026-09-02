@@ -4,7 +4,7 @@ import { Linking } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import { act, render, waitFor } from '@testing-library/react-native';
 import RootNavigator from './RootNavigator';
-import { useAuth } from '../features/auth/context/AuthContext';
+import { useCurrentUser, useAuthBootstrap } from '../features/auth/context/AuthContext';
 import { navigationRef } from './navigationRef';
 
 const configState = { isFirebaseConfigured: true };
@@ -14,7 +14,10 @@ jest.mock('../lib/firebase/config', () => ({
   },
 }));
 
-jest.mock('../features/auth/context/AuthContext', () => ({ useAuth: jest.fn() }));
+jest.mock('../features/auth/context/AuthContext', () => ({
+  useCurrentUser: jest.fn(),
+  useAuthBootstrap: jest.fn(),
+}));
 
 jest.mock('./navigationRef', () => ({
   navigationRef: { isReady: jest.fn(() => true), navigate: jest.fn() },
@@ -66,7 +69,22 @@ jest.mock('expo-notifications', () => ({
   addNotificationResponseReceivedListener: jest.fn(() => ({ remove: jest.fn() })),
 }));
 
-const mockedUseAuth = useAuth as jest.Mock;
+const mockedUseCurrentUser = useCurrentUser as jest.Mock;
+const mockedUseAuthBootstrap = useAuthBootstrap as jest.Mock;
+
+function setAuth(state: {
+  user?: { uid: string } | null;
+  initializing?: boolean;
+  authError?: string | null;
+}) {
+  mockedUseCurrentUser.mockReturnValue({ user: state.user ?? null, isAnonymous: !state.user });
+  mockedUseAuthBootstrap.mockReturnValue({
+    initializing: state.initializing ?? false,
+    authError: state.authError ?? null,
+    retryAnonymousSignIn: jest.fn(),
+  });
+}
+
 const mockedGetLastNotif = Notifications.getLastNotificationResponseAsync as jest.Mock;
 const mockedAddNotifListener = Notifications.addNotificationResponseReceivedListener as jest.Mock;
 const mockedNavRef = navigationRef as unknown as { isReady: jest.Mock; navigate: jest.Mock };
@@ -74,12 +92,7 @@ const mockedNavRef = navigationRef as unknown as { isReady: jest.Mock; navigate:
 beforeEach(() => {
   jest.clearAllMocks();
   configState.isFirebaseConfigured = true;
-  mockedUseAuth.mockReturnValue({
-    user: { uid: 'u1' },
-    initializing: false,
-    authError: null,
-    retryAnonymousSignIn: jest.fn(),
-  });
+  setAuth({ user: { uid: 'u1' } });
   mockedGetLastNotif.mockResolvedValue(null);
   mockedAddNotifListener.mockReturnValue({ remove: jest.fn() });
   mockedNavRef.isReady.mockReturnValue(true);
@@ -95,23 +108,13 @@ describe('RootNavigator', () => {
   });
 
   it('renders loading skeletons while auth is initializing', async () => {
-    mockedUseAuth.mockReturnValue({
-      user: null,
-      initializing: true,
-      authError: null,
-      retryAnonymousSignIn: jest.fn(),
-    });
+    setAuth({ user: null, initializing: true });
     const { getAllByText } = await render(<RootNavigator />);
     expect(getAllByText('skeleton')).toHaveLength(5);
   });
 
   it('renders the auth error screen when sign-in failed with no user', async () => {
-    mockedUseAuth.mockReturnValue({
-      user: null,
-      initializing: false,
-      authError: '로그인 실패',
-      retryAnonymousSignIn: jest.fn(),
-    });
+    setAuth({ user: null, authError: '로그인 실패' });
     const { getByText } = await render(<RootNavigator />);
     expect(getByText('auth error: 로그인 실패')).toBeTruthy();
   });

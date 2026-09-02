@@ -9,7 +9,7 @@ import {
   View,
 } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { useAuth } from '../../auth/context/AuthContext';
+import { useCurrentUser } from '../../auth/context/AuthContext';
 import { getSpacePreview, joinSpace } from '../services/spaceService';
 import { getSpaceErrorMessage, getSpaceWriteErrorMessage } from '../errors';
 import { extractSpaceCode } from '../inviteLink';
@@ -21,7 +21,7 @@ import { colors } from '../../../shared/theme/colors';
 type Props = NativeStackScreenProps<RootStackParamList, 'JoinSpace'>;
 
 export default function JoinSpaceScreen({ route, navigation }: Props) {
-  const { user } = useAuth();
+  const { user } = useCurrentUser();
   const [code, setCode] = useState(route.params?.spaceId ?? '');
   const [preview, setPreview] = useState<Space | null>(null);
   const [loading, setLoading] = useState(false);

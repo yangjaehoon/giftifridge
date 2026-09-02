@@ -10,7 +10,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { useAuth } from '../context/AuthContext';
+import { useAuthActions, useCurrentUser } from '../context/AuthContext';
 import { getAuthErrorMessage } from '../errors';
 import { seedDummyGifticons } from '../../gifticons/services/devSeed';
 import {
@@ -70,7 +70,8 @@ function NotificationOffsetSettings() {
 }
 
 export default function SettingsScreen() {
-  const { user, isAnonymous, signIn, linkEmail, signOut } = useAuth();
+  const { user, isAnonymous } = useCurrentUser();
+  const { signIn, linkEmail, signOut } = useAuthActions();
   const [mode, setMode] = useState<'signIn' | 'signUp'>('signUp');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');

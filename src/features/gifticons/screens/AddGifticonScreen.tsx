@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { useAuth } from '../../auth/context/AuthContext';
+import { useCurrentUser } from '../../auth/context/AuthContext';
 import { newGifticonId } from '../services/gifticonService';
 import { saveGifticon } from '../services/saveGifticon';
 import { syncGifticonReminders } from '../services/gifticonReminders';
@@ -42,7 +42,7 @@ export default function AddGifticonScreen({ navigation, route }: Props) {
   const spaceId = route.params?.spaceId;
   const gifticonId = route.params?.gifticonId;
   const isEditing = Boolean(gifticonId);
-  const { user } = useAuth();
+  const { user } = useCurrentUser();
   const { gifticon: existing, loading: loadingExisting } = useGifticon(gifticonId);
 
   // The list for whichever context this gifticon belongs to, used only to warn

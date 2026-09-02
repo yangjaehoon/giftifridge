@@ -9,7 +9,7 @@ import {
   View,
 } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { useAuth } from '../../auth/context/AuthContext';
+import { useCurrentUser } from '../../auth/context/AuthContext';
 import { createSpace, newSpaceId } from '../services/spaceService';
 import { getSpaceWriteErrorMessage } from '../errors';
 import { withTimeout, WRITE_TIMEOUT_MS } from '../../../shared/utils/withTimeout';
@@ -19,7 +19,7 @@ import { colors } from '../../../shared/theme/colors';
 type Props = NativeStackScreenProps<RootStackParamList, 'CreateSpace'>;
 
 export default function CreateSpaceScreen({ navigation }: Props) {
-  const { user } = useAuth();
+  const { user } = useCurrentUser();
   const [name, setName] = useState('');
   const [saving, setSaving] = useState(false);
   // Fixed for the life of the screen so a retry after a timeout targets the

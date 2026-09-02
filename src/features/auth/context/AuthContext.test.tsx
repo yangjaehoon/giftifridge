@@ -9,7 +9,7 @@ import {
   signInWithEmailAndPassword,
   signOut as firebaseSignOut,
 } from 'firebase/auth';
-import { AuthProvider, useAuth } from './AuthContext';
+import { AuthProvider, useAuthActions, useAuthBootstrap, useCurrentUser } from './AuthContext';
 
 jest.mock('../../../lib/firebase/config', () => ({
   auth: { currentUser: null },
@@ -34,19 +34,23 @@ const mockedOnAuthStateChanged = onAuthStateChanged as jest.Mock;
 const mockedSignInAnonymously = signInAnonymously as jest.Mock;
 const mockedLinkWithCredential = linkWithCredential as jest.Mock;
 
+type AuthValue = ReturnType<typeof useCurrentUser> &
+  ReturnType<typeof useAuthActions> &
+  ReturnType<typeof useAuthBootstrap>;
+
 // Mutable holder so tests can reach into the live context value; the field is
 // updated from an effect, never during render.
-const captured: { value: ReturnType<typeof useAuth> | null } = { value: null };
+const captured: { value: AuthValue | null } = { value: null };
 const authValue = () => {
   if (!captured.value) throw new Error('AuthProvider not rendered yet');
   return captured.value;
 };
 
 function Probe() {
-  const ctx = useAuth();
+  const ctx: AuthValue = { ...useCurrentUser(), ...useAuthActions(), ...useAuthBootstrap() };
   React.useEffect(() => {
     captured.value = ctx;
-  }, [ctx]);
+  });
   return (
     <>
       <Text testID="initializing">{String(ctx.initializing)}</Text>

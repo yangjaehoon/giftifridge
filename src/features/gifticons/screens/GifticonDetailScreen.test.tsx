@@ -3,14 +3,14 @@ import { Alert } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
 import GifticonDetailScreen from './GifticonDetailScreen';
-import { useAuth } from '../../auth/context/AuthContext';
+import { useCurrentUser } from '../../auth/context/AuthContext';
 import { useGifticon } from '../hooks/useGifticon';
 import { deleteGifticon, markGifticonUsed } from '../services/gifticonService';
 import { cancelNotifications } from '../services/notificationService';
 import { TimeoutError } from '../../../shared/utils/withTimeout';
 import type { Gifticon } from '../types';
 
-jest.mock('../../auth/context/AuthContext', () => ({ useAuth: jest.fn() }));
+jest.mock('../../auth/context/AuthContext', () => ({ useCurrentUser: jest.fn() }));
 jest.mock('../hooks/useGifticon', () => ({ useGifticon: jest.fn() }));
 jest.mock('../services/gifticonService', () => ({
   deleteGifticon: jest.fn(),
@@ -24,7 +24,7 @@ const mockedMarkUsed = markGifticonUsed as jest.Mock;
 const mockedDelete = deleteGifticon as jest.Mock;
 const mockedCancel = cancelNotifications as jest.Mock;
 const mockedClipboard = Clipboard.setStringAsync as jest.Mock;
-const mockedUseAuth = useAuth as jest.Mock;
+const mockedUseAuth = useCurrentUser as jest.Mock;
 
 function daysFromNow(days: number): string {
   const d = new Date();

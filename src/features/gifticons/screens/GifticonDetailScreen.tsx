@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { useAuth } from '../../auth/context/AuthContext';
+import { useCurrentUser } from '../../auth/context/AuthContext';
 import { deleteGifticon, markGifticonUsed } from '../services/gifticonService';
 import { cancelNotifications } from '../services/notificationService';
 import { useGifticon } from '../hooks/useGifticon';
@@ -28,7 +28,7 @@ type Props = NativeStackScreenProps<RootStackParamList, 'GifticonDetail'>;
 
 export default function GifticonDetailScreen({ route, navigation }: Props) {
   const { gifticonId } = route.params;
-  const { user } = useAuth();
+  const { user } = useCurrentUser();
   const { gifticon, loading, error, refresh } = useGifticon(gifticonId);
   const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState(false);

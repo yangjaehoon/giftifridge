@@ -2,14 +2,17 @@ import React from 'react';
 import { Alert } from 'react-native';
 import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
 import SettingsScreen from './SettingsScreen';
-import { useAuth } from '../context/AuthContext';
+import { useAuthActions, useCurrentUser } from '../context/AuthContext';
 import { seedDummyGifticons } from '../../gifticons/services/devSeed';
 import {
   getNotificationOffsets,
   setNotificationOffsets,
 } from '../../../shared/utils/notificationPrefs';
 
-jest.mock('../context/AuthContext', () => ({ useAuth: jest.fn() }));
+jest.mock('../context/AuthContext', () => ({
+  useCurrentUser: jest.fn(),
+  useAuthActions: jest.fn(),
+}));
 jest.mock('../../gifticons/services/devSeed', () => ({ seedDummyGifticons: jest.fn() }));
 jest.mock('../../../shared/utils/notificationPrefs', () => ({
   getNotificationOffsets: jest.fn(),
@@ -17,7 +20,8 @@ jest.mock('../../../shared/utils/notificationPrefs', () => ({
 }));
 jest.mock('../errors', () => ({ getAuthErrorMessage: () => '로그인에 실패했어요.' }));
 
-const mockedUseAuth = useAuth as jest.Mock;
+const mockedUseCurrentUser = useCurrentUser as jest.Mock;
+const mockedUseAuthActions = useAuthActions as jest.Mock;
 const mockedSeed = seedDummyGifticons as jest.Mock;
 const mockedGetOffsets = getNotificationOffsets as jest.Mock;
 const mockedSetOffsets = setNotificationOffsets as jest.Mock;
@@ -28,11 +32,10 @@ const authFns = {
   signOut: jest.fn(),
 };
 
-function setAuth(overrides: Record<string, unknown> = {}) {
-  mockedUseAuth.mockReturnValue({
+function setAuth(overrides: { user?: unknown; isAnonymous?: boolean } = {}) {
+  mockedUseCurrentUser.mockReturnValue({
     user: { uid: 'u1', email: null },
     isAnonymous: true,
-    ...authFns,
     ...overrides,
   });
 }
@@ -40,6 +43,7 @@ function setAuth(overrides: Record<string, unknown> = {}) {
 beforeEach(() => {
   jest.clearAllMocks();
   jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+  mockedUseAuthActions.mockReturnValue(authFns);
   mockedGetOffsets.mockResolvedValue([7, 3]);
   mockedSetOffsets.mockResolvedValue(undefined);
   setAuth();

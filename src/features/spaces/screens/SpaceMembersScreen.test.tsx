@@ -2,19 +2,19 @@ import React from 'react';
 import { Alert, Share } from 'react-native';
 import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
 import SpaceMembersScreen from './SpaceMembersScreen';
-import { useAuth } from '../../auth/context/AuthContext';
+import { useCurrentUser } from '../../auth/context/AuthContext';
 import { useSpace } from '../hooks/useSpace';
 import { deleteSpace, leaveSpace } from '../services/spaceService';
 import type { Space, SpaceMember } from '../types';
 
-jest.mock('../../auth/context/AuthContext', () => ({ useAuth: jest.fn() }));
+jest.mock('../../auth/context/AuthContext', () => ({ useCurrentUser: jest.fn() }));
 jest.mock('../hooks/useSpace', () => ({ useSpace: jest.fn() }));
 jest.mock('../services/spaceService', () => ({
   deleteSpace: jest.fn(),
   leaveSpace: jest.fn(),
 }));
 
-const mockedUseAuth = useAuth as jest.Mock;
+const mockedUseAuth = useCurrentUser as jest.Mock;
 const mockedUseSpace = useSpace as jest.Mock;
 const mockedDeleteSpace = deleteSpace as jest.Mock;
 const mockedLeaveSpace = leaveSpace as jest.Mock;

@@ -18,16 +18,24 @@ import {
 } from 'firebase/auth';
 import { auth, isFirebaseConfigured } from '../../../lib/firebase/config';
 
-interface AuthContextValue {
+interface CurrentUser {
   user: User | null;
   isAnonymous: boolean;
-  initializing: boolean;
-  authError: string | null;
-  retryAnonymousSignIn: () => void;
+}
+
+interface AuthActions {
   signIn: (email: string, password: string) => Promise<void>;
   linkEmail: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
 }
+
+interface AuthBootstrap {
+  initializing: boolean;
+  authError: string | null;
+  retryAnonymousSignIn: () => void;
+}
+
+type AuthContextValue = CurrentUser & AuthActions & AuthBootstrap;
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
@@ -109,8 +117,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
-export function useAuth() {
+function useAuthContext(): AuthContextValue {
   const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error('useAuth must be used within AuthProvider');
+  if (!ctx) throw new Error('Auth hooks must be used within AuthProvider');
   return ctx;
+}
+
+/** Just the identity — for screens that only care who is signed in. */
+export function useCurrentUser(): CurrentUser {
+  const { user, isAnonymous } = useAuthContext();
+  return { user, isAnonymous };
+}
+
+/** The sign-in/link/sign-out operations — for the Settings screen. */
+export function useAuthActions(): AuthActions {
+  const { signIn, linkEmail, signOut } = useAuthContext();
+  return { signIn, linkEmail, signOut };
+}
+
+/** Startup state — for the root navigator's gate. */
+export function useAuthBootstrap(): AuthBootstrap {
+  const { initializing, authError, retryAnonymousSignIn } = useAuthContext();
+  return { initializing, authError, retryAnonymousSignIn };
 }

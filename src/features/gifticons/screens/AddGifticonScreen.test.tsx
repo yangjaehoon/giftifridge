@@ -3,7 +3,7 @@ import { Alert } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
 import AddGifticonScreen from './AddGifticonScreen';
-import { useAuth } from '../../auth/context/AuthContext';
+import { useCurrentUser } from '../../auth/context/AuthContext';
 import { useGifticon } from '../hooks/useGifticon';
 import { useGifticons } from '../hooks/useGifticons';
 import { useSpaceGifticons } from '../hooks/useSpaceGifticons';
@@ -21,7 +21,7 @@ import { getNotificationOffsets } from '../../../shared/utils/notificationPrefs'
 import { TimeoutError } from '../../../shared/utils/withTimeout';
 import type { Gifticon } from '../types';
 
-jest.mock('../../auth/context/AuthContext', () => ({ useAuth: jest.fn() }));
+jest.mock('../../auth/context/AuthContext', () => ({ useCurrentUser: jest.fn() }));
 jest.mock('../hooks/useGifticon', () => ({ useGifticon: jest.fn() }));
 jest.mock('../hooks/useGifticons', () => ({ useGifticons: jest.fn() }));
 jest.mock('../hooks/useSpaceGifticons', () => ({ useSpaceGifticons: jest.fn() }));
@@ -49,7 +49,7 @@ jest.mock('expo-camera', () => ({
 }));
 jest.mock('@react-native-community/datetimepicker', () => () => null);
 
-const mockedUseAuth = useAuth as jest.Mock;
+const mockedUseAuth = useCurrentUser as jest.Mock;
 const mockedUseGifticon = useGifticon as jest.Mock;
 const mockedUseGifticons = useGifticons as jest.Mock;
 const mockedUseSpaceGifticons = useSpaceGifticons as jest.Mock;

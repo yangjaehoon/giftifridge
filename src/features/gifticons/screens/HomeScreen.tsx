@@ -10,7 +10,7 @@ import {
   View,
 } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { useAuth } from '../../auth/context/AuthContext';
+import { useCurrentUser } from '../../auth/context/AuthContext';
 import { useGifticons } from '../hooks/useGifticons';
 import { useSpaceGifticons } from '../hooks/useSpaceGifticons';
 import { useNearbyGifticons } from '../hooks/useNearbyGifticons';
@@ -31,7 +31,7 @@ import { colors } from '../../../shared/theme/colors';
 type Props = NativeStackScreenProps<RootStackParamList, 'Home'>;
 
 export default function HomeScreen({ navigation }: Props) {
-  const { user } = useAuth();
+  const { user } = useCurrentUser();
   const [selectedContext, setSelectedContext] = useState<HomeContext>({ type: 'personal' });
   const { spaces, loading: spacesLoading } = useMySpaces(user?.uid);
 

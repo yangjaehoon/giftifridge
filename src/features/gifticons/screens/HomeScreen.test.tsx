@@ -1,20 +1,20 @@
 import React from 'react';
 import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
 import HomeScreen from './HomeScreen';
-import { useAuth } from '../../auth/context/AuthContext';
+import { useCurrentUser } from '../../auth/context/AuthContext';
 import { useGifticons } from '../hooks/useGifticons';
 import { useSpaceGifticons } from '../hooks/useSpaceGifticons';
 import { useNearbyGifticons } from '../hooks/useNearbyGifticons';
 import { useMySpaces } from '../../spaces/hooks/useMySpaces';
 import type { Gifticon } from '../types';
 
-jest.mock('../../auth/context/AuthContext', () => ({ useAuth: jest.fn() }));
+jest.mock('../../auth/context/AuthContext', () => ({ useCurrentUser: jest.fn() }));
 jest.mock('../hooks/useGifticons', () => ({ useGifticons: jest.fn() }));
 jest.mock('../hooks/useSpaceGifticons', () => ({ useSpaceGifticons: jest.fn() }));
 jest.mock('../hooks/useNearbyGifticons', () => ({ useNearbyGifticons: jest.fn() }));
 jest.mock('../../spaces/hooks/useMySpaces', () => ({ useMySpaces: jest.fn() }));
 
-const mockedUseAuth = useAuth as jest.Mock;
+const mockedUseAuth = useCurrentUser as jest.Mock;
 const mockedUseGifticons = useGifticons as jest.Mock;
 const mockedUseSpaceGifticons = useSpaceGifticons as jest.Mock;
 const mockedUseNearby = useNearbyGifticons as jest.Mock;

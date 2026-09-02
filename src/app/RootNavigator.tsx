@@ -3,7 +3,7 @@ import { Linking, StyleSheet, View } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import * as Notifications from 'expo-notifications';
-import { useAuth } from '../features/auth/context/AuthContext';
+import { useCurrentUser, useAuthBootstrap } from '../features/auth/context/AuthContext';
 import { isFirebaseConfigured } from '../lib/firebase/config';
 import HomeScreen from '../features/gifticons/screens/HomeScreen';
 import AddGifticonScreen from '../features/gifticons/screens/AddGifticonScreen';
@@ -47,7 +47,8 @@ function openJoinSpaceFromUrl(url: string | null) {
 }
 
 export default function RootNavigator() {
-  const { user, initializing, authError, retryAnonymousSignIn } = useAuth();
+  const { user } = useCurrentUser();
+  const { initializing, authError, retryAnonymousSignIn } = useAuthBootstrap();
 
   useEffect(() => {
     Notifications.getLastNotificationResponseAsync()

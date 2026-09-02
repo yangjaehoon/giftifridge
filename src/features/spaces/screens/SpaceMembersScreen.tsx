@@ -10,7 +10,7 @@ import {
   View,
 } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { useAuth } from '../../auth/context/AuthContext';
+import { useCurrentUser } from '../../auth/context/AuthContext';
 import { useSpace } from '../hooks/useSpace';
 import SpaceMembersSkeleton from '../components/SpaceMembersSkeleton';
 import { deleteSpace, leaveSpace } from '../services/spaceService';
@@ -26,7 +26,7 @@ type Props = NativeStackScreenProps<RootStackParamList, 'SpaceMembers'>;
 
 export default function SpaceMembersScreen({ route, navigation }: Props) {
   const { spaceId } = route.params;
-  const { user } = useAuth();
+  const { user } = useCurrentUser();
   const { space, members, loading, error, refresh } = useSpace(spaceId);
   const [busy, setBusy] = useState(false);
 
