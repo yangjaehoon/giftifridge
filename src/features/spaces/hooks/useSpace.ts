@@ -1,40 +1,41 @@
 import { useEffect, useState } from 'react';
+import { useFirestoreDoc } from '../../../shared/hooks/useFirestoreDoc';
 import { subscribeToSpace, subscribeToSpaceMembers } from '../services/spaceService';
 import type { Space, SpaceMember } from '../types';
 
 export function useSpace(spaceId: string | undefined) {
-  const [space, setSpace] = useState<Space | null>(null);
+  const {
+    data: space,
+    loading,
+    error: spaceError,
+    refresh: refreshSpace,
+  } = useFirestoreDoc<Space>(spaceId, subscribeToSpace);
+
   const [members, setMembers] = useState<SpaceMember[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<Error | null>(null);
-  const [refreshKey, setRefreshKey] = useState(0);
+  const [membersError, setMembersError] = useState<Error | null>(null);
+  const [membersRefreshKey, setMembersRefreshKey] = useState(0);
 
   useEffect(() => {
     if (!spaceId) return;
-    const unsubscribeSpace = subscribeToSpace(
+    const unsubscribe = subscribeToSpaceMembers(
       spaceId,
       (next) => {
-        setSpace(next);
-        setLoading(false);
-        setError(null);
+        setMembers(next);
+        setMembersError(null);
       },
-      (err) => {
-        setError(err);
-        setLoading(false);
-      },
+      setMembersError,
     );
-    const unsubscribeMembers = subscribeToSpaceMembers(spaceId, setMembers, setError);
-    return () => {
-      unsubscribeSpace();
-      unsubscribeMembers();
-    };
-  }, [spaceId, refreshKey]);
+    return unsubscribe;
+  }, [spaceId, membersRefreshKey]);
 
   return {
-    space: spaceId ? space : null,
+    space,
     members: spaceId ? members : [],
-    loading: spaceId ? loading : false,
-    error,
-    refresh: () => setRefreshKey((k) => k + 1),
+    loading,
+    error: spaceError ?? membersError,
+    refresh: () => {
+      refreshSpace();
+      setMembersRefreshKey((k) => k + 1);
+    },
   };
 }
