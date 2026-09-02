@@ -1,4 +1,13 @@
-import { parseExpiryDateFromText } from './ocrService';
+import TextRecognition from '@react-native-ml-kit/text-recognition';
+import { parseExpiryDateFromText, recognizeExpiryDate } from './ocrService';
+
+jest.mock('@react-native-ml-kit/text-recognition', () => ({
+  __esModule: true,
+  default: { recognize: jest.fn() },
+  TextRecognitionScript: { KOREAN: 'korean' },
+}));
+
+const mockedRecognize = TextRecognition.recognize as jest.Mock;
 
 function isoDate(year: number, month: number, day: number): string {
   return new Date(year, month - 1, day).toISOString();
@@ -41,5 +50,30 @@ describe('parseExpiryDateFromText', () => {
 
   it('rejects an invalid month/day', () => {
     expect(parseExpiryDateFromText('2026.13.40')).toBeNull();
+  });
+});
+
+describe('recognizeExpiryDate', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('runs OCR with the Korean script and parses the recognized text', async () => {
+    mockedRecognize.mockResolvedValue({ text: '유효기간 2026.03.15' });
+
+    await expect(recognizeExpiryDate('file:///gifticon.jpg')).resolves.toBe(isoDate(2026, 3, 15));
+    expect(mockedRecognize).toHaveBeenCalledWith('file:///gifticon.jpg', 'korean');
+  });
+
+  it('returns null when OCR throws', async () => {
+    mockedRecognize.mockRejectedValue(new Error('ml kit unavailable'));
+
+    await expect(recognizeExpiryDate('file:///gifticon.jpg')).resolves.toBeNull();
+  });
+
+  it('returns null when the recognized text has no parseable date', async () => {
+    mockedRecognize.mockResolvedValue({ text: '스타벅스 아메리카노' });
+
+    await expect(recognizeExpiryDate('file:///gifticon.jpg')).resolves.toBeNull();
   });
 });

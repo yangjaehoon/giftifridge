@@ -1,5 +1,11 @@
 import * as Notifications from 'expo-notifications';
-import { scheduleExpiryNotifications, cancelNotifications } from './notificationService';
+import * as Device from 'expo-device';
+import { Platform } from 'react-native';
+import {
+  scheduleExpiryNotifications,
+  cancelNotifications,
+  ensureNotificationPermission,
+} from './notificationService';
 
 jest.mock('expo-device', () => ({ isDevice: true }));
 jest.mock('expo-notifications', () => ({
@@ -15,6 +21,60 @@ jest.mock('expo-notifications', () => ({
 }));
 
 const mockedNotifications = Notifications as jest.Mocked<typeof Notifications>;
+
+describe('notification handler', () => {
+  it('shows a banner and list entry without sound or badge', async () => {
+    const [{ handleNotification }] = (Notifications.setNotificationHandler as jest.Mock).mock
+      .calls[0];
+    await expect(handleNotification()).resolves.toEqual({
+      shouldShowBanner: true,
+      shouldShowList: true,
+      shouldPlaySound: false,
+      shouldSetBadge: false,
+    });
+  });
+});
+
+describe('ensureNotificationPermission', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    (Device as { isDevice: boolean }).isDevice = true;
+  });
+
+  afterEach(() => {
+    Platform.OS = 'ios';
+  });
+
+  it('returns false on a simulator without asking for permission', async () => {
+    (Device as { isDevice: boolean }).isDevice = false;
+    await expect(ensureNotificationPermission()).resolves.toBe(false);
+    expect(mockedNotifications.getPermissionsAsync).not.toHaveBeenCalled();
+  });
+
+  it('does not re-request when permission is already granted', async () => {
+    mockedNotifications.getPermissionsAsync.mockResolvedValue({ status: 'granted' } as never);
+    await expect(ensureNotificationPermission()).resolves.toBe(true);
+    expect(mockedNotifications.requestPermissionsAsync).not.toHaveBeenCalled();
+  });
+
+  it('requests permission when not granted and reports the result', async () => {
+    mockedNotifications.getPermissionsAsync.mockResolvedValue({ status: 'denied' } as never);
+    mockedNotifications.requestPermissionsAsync.mockResolvedValue({ status: 'denied' } as never);
+    await expect(ensureNotificationPermission()).resolves.toBe(false);
+  });
+
+  it('creates the default Android notification channel', async () => {
+    Platform.OS = 'android';
+    mockedNotifications.getPermissionsAsync.mockResolvedValue({ status: 'granted' } as never);
+
+    await ensureNotificationPermission();
+
+    expect(mockedNotifications.setNotificationChannelAsync).toHaveBeenCalledWith(
+      'default',
+      expect.objectContaining({ name: 'default' }),
+    );
+  });
+});
 
 function daysFromNow(days: number): string {
   const d = new Date();

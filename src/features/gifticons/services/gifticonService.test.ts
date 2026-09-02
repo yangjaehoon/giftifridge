@@ -10,6 +10,7 @@ import {
   subscribeToGifticon,
   subscribeToGifticons,
   subscribeToSpaceGifticons,
+  updateGifticon,
 } from './gifticonService';
 import type { Gifticon, NewGifticon } from '../types';
 
@@ -113,6 +114,43 @@ describe('createGifticon', () => {
 
     expect(mockedSetDoc.mock.calls[0][0]).toBe('doc:gifticons/gift-x');
     expect(mockedSetDoc.mock.calls[1][0]).toBe('doc:gifticons/gift-x');
+  });
+});
+
+describe('updateGifticon', () => {
+  it('writes cleared optional fields as null rather than omitting them', async () => {
+    await updateGifticon('gift-1', makeNewGifticon({ barcode: undefined, amount: undefined }));
+
+    expect(doc).toHaveBeenCalledWith('mock-db', 'gifticons', 'gift-1');
+    const [, update] = mockedUpdateDoc.mock.calls[0];
+    expect(update).toEqual({
+      name: '아메리카노',
+      brand: '스타벅스',
+      category: 'cafe',
+      imageUrl: 'data:image/jpeg;base64,xyz',
+      expiresAt: '2026-08-01T00:00:00.000Z',
+      barcode: null,
+      amount: null,
+      location: null,
+    });
+  });
+
+  it('keeps provided optional values', async () => {
+    await updateGifticon(
+      'gift-1',
+      makeNewGifticon({
+        barcode: '8801234',
+        amount: 5000,
+        location: { latitude: 1, longitude: 2 },
+      }),
+    );
+
+    const [, update] = mockedUpdateDoc.mock.calls[0];
+    expect(update).toMatchObject({
+      barcode: '8801234',
+      amount: 5000,
+      location: { latitude: 1, longitude: 2 },
+    });
   });
 });
 
