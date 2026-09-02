@@ -68,7 +68,7 @@ function validGifticon(overrides: Record<string, unknown> = {}) {
     brand: 'Starbucks',
     category: 'cafe',
     imageUrl: 'data:image/jpeg;base64,AAAA',
-    expiresAt: '2099-01-01T00:00:00.000Z',
+    expiresAt: '2099-01-01',
     isUsed: false,
     createdAt: '2020-01-01T00:00:00.000Z',
     ...overrides,
@@ -117,6 +117,16 @@ describe('gifticon creation', () => {
       setDoc(
         doc(alice, 'gifticons', 'g10'),
         validGifticon({ ownerId: 'alice', imageUrl: 'x'.repeat(700001) }),
+      ),
+    );
+  });
+
+  it('denies creating a gifticon whose expiresAt is not a YYYY-MM-DD calendar day', async () => {
+    const alice = testEnv.authenticatedContext('alice').firestore();
+    await assertFails(
+      setDoc(
+        doc(alice, 'gifticons', 'g11'),
+        validGifticon({ ownerId: 'alice', expiresAt: '2099-01-01T00:00:00.000Z' }),
       ),
     );
   });

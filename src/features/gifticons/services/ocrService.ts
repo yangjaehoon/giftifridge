@@ -1,4 +1,5 @@
 import TextRecognition, { TextRecognitionScript } from '@react-native-ml-kit/text-recognition';
+import { toDateString } from '../../../shared/utils/date';
 
 const PREFIX_KEYWORDS = ['유효기간', '유효기한', '만료'];
 const SUFFIX_KEYWORDS = ['까지'];
@@ -48,7 +49,7 @@ function hasNearbyKeyword(text: string, match: DateMatch): boolean {
 
 /**
  * Finds a single, unambiguous expiry-date-looking substring in OCR text and
- * normalizes it to an ISO date string. Returns null whenever the result would
+ * normalizes it to a "YYYY-MM-DD" string. Returns null whenever the result would
  * be a guess (no dates found, or multiple dates with no keyword to disambiguate).
  */
 export function parseExpiryDateFromText(text: string): string | null {
@@ -60,7 +61,7 @@ export function parseExpiryDateFromText(text: string): string | null {
   if (candidates.length !== 1) return null;
 
   const { year, month, day } = candidates[0];
-  return new Date(year, month - 1, day).toISOString();
+  return toDateString(new Date(year, month - 1, day));
 }
 
 export async function recognizeExpiryDate(imageUri: string): Promise<string | null> {

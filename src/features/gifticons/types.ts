@@ -17,8 +17,10 @@ export interface Gifticon {
   barcode?: string;
   amount?: number;
   imageUrl: string;
+  /** Calendar day, "YYYY-MM-DD" (see shared/utils/date). */
   expiresAt: string;
   isUsed: boolean;
+  /** Full ISO instant. */
   usedAt?: string;
   notificationIds?: string[];
   location?: { latitude: number; longitude: number };

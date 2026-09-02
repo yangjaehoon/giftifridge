@@ -31,7 +31,7 @@ import GifticonDetailSkeleton from '../components/GifticonDetailSkeleton';
 import type { GifticonCategory, NewGifticon } from '../types';
 import { CATEGORY_LABELS } from '../types';
 import Chip from '../../../shared/components/Chip';
-import { formatDate } from '../../../shared/utils/date';
+import { formatDate, parseDate, toDateString } from '../../../shared/utils/date';
 import { getCurrentLocation } from '../../../shared/utils/location';
 import { isPermissionDenied } from '../../../shared/utils/firebaseError';
 import { withTimeout, TimeoutError, WRITE_TIMEOUT_MS } from '../../../shared/utils/withTimeout';
@@ -123,7 +123,7 @@ export default function AddGifticonScreen({ navigation, route }: Props) {
       setAmount(existing.amount ? String(existing.amount) : '');
       setCategory(existing.category);
       setBarcode(existing.barcode ?? '');
-      setExpiresAt(new Date(existing.expiresAt));
+      setExpiresAt(parseDate(existing.expiresAt));
       setLocation(existing.location ?? null);
       setHydrated(true);
     });
@@ -150,11 +150,11 @@ export default function AddGifticonScreen({ navigation, route }: Props) {
     setDateAutoDetected(false);
     setRecognizingDate(true);
     try {
-      const isoDate = await recognizeExpiryDate(uri);
+      const detected = await recognizeExpiryDate(uri);
       // A newer image was picked while this OCR was running — discard the result.
       if (run !== ocrRunRef.current) return;
-      if (isoDate && !dateManuallyEditedRef.current) {
-        setExpiresAt(new Date(isoDate));
+      if (detected && !dateManuallyEditedRef.current) {
+        setExpiresAt(parseDate(detected));
         setDateAutoDetected(true);
       }
     } finally {
@@ -238,7 +238,7 @@ export default function AddGifticonScreen({ navigation, route }: Props) {
 
     setSaving(true);
     try {
-      const expiresAtIso = expiresAt.toISOString();
+      const expiresAtDate = toDateString(expiresAt);
       const imageChanged = imageUri !== originalImageUrl;
       const id = await withTimeout(
         (async () => {
@@ -250,7 +250,7 @@ export default function AddGifticonScreen({ navigation, route }: Props) {
             barcode: barcode.trim() || undefined,
             amount: amount.trim() ? Number(amount) : undefined,
             imageUrl,
-            expiresAt: expiresAtIso,
+            expiresAt: expiresAtDate,
             location: location ?? undefined,
             spaceId,
           };
@@ -266,7 +266,7 @@ export default function AddGifticonScreen({ navigation, route }: Props) {
       // The gifticon itself is saved at this point; reminders are a best-effort
       // follow-up that must never surface as a save failure.
       await syncGifticonReminders({
-        gifticon: { id, name: name.trim(), brand: brand.trim(), expiresAt: expiresAtIso },
+        gifticon: { id, name: name.trim(), brand: brand.trim(), expiresAt: expiresAtDate },
         isOwner: !isEditing || existing?.ownerId === user.uid,
         isEditing,
         previousNotificationIds: existing?.notificationIds,
@@ -396,7 +396,7 @@ export default function AddGifticonScreen({ navigation, route }: Props) {
         {recognizingDate && <ActivityIndicator size="small" color={colors.primary} />}
       </View>
       <TouchableOpacity style={styles.input} onPress={() => setShowDatePicker(true)}>
-        <Text>{formatDate(expiresAt.toISOString())}</Text>
+        <Text>{formatDate(toDateString(expiresAt))}</Text>
       </TouchableOpacity>
       {dateAutoDetected && (
         <Text style={styles.ocrHint}>사진에서 유효기한을 자동으로 인식했어요. 확인해주세요.</Text>

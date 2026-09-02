@@ -2,6 +2,7 @@ import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
 import { Platform } from 'react-native';
 import type { Gifticon } from '../types';
+import { parseDate } from '../../../shared/utils/date';
 
 let initialized = false;
 
@@ -68,7 +69,7 @@ export async function scheduleExpiryNotifications(
 
   const triggers = offsets
     .map((daysBefore) => {
-      const date = new Date(gifticon.expiresAt);
+      const date = parseDate(gifticon.expiresAt);
       date.setDate(date.getDate() - daysBefore);
       date.setHours(9, 0, 0, 0);
       return { daysBefore, date };

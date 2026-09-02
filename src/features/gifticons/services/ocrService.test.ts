@@ -10,7 +10,7 @@ jest.mock('@react-native-ml-kit/text-recognition', () => ({
 const mockedRecognize = TextRecognition.recognize as jest.Mock;
 
 function isoDate(year: number, month: number, day: number): string {
-  return new Date(year, month - 1, day).toISOString();
+  return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 }
 
 describe('parseExpiryDateFromText', () => {

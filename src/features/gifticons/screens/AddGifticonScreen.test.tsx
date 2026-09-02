@@ -88,7 +88,7 @@ const existingGifticon: Gifticon = {
   brand: '기존스타벅스',
   category: 'cafe',
   imageUrl: 'data:image/jpeg;base64,existing',
-  expiresAt: '2027-01-01T00:00:00.000Z',
+  expiresAt: '2027-01-01',
   isUsed: false,
   createdAt: '2026-01-01T00:00:00.000Z',
   amount: 5000,
@@ -144,7 +144,7 @@ describe('AddGifticonScreen — create', () => {
   });
 
   it('picks an image, runs OCR, and clears the image field error', async () => {
-    mockedRecognize.mockResolvedValue('2026-12-31T00:00:00.000Z');
+    mockedRecognize.mockResolvedValue('2026-12-31');
     const { getByText, queryByText } = await renderScreen(undefined);
 
     await pickImage(getByText);
@@ -170,8 +170,8 @@ describe('AddGifticonScreen — create', () => {
     await act(async () => fireEvent.press(getByTestId('image-picker')));
 
     // B's OCR resolves first with a date, then A's resolves late with a different one.
-    await act(async () => resolvers[1]('2027-05-05T00:00:00.000Z'));
-    await act(async () => resolvers[0]('2020-01-01T00:00:00.000Z'));
+    await act(async () => resolvers[1]('2027-05-05'));
+    await act(async () => resolvers[0]('2020-01-01'));
 
     expect(getByText('2027.05.05')).toBeTruthy();
     expect(queryByText('2020.01.01')).toBeNull();
@@ -195,7 +195,12 @@ describe('AddGifticonScreen — create', () => {
     const [draftId, uid, data] = mockedCreate.mock.calls[0];
     expect(draftId).toBe('draft-id');
     expect(uid).toBe('u1');
-    expect(data).toMatchObject({ name: '아메리카노', brand: '스타벅스', amount: 4500 });
+    expect(data).toMatchObject({
+      name: '아메리카노',
+      brand: '스타벅스',
+      amount: 4500,
+      expiresAt: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
+    });
     expect(mockedSchedule).toHaveBeenCalled();
     expect(mockedSetNotifIds).toHaveBeenCalledWith('draft-id', ['notif-1']);
     await waitFor(() => expect(navigation.goBack).toHaveBeenCalled());

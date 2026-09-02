@@ -32,7 +32,7 @@ service cloud.firestore {
         && data.brand is string && data.brand.size() > 0 && data.brand.size() <= 200
         && data.category in ['cafe', 'convenience', 'restaurant', 'culture', 'etc']
         && data.imageUrl is string && data.imageUrl.size() > 0 && data.imageUrl.size() <= 700000
-        && data.expiresAt is string
+        && data.expiresAt is string && data.expiresAt.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
         && data.isUsed is bool
         && data.createdAt is string
         && (!('barcode' in data) || data.barcode == null
