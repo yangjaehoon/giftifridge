@@ -1,4 +1,3 @@
-import * as ImageManipulator from 'expo-image-manipulator';
 import {
   deleteDoc,
   docRef,
@@ -8,16 +7,10 @@ import {
   updateDoc,
   where,
 } from '../../../lib/firebase/firestore';
-import {
-  deleteObject,
-  getDownloadURL,
-  storageRef,
-  uploadBytes,
-} from '../../../lib/firebase/storage';
+import { deleteGifticonImage } from './gifticonImage';
 import {
   createGifticon,
   deleteGifticon,
-  deleteGifticonImage,
   markGifticonUsed,
   newGifticonId,
   setGifticonNotificationIds,
@@ -25,7 +18,6 @@ import {
   subscribeToGifticons,
   subscribeToSpaceGifticons,
   updateGifticon,
-  uploadGifticonImage,
 } from './gifticonService';
 import type { Gifticon, NewGifticon } from '../types';
 
@@ -42,37 +34,15 @@ jest.mock('../../../lib/firebase/firestore', () => ({
   where: jest.fn((field, op, value) => `where:${field}${op}${value}`),
 }));
 
-jest.mock('../../../lib/firebase/storage', () => ({
-  storageRef: jest.fn((path: string) => `ref:${path}`),
-  uploadBytes: jest.fn(),
-  getDownloadURL: jest.fn(),
-  deleteObject: jest.fn(),
-}));
-
-jest.mock('expo-image-manipulator', () => ({
-  manipulateAsync: jest.fn(),
-  SaveFormat: { JPEG: 'jpeg' },
+jest.mock('./gifticonImage', () => ({
+  deleteGifticonImage: jest.fn(),
 }));
 
 const mockedSetDoc = setDoc as jest.Mock;
 const mockedDeleteDoc = deleteDoc as jest.Mock;
 const mockedOnSnapshot = onSnapshot as jest.Mock;
 const mockedUpdateDoc = updateDoc as jest.Mock;
-const mockedManipulateAsync = ImageManipulator.manipulateAsync as jest.Mock;
-const mockedUploadBytes = uploadBytes as jest.Mock;
-const mockedGetDownloadURL = getDownloadURL as jest.Mock;
-const mockedDeleteObject = deleteObject as jest.Mock;
-const mockedRef = storageRef as jest.Mock;
-
-const originalFetch = global.fetch;
-beforeAll(() => {
-  global.fetch = jest.fn(async () => ({
-    blob: async () => 'mock-blob',
-  })) as unknown as typeof fetch;
-});
-afterAll(() => {
-  global.fetch = originalFetch;
-});
+const mockedDeleteGifticonImage = deleteGifticonImage as jest.Mock;
 
 function makeNewGifticon(overrides: Partial<NewGifticon> = {}): NewGifticon {
   return {
@@ -312,66 +282,26 @@ describe('setGifticonNotificationIds', () => {
 });
 
 describe('deleteGifticon', () => {
-  beforeEach(() => {
-    mockedDeleteObject.mockResolvedValue(undefined);
-  });
+  it('deletes the Firestore doc and hands the image off for best-effort cleanup', async () => {
+    mockedDeleteGifticonImage.mockResolvedValue(undefined);
 
-  it('deletes the Firestore doc and best-effort removes the Storage image', async () => {
-    const gifticon = { id: 'gift-1' } as Gifticon;
-
-    await deleteGifticon(gifticon);
+    await deleteGifticon({ id: 'gift-1' } as Gifticon);
 
     expect(docRef).toHaveBeenCalledWith('gifticons', 'gift-1');
     expect(mockedDeleteDoc).toHaveBeenCalledTimes(1);
-    expect(mockedRef).toHaveBeenCalledWith('gifticons/gift-1.jpg');
-    expect(mockedDeleteObject).toHaveBeenCalledWith('ref:gifticons/gift-1.jpg');
+    expect(mockedDeleteGifticonImage).toHaveBeenCalledWith('gift-1');
   });
 
-  it('does not fail the delete if the image is already gone', async () => {
-    mockedDeleteObject.mockRejectedValue(new Error('object-not-found'));
+  it('does not await the image cleanup (delete succeeds before it settles)', async () => {
+    let resolveCleanup: () => void = () => {};
+    mockedDeleteGifticonImage.mockReturnValue(
+      new Promise<void>((resolve) => {
+        resolveCleanup = resolve;
+      }),
+    );
 
     await expect(deleteGifticon({ id: 'gift-1' } as Gifticon)).resolves.toBeUndefined();
     expect(mockedDeleteDoc).toHaveBeenCalledTimes(1);
-  });
-});
-
-describe('deleteGifticonImage', () => {
-  it('swallows a missing-object error', async () => {
-    mockedDeleteObject.mockRejectedValue(new Error('not found'));
-    await expect(deleteGifticonImage('gift-9')).resolves.toBeUndefined();
-  });
-});
-
-describe('uploadGifticonImage', () => {
-  beforeEach(() => {
-    mockedManipulateAsync.mockResolvedValue({ uri: 'file:///resized.jpg' });
-    mockedUploadBytes.mockResolvedValue(undefined);
-    mockedGetDownloadURL.mockResolvedValue(
-      'https://storage.example/gifticons/gift-1.jpg?token=abc',
-    );
-  });
-
-  it('resizes, uploads to the id-keyed path, and returns the download URL', async () => {
-    const url = await uploadGifticonImage('gift-1', 'file:///photo.jpg');
-
-    expect(mockedManipulateAsync).toHaveBeenCalledWith(
-      'file:///photo.jpg',
-      [{ resize: { width: 900 } }],
-      expect.objectContaining({ compress: 0.5, format: 'jpeg' }),
-    );
-    expect(global.fetch).toHaveBeenCalledWith('file:///resized.jpg');
-    expect(mockedRef).toHaveBeenCalledWith('gifticons/gift-1.jpg');
-    expect(mockedUploadBytes).toHaveBeenCalledWith('ref:gifticons/gift-1.jpg', 'mock-blob', {
-      contentType: 'image/jpeg',
-    });
-    expect(url).toBe('https://storage.example/gifticons/gift-1.jpg?token=abc');
-  });
-
-  it('overwrites the same object on a retry (id-keyed path)', async () => {
-    await uploadGifticonImage('gift-1', 'file:///a.jpg');
-    await uploadGifticonImage('gift-1', 'file:///b.jpg');
-
-    expect(mockedUploadBytes.mock.calls[0][0]).toBe('ref:gifticons/gift-1.jpg');
-    expect(mockedUploadBytes.mock.calls[1][0]).toBe('ref:gifticons/gift-1.jpg');
+    resolveCleanup();
   });
 });

@@ -1,9 +1,13 @@
-import { createGifticon, updateGifticon, uploadGifticonImage } from './gifticonService';
+import { createGifticon, updateGifticon } from './gifticonService';
+import { uploadGifticonImage } from './gifticonImage';
 import { saveGifticon } from './saveGifticon';
 
 jest.mock('./gifticonService', () => ({
   createGifticon: jest.fn(),
   updateGifticon: jest.fn(),
+}));
+
+jest.mock('./gifticonImage', () => ({
   uploadGifticonImage: jest.fn(),
 }));
 

@@ -1,4 +1,5 @@
-import { createGifticon, updateGifticon, uploadGifticonImage } from './gifticonService';
+import { createGifticon, updateGifticon } from './gifticonService';
+import { uploadGifticonImage } from './gifticonImage';
 import { withTimeout, WRITE_TIMEOUT_MS } from '../../../shared/utils/withTimeout';
 import type { NewGifticon } from '../types';
 

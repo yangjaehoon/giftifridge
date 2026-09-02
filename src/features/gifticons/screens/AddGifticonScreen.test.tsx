@@ -9,11 +9,11 @@ import { useGifticons } from '../hooks/useGifticons';
 import { useSpaceGifticons } from '../hooks/useSpaceGifticons';
 import {
   createGifticon,
-  uploadGifticonImage,
   newGifticonId,
   setGifticonNotificationIds,
   updateGifticon,
 } from '../services/gifticonService';
+import { uploadGifticonImage } from '../services/gifticonImage';
 import { cancelNotifications, scheduleExpiryNotifications } from '../services/notificationService';
 import { recognizeExpiryDate } from '../services/ocrService';
 import { getCurrentLocation } from '../../../shared/utils/location';
@@ -27,11 +27,11 @@ jest.mock('../hooks/useGifticons', () => ({ useGifticons: jest.fn() }));
 jest.mock('../hooks/useSpaceGifticons', () => ({ useSpaceGifticons: jest.fn() }));
 jest.mock('../services/gifticonService', () => ({
   createGifticon: jest.fn(),
-  uploadGifticonImage: jest.fn(),
   newGifticonId: jest.fn(() => 'draft-id'),
   setGifticonNotificationIds: jest.fn(),
   updateGifticon: jest.fn(),
 }));
+jest.mock('../services/gifticonImage', () => ({ uploadGifticonImage: jest.fn() }));
 jest.mock('../services/notificationService', () => ({
   cancelNotifications: jest.fn(),
   scheduleExpiryNotifications: jest.fn(),

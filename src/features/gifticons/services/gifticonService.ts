@@ -9,80 +9,12 @@ import {
   setDoc,
   updateDoc,
   where,
-  type DocumentData,
 } from '../../../lib/firebase/firestore';
-import {
-  deleteObject,
-  getDownloadURL,
-  storageRef,
-  uploadBytes,
-} from '../../../lib/firebase/storage';
-import * as ImageManipulator from 'expo-image-manipulator';
+import { deleteGifticonImage } from './gifticonImage';
+import { omitUndefined, toGifticon } from './gifticonMapper';
 import type { Gifticon, NewGifticon } from '../types';
 
 const COLLECTION = 'gifticons';
-const IMAGE_MAX_DIMENSION = 900;
-const IMAGE_COMPRESS_QUALITY = 0.5;
-
-function imageRef(gifticonId: string) {
-  return storageRef(`gifticons/${gifticonId}.jpg`);
-}
-
-/**
- * Resizes/compresses the picked image and uploads it to Storage, returning its
- * download URL. Only the URL goes on the Firestore doc — a base64 image would
- * push the doc toward the 1 MiB limit and force every space member's onSnapshot
- * to re-download it on any write. The object is keyed by the gifticon id, so a
- * retry after a timeout overwrites the same file instead of orphaning one.
- */
-export async function uploadGifticonImage(gifticonId: string, localUri: string): Promise<string> {
-  const resized = await ImageManipulator.manipulateAsync(
-    localUri,
-    [{ resize: { width: IMAGE_MAX_DIMENSION } }],
-    { compress: IMAGE_COMPRESS_QUALITY, format: ImageManipulator.SaveFormat.JPEG },
-  );
-  const blob = await (await fetch(resized.uri)).blob();
-  const objectRef = imageRef(gifticonId);
-  await uploadBytes(objectRef, blob, { contentType: 'image/jpeg' });
-  return getDownloadURL(objectRef);
-}
-
-/** Best-effort removal of a gifticon's Storage image (called on delete). */
-export async function deleteGifticonImage(gifticonId: string): Promise<void> {
-  try {
-    await deleteObject(imageRef(gifticonId));
-  } catch {
-    // already gone, or never uploaded (e.g. an old base64 doc)
-  }
-}
-
-// Firestore rejects any field explicitly set to `undefined` (e.g. an unset
-// optional barcode/amount/location/spaceId) unless ignoreUndefinedProperties
-// is configured, which it isn't — so strip those keys before writing.
-function omitUndefined<T extends object>(data: T): Partial<T> {
-  return Object.fromEntries(
-    Object.entries(data).filter(([, value]) => value !== undefined),
-  ) as Partial<T>;
-}
-
-// Firestore only guarantees the field types the security rules enforce going
-// forward; a doc written before those rules (or by a future schema change) can
-// still be missing required strings, which would render as `D-NaN` and crash
-// date math downstream. Drop anything that isn't a usable Gifticon.
-function toGifticon(id: string, data: DocumentData): Gifticon | null {
-  if (
-    typeof data.ownerId !== 'string' ||
-    typeof data.name !== 'string' ||
-    typeof data.brand !== 'string' ||
-    typeof data.category !== 'string' ||
-    typeof data.imageUrl !== 'string' ||
-    typeof data.expiresAt !== 'string' ||
-    Number.isNaN(new Date(data.expiresAt).getTime())
-  ) {
-    return null;
-  }
-  return { id, ...(data as Omit<Gifticon, 'id'>) };
-}
 
 // A client-side id, so a create that is retried after a timeout (which doesn't
 // cancel the original write) overwrites the same doc instead of inserting a
