@@ -1,8 +1,7 @@
-import React, { useEffect } from 'react';
-import { Linking, StyleSheet, View } from 'react-native';
+import React from 'react';
+import { StyleSheet, View } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import * as Notifications from 'expo-notifications';
 import { useCurrentUser, useAuthBootstrap } from '../features/auth/context/AuthContext';
 import { isFirebaseConfigured } from '../lib/firebase/config';
 import HomeScreen from '../features/gifticons/screens/HomeScreen';
@@ -17,8 +16,8 @@ import SetupRequiredScreen from './SetupRequiredScreen';
 import AuthErrorScreen from './AuthErrorScreen';
 import OfflineBanner from '../shared/components/OfflineBanner';
 import { navigationRef } from './navigationRef';
-import { navigateWhenReady, flushDeferredNavigations } from './deferredNavigation';
-import { parseInviteUrl } from '../features/spaces/inviteLink';
+import { flushDeferredNavigations } from './deferredNavigation';
+import { useDeepLinks } from './useDeepLinks';
 
 export type RootStackParamList = {
   Home: undefined;
@@ -32,45 +31,11 @@ export type RootStackParamList = {
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
-function openGifticonFromNotification(response: Notifications.NotificationResponse | null) {
-  const gifticonId = response?.notification.request.content.data?.gifticonId;
-  if (typeof gifticonId === 'string') {
-    navigateWhenReady(() => navigationRef.navigate('GifticonDetail', { gifticonId }));
-  }
-}
-
-function openJoinSpaceFromUrl(url: string | null) {
-  const spaceId = parseInviteUrl(url);
-  if (spaceId) {
-    navigateWhenReady(() => navigationRef.navigate('JoinSpace', { spaceId }));
-  }
-}
-
 export default function RootNavigator() {
   const { user } = useCurrentUser();
   const { initializing, authError, retryAnonymousSignIn } = useAuthBootstrap();
 
-  useEffect(() => {
-    Notifications.getLastNotificationResponseAsync()
-      .then(openGifticonFromNotification)
-      .catch(() => {
-        // best-effort deep link; nothing to recover if this lookup fails
-      });
-    const subscription = Notifications.addNotificationResponseReceivedListener(
-      openGifticonFromNotification,
-    );
-    return () => subscription.remove();
-  }, []);
-
-  useEffect(() => {
-    Linking.getInitialURL()
-      .then(openJoinSpaceFromUrl)
-      .catch(() => {
-        // best-effort deep link; nothing to recover if this lookup fails
-      });
-    const subscription = Linking.addEventListener('url', ({ url }) => openJoinSpaceFromUrl(url));
-    return () => subscription.remove();
-  }, []);
+  useDeepLinks();
 
   if (!isFirebaseConfigured) {
     return <SetupRequiredScreen />;
