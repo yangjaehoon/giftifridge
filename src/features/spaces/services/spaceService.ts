@@ -11,8 +11,8 @@ import {
   setDoc,
   where,
   writeBatch,
-  type Unsubscribe,
 } from '../../../lib/firebase/firestore';
+import { subscribeJoined } from '../../../lib/firebase/subscribeJoined';
 import type { Space, SpaceMember } from '../types';
 
 const SPACES_COLLECTION = 'spaces';
@@ -126,86 +126,37 @@ export function subscribeToSpaceMembers(
 
 /**
  * Live view of every space the user belongs to. The membership collection-group
- * query tells us *which* spaces; each space then gets its own document
- * subscription, so a rename propagates immediately and there's no per-snapshot
- * fan-out of one-shot getDoc reads (the previous approach, which also raced when
- * two snapshots overlapped).
+ * query supplies *which* space ids; subscribeJoined then gives each one its own
+ * document subscription (via subscribeToSpace), so a rename propagates
+ * immediately, a departed space is torn down, and one unreadable space doesn't
+ * blank the list. The coordination — holding the emit until every new space has
+ * reported, teardown, error isolation — lives in subscribeJoined.
  */
 export function subscribeToMySpaces(
   uid: string,
   onChange: (spaces: Space[]) => void,
   onError?: (error: Error) => void,
 ) {
-  const q = query(collectionGroupRef(MEMBERS_SUBCOLLECTION), where('uid', '==', uid));
-
-  const spaceSubs = new Map<string, Unsubscribe>();
-  const spaceById = new Map<string, Space>();
-  // Space ids whose first snapshot hasn't arrived yet — hold the initial emit
-  // until every newly-added space has reported, so the switcher doesn't flash
-  // empty then fill in one space at a time.
-  const pending = new Set<string>();
-  let stopped = false;
-
-  const emit = () => {
-    if (stopped || pending.size > 0) return;
-    onChange([...spaceById.values()].sort((a, b) => (a.createdAt < b.createdAt ? -1 : 1)));
-  };
-
-  const dropSpace = (spaceId: string) => {
-    spaceSubs.get(spaceId)?.();
-    spaceSubs.delete(spaceId);
-    spaceById.delete(spaceId);
-    pending.delete(spaceId);
-  };
-
-  const membersUnsub = onSnapshot(
-    q,
-    (snapshot) => {
-      const currentIds = new Set<string>();
-      for (const memberDoc of snapshot.docs) {
-        const spaceRef = memberDoc.ref.parent.parent;
-        if (!spaceRef) continue;
-        currentIds.add(spaceRef.id);
-        if (spaceSubs.has(spaceRef.id)) continue;
-
-        pending.add(spaceRef.id);
-        spaceSubs.set(
-          spaceRef.id,
-          onSnapshot(
-            spaceRef,
-            (spaceSnap) => {
-              pending.delete(spaceSnap.id);
-              if (spaceSnap.exists()) {
-                spaceById.set(spaceSnap.id, { id: spaceSnap.id, ...spaceSnap.data() } as Space);
-              } else {
-                spaceById.delete(spaceSnap.id);
-              }
-              emit();
-            },
-            () => {
-              // One space becoming unreadable (a race with leaving it) shouldn't
-              // blank the whole switcher — drop just that one.
-              dropSpace(spaceRef.id);
-              emit();
-            },
-          ),
-        );
-      }
-
-      for (const spaceId of [...spaceSubs.keys()]) {
-        if (!currentIds.has(spaceId)) dropSpace(spaceId);
-      }
-      emit();
+  return subscribeJoined<Space>(
+    {
+      subscribeKeys: (onKeys, onKeysError) =>
+        onSnapshot(
+          query(collectionGroupRef(MEMBERS_SUBCOLLECTION), where('uid', '==', uid)),
+          (snapshot) => {
+            const ids: string[] = [];
+            for (const memberDoc of snapshot.docs) {
+              const spaceRef = memberDoc.ref.parent.parent;
+              if (spaceRef) ids.push(spaceRef.id);
+            }
+            onKeys(ids);
+          },
+          onKeysError,
+        ),
+      subscribeItem: (spaceId, onItem, onItemError) =>
+        subscribeToSpace(spaceId, onItem, onItemError),
+      compare: (a, b) => (a.createdAt < b.createdAt ? -1 : a.createdAt > b.createdAt ? 1 : 0),
     },
+    onChange,
     onError,
   );
-
-  return () => {
-    stopped = true;
-    membersUnsub();
-    for (const unsub of spaceSubs.values()) unsub();
-    spaceSubs.clear();
-    spaceById.clear();
-    pending.clear();
-  };
 }

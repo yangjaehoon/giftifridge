@@ -224,18 +224,16 @@ describe('subscribeToMySpaces', () => {
 
   let snaps: SnapCall[];
 
-  function spaceRef(id: string) {
-    return { id };
-  }
   function memberDoc(id: string | null) {
-    return { ref: { parent: { parent: id === null ? null : spaceRef(id) } } };
+    return { ref: { parent: { parent: id === null ? null : { id } } } };
   }
   function spaceSnap(id: string, data: Record<string, unknown> | null) {
     return { id, exists: () => data !== null, data: () => data };
   }
-  // The space subscription for a given id (created after the members snapshot).
+  // The per-space document subscription (subscribeToSpace -> onSnapshot on the
+  // doc ref) created after the members snapshot names that id.
   function subFor(id: string): SnapCall {
-    const call = snaps.find((s) => (s.ref as { id?: string })?.id === id);
+    const call = snaps.find((s) => s.ref === `doc:spaces/${id}`);
     if (!call) throw new Error(`no space subscription for ${id}`);
     return call;
   }
