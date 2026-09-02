@@ -14,8 +14,7 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useCurrentUser } from '../../auth/context/AuthContext';
 import { newGifticonId } from '../services/gifticonService';
-import { saveGifticon } from '../services/saveGifticon';
-import { syncGifticonReminders } from '../services/gifticonReminders';
+import { submitGifticon } from '../services/submitGifticon';
 import { useGifticon } from '../hooks/useGifticon';
 import { useGifticons } from '../hooks/useGifticons';
 import { useSpaceGifticons } from '../hooks/useSpaceGifticons';
@@ -29,7 +28,6 @@ import { CATEGORY_LABELS } from '../types';
 import Chip from '../../../shared/components/Chip';
 import { formatDate, toDateString } from '../../../shared/utils/date';
 import { getCurrentLocation } from '../../../shared/utils/location';
-import { confirmAsync } from '../../../shared/utils/confirmAsync';
 import type { RootStackParamList } from '../../../app/RootNavigator';
 import { getGifticonErrorMessage, getGifticonWriteErrorMessage } from '../errors';
 import { colors } from '../../../shared/theme/colors';
@@ -94,46 +92,19 @@ export default function AddGifticonScreen({ navigation, route }: Props) {
     const imageUri = form.imageUri;
     if (!form.validate() || !imageUri) return;
 
-    const trimmedBarcode = form.barcode.trim();
-    if (trimmedBarcode) {
-      const duplicate = contextGifticons.find(
-        (g) => g.id !== gifticonId && g.barcode === trimmedBarcode,
-      );
-      if (duplicate) {
-        const proceed = await confirmAsync(
-          '이미 등록된 번호예요',
-          `"${duplicate.brand} ${duplicate.name}"와(과) 바코드 번호가 같아요. 그래도 등록할까요?`,
-        );
-        if (!proceed) return;
-      }
-    }
-
     setSaving(true);
     try {
-      const id = await saveGifticon({
-        editingId: isEditing ? gifticonId : undefined,
+      const result = await submitGifticon({
+        existing: existing ?? null,
         draftId,
         ownerId: user.uid,
+        spaceId,
         imageUri,
         imageChanged: imageUri !== form.originalImageUrl,
-        fields: { ...form.buildFields(), spaceId },
+        fields: form.buildFields(),
+        siblings: contextGifticons,
       });
-
-      // The gifticon is saved now; reminders are a best-effort follow-up that
-      // must never surface as a save failure.
-      await syncGifticonReminders({
-        gifticon: {
-          id,
-          name: form.name.trim(),
-          brand: form.brand.trim(),
-          expiresAt: toDateString(form.expiresAt),
-        },
-        isOwner: !isEditing || existing?.ownerId === user.uid,
-        isEditing,
-        previousNotificationIds: existing?.notificationIds,
-      });
-
-      navigation.goBack();
+      if (result.status === 'saved') navigation.goBack();
     } catch (err) {
       Alert.alert('오류', getGifticonWriteErrorMessage(err, 'save'));
     } finally {
