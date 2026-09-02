@@ -6,6 +6,9 @@ const SPACE_ERROR_MESSAGES = {
   load: '스페이스 정보를 불러오지 못했어요.',
   notFound: '스페이스를 찾을 수 없어요.',
   network: '네트워크 연결을 확인해주세요. 오프라인 상태일 수 있어요.',
+  // A request that ran long enough to time out may still have succeeded on the
+  // server, so don't imply it failed — tell the user to check.
+  timeout: '응답이 늦어지고 있어요. 잠시 후 목록에서 확인해주세요.',
   permission: '이 스페이스에 대한 접근 권한이 없어요.',
 } as const;
 

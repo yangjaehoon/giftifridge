@@ -16,11 +16,10 @@ import SpaceMembersSkeleton from '../components/SpaceMembersSkeleton';
 import { deleteSpace, leaveSpace } from '../services/spaceService';
 import { getSpaceErrorMessage } from '../errors';
 import { buildInviteUrl } from '../inviteLink';
-import { withTimeout, TimeoutError } from '../../../shared/utils/withTimeout';
+import { withTimeout, TimeoutError, WRITE_TIMEOUT_MS } from '../../../shared/utils/withTimeout';
 import type { RootStackParamList } from '../../../app/RootNavigator';
 import { colors } from '../../../shared/theme/colors';
 
-const WRITE_TIMEOUT_MS = 15000;
 const ROLE_LABELS = { owner: '소유자', member: '멤버' } as const;
 
 type Props = NativeStackScreenProps<RootStackParamList, 'SpaceMembers'>;
@@ -64,7 +63,7 @@ export default function SpaceMembersScreen({ route, navigation }: Props) {
           } catch (err) {
             Alert.alert(
               '오류',
-              getSpaceErrorMessage(err instanceof TimeoutError ? 'network' : 'leave'),
+              getSpaceErrorMessage(err instanceof TimeoutError ? 'timeout' : 'leave'),
             );
           } finally {
             setBusy(false);
@@ -94,7 +93,7 @@ export default function SpaceMembersScreen({ route, navigation }: Props) {
           } catch (err) {
             Alert.alert(
               '오류',
-              getSpaceErrorMessage(err instanceof TimeoutError ? 'network' : 'delete'),
+              getSpaceErrorMessage(err instanceof TimeoutError ? 'timeout' : 'delete'),
             );
           } finally {
             setBusy(false);

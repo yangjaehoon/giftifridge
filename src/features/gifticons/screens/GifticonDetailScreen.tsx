@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { useAuth } from '../../auth/context/AuthContext';
 import { deleteGifticon, markGifticonUsed } from '../services/gifticonService';
 import { cancelNotifications } from '../services/notificationService';
 import { useGifticon } from '../hooks/useGifticon';
@@ -18,18 +19,17 @@ import GifticonDetailSkeleton from '../components/GifticonDetailSkeleton';
 import { CATEGORY_LABELS } from '../types';
 import { daysUntil, formatDate } from '../../../shared/utils/date';
 import { formatCurrency } from '../../../shared/utils/currency';
-import { withTimeout, TimeoutError } from '../../../shared/utils/withTimeout';
+import { withTimeout, TimeoutError, WRITE_TIMEOUT_MS } from '../../../shared/utils/withTimeout';
 import { isPermissionDenied } from '../../../shared/utils/firebaseError';
 import type { RootStackParamList } from '../../../app/RootNavigator';
 import { getGifticonErrorMessage } from '../errors';
 import { colors } from '../../../shared/theme/colors';
 
-const WRITE_TIMEOUT_MS = 15000;
-
 type Props = NativeStackScreenProps<RootStackParamList, 'GifticonDetail'>;
 
 export default function GifticonDetailScreen({ route, navigation }: Props) {
   const { gifticonId } = route.params;
+  const { user } = useAuth();
   const { gifticon, loading, error, refresh } = useGifticon(gifticonId);
   const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -69,7 +69,11 @@ export default function GifticonDetailScreen({ route, navigation }: Props) {
     try {
       const nextUsed = !gifticon.isUsed;
       await withTimeout(markGifticonUsed(gifticon.id, nextUsed), WRITE_TIMEOUT_MS);
-      if (nextUsed) {
+      // The reminder ids on the doc were scheduled on the owner's device, so
+      // only the owner can actually cancel them. A member marking a shared
+      // gifticon used can't stop the owner's "expires soon" alert — that needs
+      // server push, not local notifications.
+      if (nextUsed && gifticon.ownerId === user?.uid) {
         try {
           await withTimeout(cancelNotifications(gifticon.notificationIds), WRITE_TIMEOUT_MS);
         } catch {

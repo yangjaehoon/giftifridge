@@ -10,13 +10,11 @@ import {
 } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useAuth } from '../../auth/context/AuthContext';
-import { createSpace } from '../services/spaceService';
+import { createSpace, newSpaceId } from '../services/spaceService';
 import { getSpaceErrorMessage } from '../errors';
-import { withTimeout, TimeoutError } from '../../../shared/utils/withTimeout';
+import { withTimeout, TimeoutError, WRITE_TIMEOUT_MS } from '../../../shared/utils/withTimeout';
 import type { RootStackParamList } from '../../../app/RootNavigator';
 import { colors } from '../../../shared/theme/colors';
-
-const WRITE_TIMEOUT_MS = 15000;
 
 type Props = NativeStackScreenProps<RootStackParamList, 'CreateSpace'>;
 
@@ -24,6 +22,9 @@ export default function CreateSpaceScreen({ navigation }: Props) {
   const { user } = useAuth();
   const [name, setName] = useState('');
   const [saving, setSaving] = useState(false);
+  // Fixed for the life of the screen so a retry after a timeout targets the
+  // same doc instead of creating a second space.
+  const [draftId] = useState(newSpaceId);
 
   const save = async () => {
     if (!user) return;
@@ -33,10 +34,13 @@ export default function CreateSpaceScreen({ navigation }: Props) {
     }
     setSaving(true);
     try {
-      const spaceId = await withTimeout(createSpace(user.uid, name.trim()), WRITE_TIMEOUT_MS);
+      const spaceId = await withTimeout(
+        createSpace(draftId, user.uid, name.trim()),
+        WRITE_TIMEOUT_MS,
+      );
       navigation.replace('SpaceMembers', { spaceId });
     } catch (err) {
-      Alert.alert('오류', getSpaceErrorMessage(err instanceof TimeoutError ? 'network' : 'create'));
+      Alert.alert('오류', getSpaceErrorMessage(err instanceof TimeoutError ? 'timeout' : 'create'));
     } finally {
       setSaving(false);
     }

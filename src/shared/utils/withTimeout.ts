@@ -1,5 +1,8 @@
 export class TimeoutError extends Error {}
 
+// Shared budget for a single Firestore write before the UI stops waiting on it.
+export const WRITE_TIMEOUT_MS = 15000;
+
 export function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
   let timer: ReturnType<typeof setTimeout>;
   const timeout = new Promise<T>((_, reject) => {

@@ -20,10 +20,9 @@ import {
   createGifticon,
   encodeGifticonImage,
   newGifticonId,
-  setGifticonNotificationIds,
   updateGifticon,
 } from '../services/gifticonService';
-import { cancelNotifications, scheduleExpiryNotifications } from '../services/notificationService';
+import { syncGifticonReminders } from '../services/gifticonReminders';
 import { recognizeExpiryDate } from '../services/ocrService';
 import { useGifticon } from '../hooks/useGifticon';
 import { useGifticons } from '../hooks/useGifticons';
@@ -35,8 +34,7 @@ import Chip from '../../../shared/components/Chip';
 import { formatDate } from '../../../shared/utils/date';
 import { getCurrentLocation } from '../../../shared/utils/location';
 import { isPermissionDenied } from '../../../shared/utils/firebaseError';
-import { getNotificationOffsets } from '../../../shared/utils/notificationPrefs';
-import { withTimeout, TimeoutError } from '../../../shared/utils/withTimeout';
+import { withTimeout, TimeoutError, WRITE_TIMEOUT_MS } from '../../../shared/utils/withTimeout';
 import type { RootStackParamList } from '../../../app/RootNavigator';
 import { getGifticonErrorMessage } from '../errors';
 import { colors } from '../../../shared/theme/colors';
@@ -44,7 +42,6 @@ import { colors } from '../../../shared/theme/colors';
 type Props = NativeStackScreenProps<RootStackParamList, 'AddGifticon'>;
 
 const CATEGORIES = Object.keys(CATEGORY_LABELS) as GifticonCategory[];
-const WRITE_TIMEOUT_MS = 15000;
 
 function confirmAsync(title: string, message: string): Promise<boolean> {
   return new Promise((resolve) => {
@@ -259,31 +256,14 @@ export default function AddGifticonScreen({ navigation, route }: Props) {
         WRITE_TIMEOUT_MS,
       );
 
-      // The gifticon itself is saved at this point. Scheduling reminders is a
-      // best-effort follow-up — if it fails, the user shouldn't be told the
-      // save failed and prompted to retry, which would create a duplicate.
-      //
-      // Reminders are local to this device and their ids live on the shared doc,
-      // so only the owner touches them — otherwise two members editing the same
-      // shared gifticon clobber each other's ids and can no longer cancel.
-      const isOwnGifticon = !isEditing || existing?.ownerId === user.uid;
-      if (isOwnGifticon) {
-        try {
-          if (isEditing && existing?.notificationIds) {
-            await cancelNotifications(existing.notificationIds);
-          }
-          const offsets = await getNotificationOffsets();
-          const notificationIds = await scheduleExpiryNotifications(
-            { id, name: name.trim(), brand: brand.trim(), expiresAt: expiresAtIso },
-            offsets,
-          );
-          if (notificationIds.length > 0 || isEditing) {
-            await withTimeout(setGifticonNotificationIds(id, notificationIds), WRITE_TIMEOUT_MS);
-          }
-        } catch {
-          // gifticon already saved; reminder scheduling can't be retried from here
-        }
-      }
+      // The gifticon itself is saved at this point; reminders are a best-effort
+      // follow-up that must never surface as a save failure.
+      await syncGifticonReminders({
+        gifticon: { id, name: name.trim(), brand: brand.trim(), expiresAt: expiresAtIso },
+        isOwner: !isEditing || existing?.ownerId === user.uid,
+        isEditing,
+        previousNotificationIds: existing?.notificationIds,
+      });
 
       navigation.goBack();
     } catch (err) {

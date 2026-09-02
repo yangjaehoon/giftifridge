@@ -18,20 +18,25 @@ import type { Space, SpaceMember } from '../types';
 const SPACES_COLLECTION = 'spaces';
 const MEMBERS_SUBCOLLECTION = 'members';
 
-export async function createSpace(ownerId: string, name: string): Promise<string> {
-  const spaceRef = doc(collection(db, SPACES_COLLECTION));
+// A client-side id so a create retried after a timeout (which doesn't cancel the
+// original write) overwrites the same doc instead of making a second space.
+export function newSpaceId(): string {
+  return doc(collection(db, SPACES_COLLECTION)).id;
+}
+
+export async function createSpace(id: string, ownerId: string, name: string): Promise<string> {
   const now = new Date().toISOString();
 
   const batch = writeBatch(db);
-  batch.set(spaceRef, { name, ownerId, createdAt: now });
-  batch.set(doc(db, SPACES_COLLECTION, spaceRef.id, MEMBERS_SUBCOLLECTION, ownerId), {
+  batch.set(doc(db, SPACES_COLLECTION, id), { name, ownerId, createdAt: now });
+  batch.set(doc(db, SPACES_COLLECTION, id, MEMBERS_SUBCOLLECTION, ownerId), {
     uid: ownerId,
     role: 'owner',
     joinedAt: now,
   });
   await batch.commit();
 
-  return spaceRef.id;
+  return id;
 }
 
 export async function getSpacePreview(spaceId: string): Promise<Space | null> {

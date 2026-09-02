@@ -98,7 +98,7 @@ describe('JoinSpaceScreen', () => {
     );
   });
 
-  it('shows the network message when joining times out', async () => {
+  it('shows the timeout message when joining times out', async () => {
     mockedGetSpacePreview.mockResolvedValue(space);
     mockedJoinSpace.mockRejectedValue(new TimeoutError('timed out'));
     const { getByText } = await renderScreen({ spaceId: 'space-1' });
@@ -111,7 +111,7 @@ describe('JoinSpaceScreen', () => {
     await waitFor(() =>
       expect(Alert.alert).toHaveBeenCalledWith(
         '오류',
-        '네트워크 연결을 확인해주세요. 오프라인 상태일 수 있어요.',
+        '응답이 늦어지고 있어요. 잠시 후 목록에서 확인해주세요.',
       ),
     );
   });

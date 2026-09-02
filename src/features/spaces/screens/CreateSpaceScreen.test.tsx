@@ -3,14 +3,18 @@ import { Alert } from 'react-native';
 import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
 import CreateSpaceScreen from './CreateSpaceScreen';
 import { useAuth } from '../../auth/context/AuthContext';
-import { createSpace } from '../services/spaceService';
+import { createSpace, newSpaceId } from '../services/spaceService';
 import { TimeoutError } from '../../../shared/utils/withTimeout';
 
 jest.mock('../../auth/context/AuthContext', () => ({ useAuth: jest.fn() }));
-jest.mock('../services/spaceService', () => ({ createSpace: jest.fn() }));
+jest.mock('../services/spaceService', () => ({
+  createSpace: jest.fn(),
+  newSpaceId: jest.fn(() => 'draft-space-id'),
+}));
 
 const mockedUseAuth = useAuth as jest.Mock;
 const mockedCreateSpace = createSpace as jest.Mock;
+const mockedNewSpaceId = newSpaceId as jest.Mock;
 
 function makeNavigation() {
   return { replace: jest.fn(), navigate: jest.fn() };
@@ -29,6 +33,7 @@ async function renderScreen(navigation = makeNavigation()) {
 beforeEach(() => {
   jest.clearAllMocks();
   mockedUseAuth.mockReturnValue({ user: { uid: 'user-1' } });
+  mockedNewSpaceId.mockReturnValue('draft-space-id');
   jest.spyOn(Alert, 'alert').mockImplementation(() => {});
 });
 
@@ -53,7 +58,7 @@ describe('CreateSpaceScreen', () => {
       fireEvent.press(getByText('만들기'));
     });
 
-    expect(mockedCreateSpace).toHaveBeenCalledWith('user-1', '우리집');
+    expect(mockedCreateSpace).toHaveBeenCalledWith('draft-space-id', 'user-1', '우리집');
     await waitFor(() =>
       expect(navigation.replace).toHaveBeenCalledWith('SpaceMembers', { spaceId: 'space-9' }),
     );
@@ -78,7 +83,7 @@ describe('CreateSpaceScreen', () => {
     );
   });
 
-  it('shows the network message when the write times out', async () => {
+  it('shows the timeout message (not a hard failure) when the write times out', async () => {
     mockedCreateSpace.mockRejectedValue(new TimeoutError('timed out'));
     const { getByText, getByPlaceholderText } = await renderScreen();
 
@@ -92,7 +97,7 @@ describe('CreateSpaceScreen', () => {
     await waitFor(() =>
       expect(Alert.alert).toHaveBeenCalledWith(
         '오류',
-        '네트워크 연결을 확인해주세요. 오프라인 상태일 수 있어요.',
+        '응답이 늦어지고 있어요. 잠시 후 목록에서 확인해주세요.',
       ),
     );
   });

@@ -15,6 +15,7 @@ import {
   getSpacePreview,
   joinSpace,
   leaveSpace,
+  newSpaceId,
   subscribeToMySpaces,
   subscribeToSpace,
   subscribeToSpaceMembers,
@@ -59,25 +60,42 @@ beforeEach(() => {
   jest.clearAllMocks();
 });
 
+describe('newSpaceId', () => {
+  it('returns a client-side id from an empty doc ref', () => {
+    expect(newSpaceId()).toBe('generated-space-id');
+  });
+});
+
 describe('createSpace', () => {
-  it('batch-writes the space doc and an owner member doc, then returns the new id', async () => {
+  it('batch-writes the space doc and an owner member doc at the given id', async () => {
     const batch = makeBatch();
     mockedWriteBatch.mockReturnValue(batch);
 
-    const id = await createSpace('owner-1', '우리집 냉장고');
+    const id = await createSpace('space-x', 'owner-1', '우리집 냉장고');
 
-    expect(id).toBe('generated-space-id');
+    expect(id).toBe('space-x');
     expect(batch.set).toHaveBeenCalledTimes(2);
 
     const [spaceRef, spaceData] = batch.set.mock.calls[0];
-    expect(spaceRef).toEqual({ id: 'generated-space-id' });
+    expect(spaceRef).toBe('doc:spaces/space-x');
     expect(spaceData).toMatchObject({ name: '우리집 냉장고', ownerId: 'owner-1' });
     expect(typeof spaceData.createdAt).toBe('string');
 
     const [memberRef, memberData] = batch.set.mock.calls[1];
-    expect(memberRef).toBe('doc:spaces/generated-space-id/members/owner-1');
+    expect(memberRef).toBe('doc:spaces/space-x/members/owner-1');
     expect(memberData).toMatchObject({ uid: 'owner-1', role: 'owner' });
     expect(batch.commit).toHaveBeenCalledTimes(1);
+  });
+
+  it('reuses the same doc id when retried (idempotent under timeout)', async () => {
+    const batch = makeBatch();
+    mockedWriteBatch.mockReturnValue(batch);
+
+    await createSpace('space-x', 'owner-1', '집');
+    await createSpace('space-x', 'owner-1', '집');
+
+    expect(batch.set.mock.calls[0][0]).toBe('doc:spaces/space-x');
+    expect(batch.set.mock.calls[2][0]).toBe('doc:spaces/space-x');
   });
 });
 

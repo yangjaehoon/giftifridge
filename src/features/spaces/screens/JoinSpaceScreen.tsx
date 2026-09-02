@@ -14,11 +14,9 @@ import { getSpacePreview, joinSpace } from '../services/spaceService';
 import { getSpaceErrorMessage } from '../errors';
 import { extractSpaceCode } from '../inviteLink';
 import type { Space } from '../types';
-import { withTimeout, TimeoutError } from '../../../shared/utils/withTimeout';
+import { withTimeout, TimeoutError, WRITE_TIMEOUT_MS } from '../../../shared/utils/withTimeout';
 import type { RootStackParamList } from '../../../app/RootNavigator';
 import { colors } from '../../../shared/theme/colors';
-
-const WRITE_TIMEOUT_MS = 15000;
 
 type Props = NativeStackScreenProps<RootStackParamList, 'JoinSpace'>;
 
@@ -62,7 +60,7 @@ export default function JoinSpaceScreen({ route, navigation }: Props) {
       await withTimeout(joinSpace(preview.id, user.uid), WRITE_TIMEOUT_MS);
       navigation.replace('SpaceMembers', { spaceId: preview.id });
     } catch (err) {
-      Alert.alert('오류', getSpaceErrorMessage(err instanceof TimeoutError ? 'network' : 'join'));
+      Alert.alert('오류', getSpaceErrorMessage(err instanceof TimeoutError ? 'timeout' : 'join'));
     } finally {
       setJoining(false);
     }

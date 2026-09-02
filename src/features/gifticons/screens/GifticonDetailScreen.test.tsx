@@ -3,12 +3,14 @@ import { Alert } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
 import GifticonDetailScreen from './GifticonDetailScreen';
+import { useAuth } from '../../auth/context/AuthContext';
 import { useGifticon } from '../hooks/useGifticon';
 import { deleteGifticon, markGifticonUsed } from '../services/gifticonService';
 import { cancelNotifications } from '../services/notificationService';
 import { TimeoutError } from '../../../shared/utils/withTimeout';
 import type { Gifticon } from '../types';
 
+jest.mock('../../auth/context/AuthContext', () => ({ useAuth: jest.fn() }));
 jest.mock('../hooks/useGifticon', () => ({ useGifticon: jest.fn() }));
 jest.mock('../services/gifticonService', () => ({
   deleteGifticon: jest.fn(),
@@ -22,6 +24,7 @@ const mockedMarkUsed = markGifticonUsed as jest.Mock;
 const mockedDelete = deleteGifticon as jest.Mock;
 const mockedCancel = cancelNotifications as jest.Mock;
 const mockedClipboard = Clipboard.setStringAsync as jest.Mock;
+const mockedUseAuth = useAuth as jest.Mock;
 
 function daysFromNow(days: number): string {
   const d = new Date();
@@ -76,6 +79,8 @@ function pressAlertAction(label: string) {
 beforeEach(() => {
   jest.clearAllMocks();
   jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+  // makeGifticon defaults ownerId to 'owner', so the viewer owns it by default.
+  mockedUseAuth.mockReturnValue({ user: { uid: 'owner' } });
   mockedMarkUsed.mockResolvedValue(undefined);
   mockedDelete.mockResolvedValue(undefined);
   mockedCancel.mockResolvedValue(undefined);
@@ -136,6 +141,19 @@ describe('GifticonDetailScreen', () => {
     });
 
     expect(mockedMarkUsed).toHaveBeenCalledWith('g1', false);
+    expect(mockedCancel).not.toHaveBeenCalled();
+  });
+
+  it('does not try to cancel notifications when a non-owner marks a shared gifticon used', async () => {
+    mockedUseAuth.mockReturnValue({ user: { uid: 'someone-else' } });
+    setHook({ gifticon: makeGifticon({ ownerId: 'owner', notificationIds: ['n1'] }) });
+    const { getByText } = await renderScreen();
+
+    await act(async () => {
+      fireEvent.press(getByText('사용완료로 표시'));
+    });
+
+    expect(mockedMarkUsed).toHaveBeenCalledWith('g1', true);
     expect(mockedCancel).not.toHaveBeenCalled();
   });
 
