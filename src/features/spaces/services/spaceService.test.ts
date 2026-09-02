@@ -1,14 +1,14 @@
 import {
-  collectionGroup,
+  collectionGroupRef,
   deleteDoc,
-  doc,
+  docRef,
   getDoc,
   getDocs,
   onSnapshot,
   setDoc,
   where,
   writeBatch,
-} from 'firebase/firestore';
+} from '../../../lib/firebase/firestore';
 import {
   createSpace,
   deleteSpace,
@@ -20,17 +20,13 @@ import {
   subscribeToSpace,
   subscribeToSpaceMembers,
 } from './spaceService';
-import type { Space } from '../types';
 
-jest.mock('../../../lib/firebase/config', () => ({ db: 'mock-db' }));
-
-jest.mock('firebase/firestore', () => ({
-  collection: jest.fn((_db, ...segments) => `collection:${segments.join('/')}`),
-  collectionGroup: jest.fn((_db, name) => `collectionGroup:${name}`),
+jest.mock('../../../lib/firebase/firestore', () => ({
+  collectionRef: jest.fn((...path: string[]) => `collection:${path.join('/')}`),
+  collectionGroupRef: jest.fn((name: string) => `collectionGroup:${name}`),
   deleteDoc: jest.fn(),
-  doc: jest.fn((_db, ...segments) =>
-    segments.length === 0 ? { id: 'generated-space-id' } : `doc:${segments.join('/')}`,
-  ),
+  docRef: jest.fn((...path: string[]) => `doc:${path.join('/')}`),
+  newId: jest.fn(() => 'generated-space-id'),
   getDoc: jest.fn(),
   getDocs: jest.fn(),
   onSnapshot: jest.fn(),
@@ -40,7 +36,7 @@ jest.mock('firebase/firestore', () => ({
   writeBatch: jest.fn(),
 }));
 
-const mockedDoc = doc as jest.Mock;
+const mockedDocRef = docRef as jest.Mock;
 const mockedGetDoc = getDoc as jest.Mock;
 const mockedGetDocs = getDocs as jest.Mock;
 const mockedOnSnapshot = onSnapshot as jest.Mock;
@@ -159,7 +155,7 @@ describe('joinSpace', () => {
 describe('leaveSpace', () => {
   it('deletes the caller’s member doc', async () => {
     await leaveSpace('space-1', 'user-2');
-    expect(mockedDoc).toHaveBeenCalledWith('mock-db', 'spaces', 'space-1', 'members', 'user-2');
+    expect(mockedDocRef).toHaveBeenCalledWith('spaces', 'space-1', 'members', 'user-2');
     expect(mockedDeleteDoc).toHaveBeenCalledWith('doc:spaces/space-1/members/user-2');
   });
 });
@@ -257,7 +253,7 @@ describe('subscribeToMySpaces', () => {
 
   it('queries the members collection group by uid', () => {
     subscribeToMySpaces('user-1', jest.fn());
-    expect(collectionGroup).toHaveBeenCalledWith('mock-db', 'members');
+    expect(collectionGroupRef).toHaveBeenCalledWith('members');
     expect(where).toHaveBeenCalledWith('uid', '==', 'user-1');
   });
 

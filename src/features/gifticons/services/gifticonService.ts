@@ -1,7 +1,8 @@
 import {
-  collection,
+  collectionRef,
   deleteDoc,
-  doc,
+  docRef,
+  newId,
   onSnapshot,
   orderBy,
   query,
@@ -9,10 +10,14 @@ import {
   updateDoc,
   where,
   type DocumentData,
-} from 'firebase/firestore';
-import { deleteObject, getDownloadURL, ref, uploadBytes } from 'firebase/storage';
+} from '../../../lib/firebase/firestore';
+import {
+  deleteObject,
+  getDownloadURL,
+  storageRef,
+  uploadBytes,
+} from '../../../lib/firebase/storage';
 import * as ImageManipulator from 'expo-image-manipulator';
-import { db, storage } from '../../../lib/firebase/config';
 import type { Gifticon, NewGifticon } from '../types';
 
 const COLLECTION = 'gifticons';
@@ -20,7 +25,7 @@ const IMAGE_MAX_DIMENSION = 900;
 const IMAGE_COMPRESS_QUALITY = 0.5;
 
 function imageRef(gifticonId: string) {
-  return ref(storage, `gifticons/${gifticonId}.jpg`);
+  return storageRef(`gifticons/${gifticonId}.jpg`);
 }
 
 /**
@@ -83,7 +88,7 @@ function toGifticon(id: string, data: DocumentData): Gifticon | null {
 // cancel the original write) overwrites the same doc instead of inserting a
 // duplicate.
 export function newGifticonId(): string {
-  return doc(collection(db, COLLECTION)).id;
+  return newId(COLLECTION);
 }
 
 export async function createGifticon(
@@ -91,7 +96,7 @@ export async function createGifticon(
   ownerId: string,
   data: NewGifticon,
 ): Promise<string> {
-  await setDoc(doc(db, COLLECTION, id), {
+  await setDoc(docRef(COLLECTION, id), {
     ...omitUndefined(data),
     ownerId,
     isUsed: false,
@@ -104,7 +109,7 @@ export async function createGifticon(
 // optional field the user cleared (e.g. removed the barcode) must be written
 // as `null` here, not omitted, or the old value would silently stick around.
 export async function updateGifticon(id: string, data: NewGifticon): Promise<void> {
-  await updateDoc(doc(db, COLLECTION, id), {
+  await updateDoc(docRef(COLLECTION, id), {
     name: data.name,
     brand: data.brand,
     category: data.category,
@@ -122,7 +127,7 @@ export function subscribeToGifticons(
   onError?: (error: Error) => void,
 ) {
   const q = query(
-    collection(db, COLLECTION),
+    collectionRef(COLLECTION),
     where('ownerId', '==', ownerId),
     orderBy('expiresAt', 'asc'),
   );
@@ -146,7 +151,7 @@ export function subscribeToSpaceGifticons(
   onError?: (error: Error) => void,
 ) {
   const q = query(
-    collection(db, COLLECTION),
+    collectionRef(COLLECTION),
     where('spaceId', '==', spaceId),
     orderBy('expiresAt', 'asc'),
   );
@@ -168,7 +173,7 @@ export function subscribeToGifticon(
   onError?: (error: Error) => void,
 ) {
   return onSnapshot(
-    doc(db, COLLECTION, id),
+    docRef(COLLECTION, id),
     (snapshot) => {
       onChange(snapshot.exists() ? toGifticon(snapshot.id, snapshot.data()) : null);
     },
@@ -177,18 +182,18 @@ export function subscribeToGifticon(
 }
 
 export async function markGifticonUsed(id: string, isUsed: boolean) {
-  await updateDoc(doc(db, COLLECTION, id), {
+  await updateDoc(docRef(COLLECTION, id), {
     isUsed,
     usedAt: isUsed ? new Date().toISOString() : null,
   });
 }
 
 export async function setGifticonNotificationIds(id: string, notificationIds: string[]) {
-  await updateDoc(doc(db, COLLECTION, id), { notificationIds });
+  await updateDoc(docRef(COLLECTION, id), { notificationIds });
 }
 
 export async function deleteGifticon(gifticon: Gifticon) {
-  await deleteDoc(doc(db, COLLECTION, gifticon.id));
+  await deleteDoc(docRef(COLLECTION, gifticon.id));
   // The doc is what matters and is now gone; clean the image up in the
   // background so a slow/failed Storage delete can't make the delete look
   // like it failed (deleteGifticonImage swallows its own errors).

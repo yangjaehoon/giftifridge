@@ -1,18 +1,18 @@
 import {
-  collection,
-  collectionGroup,
+  collectionGroupRef,
+  collectionRef,
   deleteDoc,
-  doc,
+  docRef,
   getDoc,
   getDocs,
+  newId,
   onSnapshot,
   query,
   setDoc,
   where,
   writeBatch,
   type Unsubscribe,
-} from 'firebase/firestore';
-import { db } from '../../../lib/firebase/config';
+} from '../../../lib/firebase/firestore';
 import type { Space, SpaceMember } from '../types';
 
 const SPACES_COLLECTION = 'spaces';
@@ -21,15 +21,15 @@ const MEMBERS_SUBCOLLECTION = 'members';
 // A client-side id so a create retried after a timeout (which doesn't cancel the
 // original write) overwrites the same doc instead of making a second space.
 export function newSpaceId(): string {
-  return doc(collection(db, SPACES_COLLECTION)).id;
+  return newId(SPACES_COLLECTION);
 }
 
 export async function createSpace(id: string, ownerId: string, name: string): Promise<string> {
   const now = new Date().toISOString();
 
-  const batch = writeBatch(db);
-  batch.set(doc(db, SPACES_COLLECTION, id), { name, ownerId, createdAt: now });
-  batch.set(doc(db, SPACES_COLLECTION, id, MEMBERS_SUBCOLLECTION, ownerId), {
+  const batch = writeBatch();
+  batch.set(docRef(SPACES_COLLECTION, id), { name, ownerId, createdAt: now });
+  batch.set(docRef(SPACES_COLLECTION, id, MEMBERS_SUBCOLLECTION, ownerId), {
     uid: ownerId,
     role: 'owner',
     joinedAt: now,
@@ -40,7 +40,7 @@ export async function createSpace(id: string, ownerId: string, name: string): Pr
 }
 
 export async function getSpacePreview(spaceId: string): Promise<Space | null> {
-  const snapshot = await getDoc(doc(db, SPACES_COLLECTION, spaceId));
+  const snapshot = await getDoc(docRef(SPACES_COLLECTION, spaceId));
   return snapshot.exists() ? ({ id: snapshot.id, ...snapshot.data() } as Space) : null;
 }
 
@@ -50,7 +50,7 @@ export function subscribeToSpace(
   onError?: (error: Error) => void,
 ) {
   return onSnapshot(
-    doc(db, SPACES_COLLECTION, spaceId),
+    docRef(SPACES_COLLECTION, spaceId),
     (snapshot) => {
       onChange(snapshot.exists() ? ({ id: snapshot.id, ...snapshot.data() } as Space) : null);
     },
@@ -59,7 +59,7 @@ export function subscribeToSpace(
 }
 
 export async function joinSpace(spaceId: string, uid: string): Promise<void> {
-  await setDoc(doc(db, SPACES_COLLECTION, spaceId, MEMBERS_SUBCOLLECTION, uid), {
+  await setDoc(docRef(SPACES_COLLECTION, spaceId, MEMBERS_SUBCOLLECTION, uid), {
     uid,
     role: 'member',
     joinedAt: new Date().toISOString(),
@@ -67,7 +67,7 @@ export async function joinSpace(spaceId: string, uid: string): Promise<void> {
 }
 
 export async function leaveSpace(spaceId: string, uid: string): Promise<void> {
-  await deleteDoc(doc(db, SPACES_COLLECTION, spaceId, MEMBERS_SUBCOLLECTION, uid));
+  await deleteDoc(docRef(SPACES_COLLECTION, spaceId, MEMBERS_SUBCOLLECTION, uid));
 }
 
 const BATCH_WRITE_LIMIT = 500;
@@ -85,7 +85,7 @@ function chunk<T>(items: T[], size: number): T[][] {
 // anyone once the space doc is gone, but the docs themselves would linger).
 export async function deleteSpace(spaceId: string, memberUids: string[]): Promise<void> {
   const gifticonsSnapshot = await getDocs(
-    query(collection(db, 'gifticons'), where('spaceId', '==', spaceId)),
+    query(collectionRef('gifticons'), where('spaceId', '==', spaceId)),
   );
 
   // Gifticons first: deleting a member's shared gifticon needs isSpaceMember()
@@ -94,20 +94,20 @@ export async function deleteSpace(spaceId: string, memberUids: string[]): Promis
   // and strand the rest.
   const refsToDelete = [
     ...gifticonsSnapshot.docs.map((d) => d.ref),
-    ...memberUids.map((uid) => doc(db, SPACES_COLLECTION, spaceId, MEMBERS_SUBCOLLECTION, uid)),
+    ...memberUids.map((uid) => docRef(SPACES_COLLECTION, spaceId, MEMBERS_SUBCOLLECTION, uid)),
   ];
 
   // Chunk to stay under Firestore's 500-writes-per-batch limit; the space
   // doc itself is deleted last, in its own chunk, once everything else is gone.
   for (const group of chunk(refsToDelete, BATCH_WRITE_LIMIT)) {
-    const batch = writeBatch(db);
+    const batch = writeBatch();
     for (const ref of group) {
       batch.delete(ref);
     }
     await batch.commit();
   }
 
-  await deleteDoc(doc(db, SPACES_COLLECTION, spaceId));
+  await deleteDoc(docRef(SPACES_COLLECTION, spaceId));
 }
 
 export function subscribeToSpaceMembers(
@@ -116,7 +116,7 @@ export function subscribeToSpaceMembers(
   onError?: (error: Error) => void,
 ) {
   return onSnapshot(
-    collection(db, SPACES_COLLECTION, spaceId, MEMBERS_SUBCOLLECTION),
+    collectionRef(SPACES_COLLECTION, spaceId, MEMBERS_SUBCOLLECTION),
     (snapshot) => {
       onChange(snapshot.docs.map((d) => d.data() as SpaceMember));
     },
@@ -136,7 +136,7 @@ export function subscribeToMySpaces(
   onChange: (spaces: Space[]) => void,
   onError?: (error: Error) => void,
 ) {
-  const q = query(collectionGroup(db, MEMBERS_SUBCOLLECTION), where('uid', '==', uid));
+  const q = query(collectionGroupRef(MEMBERS_SUBCOLLECTION), where('uid', '==', uid));
 
   const spaceSubs = new Map<string, Unsubscribe>();
   const spaceById = new Map<string, Space>();

@@ -1,6 +1,19 @@
 import * as ImageManipulator from 'expo-image-manipulator';
-import { deleteDoc, doc, onSnapshot, orderBy, setDoc, updateDoc, where } from 'firebase/firestore';
-import { deleteObject, getDownloadURL, ref, uploadBytes } from 'firebase/storage';
+import {
+  deleteDoc,
+  docRef,
+  onSnapshot,
+  orderBy,
+  setDoc,
+  updateDoc,
+  where,
+} from '../../../lib/firebase/firestore';
+import {
+  deleteObject,
+  getDownloadURL,
+  storageRef,
+  uploadBytes,
+} from '../../../lib/firebase/storage';
 import {
   createGifticon,
   deleteGifticon,
@@ -16,14 +29,11 @@ import {
 } from './gifticonService';
 import type { Gifticon, NewGifticon } from '../types';
 
-jest.mock('../../../lib/firebase/config', () => ({ db: 'mock-db', storage: 'mock-storage' }));
-
-jest.mock('firebase/firestore', () => ({
-  collection: jest.fn((_db, name) => `collection:${name}`),
+jest.mock('../../../lib/firebase/firestore', () => ({
+  collectionRef: jest.fn((...path: string[]) => `collection:${path.join('/')}`),
   deleteDoc: jest.fn(),
-  doc: jest.fn((_db, name, id) =>
-    id === undefined ? { id: 'generated-id' } : `doc:${name}/${id}`,
-  ),
+  docRef: jest.fn((...path: string[]) => `doc:${path.join('/')}`),
+  newId: jest.fn(() => 'generated-id'),
   onSnapshot: jest.fn(),
   orderBy: jest.fn((field, direction) => `orderBy:${field}:${direction}`),
   query: jest.fn((...args) => ['query', ...args]),
@@ -32,8 +42,8 @@ jest.mock('firebase/firestore', () => ({
   where: jest.fn((field, op, value) => `where:${field}${op}${value}`),
 }));
 
-jest.mock('firebase/storage', () => ({
-  ref: jest.fn((_storage, path) => `ref:${path}`),
+jest.mock('../../../lib/firebase/storage', () => ({
+  storageRef: jest.fn((path: string) => `ref:${path}`),
   uploadBytes: jest.fn(),
   getDownloadURL: jest.fn(),
   deleteObject: jest.fn(),
@@ -52,7 +62,7 @@ const mockedManipulateAsync = ImageManipulator.manipulateAsync as jest.Mock;
 const mockedUploadBytes = uploadBytes as jest.Mock;
 const mockedGetDownloadURL = getDownloadURL as jest.Mock;
 const mockedDeleteObject = deleteObject as jest.Mock;
-const mockedRef = ref as jest.Mock;
+const mockedRef = storageRef as jest.Mock;
 
 const originalFetch = global.fetch;
 beforeAll(() => {
@@ -105,7 +115,7 @@ describe('createGifticon', () => {
     const id = await createGifticon('gift-x', 'owner-1', makeNewGifticon());
 
     expect(id).toBe('gift-x');
-    expect(doc).toHaveBeenCalledWith('mock-db', 'gifticons', 'gift-x');
+    expect(docRef).toHaveBeenCalledWith('gifticons', 'gift-x');
     const [ref, written] = mockedSetDoc.mock.calls[0];
     expect(ref).toBe('doc:gifticons/gift-x');
     expect(written).toMatchObject({ ownerId: 'owner-1', isUsed: false });
@@ -144,7 +154,7 @@ describe('updateGifticon', () => {
   it('writes cleared optional fields as null rather than omitting them', async () => {
     await updateGifticon('gift-1', makeNewGifticon({ barcode: undefined, amount: undefined }));
 
-    expect(doc).toHaveBeenCalledWith('mock-db', 'gifticons', 'gift-1');
+    expect(docRef).toHaveBeenCalledWith('gifticons', 'gift-1');
     const [, update] = mockedUpdateDoc.mock.calls[0];
     expect(update).toEqual({
       name: '아메리카노',
@@ -278,7 +288,7 @@ describe('markGifticonUsed', () => {
   it('sets isUsed and usedAt when marking used', async () => {
     await markGifticonUsed('gift-1', true);
 
-    expect(doc).toHaveBeenCalledWith('mock-db', 'gifticons', 'gift-1');
+    expect(docRef).toHaveBeenCalledWith('gifticons', 'gift-1');
     const [, update] = mockedUpdateDoc.mock.calls[0];
     expect(update.isUsed).toBe(true);
     expect(typeof update.usedAt).toBe('string');
@@ -311,9 +321,9 @@ describe('deleteGifticon', () => {
 
     await deleteGifticon(gifticon);
 
-    expect(doc).toHaveBeenCalledWith('mock-db', 'gifticons', 'gift-1');
+    expect(docRef).toHaveBeenCalledWith('gifticons', 'gift-1');
     expect(mockedDeleteDoc).toHaveBeenCalledTimes(1);
-    expect(mockedRef).toHaveBeenCalledWith('mock-storage', 'gifticons/gift-1.jpg');
+    expect(mockedRef).toHaveBeenCalledWith('gifticons/gift-1.jpg');
     expect(mockedDeleteObject).toHaveBeenCalledWith('ref:gifticons/gift-1.jpg');
   });
 
@@ -350,7 +360,7 @@ describe('uploadGifticonImage', () => {
       expect.objectContaining({ compress: 0.5, format: 'jpeg' }),
     );
     expect(global.fetch).toHaveBeenCalledWith('file:///resized.jpg');
-    expect(mockedRef).toHaveBeenCalledWith('mock-storage', 'gifticons/gift-1.jpg');
+    expect(mockedRef).toHaveBeenCalledWith('gifticons/gift-1.jpg');
     expect(mockedUploadBytes).toHaveBeenCalledWith('ref:gifticons/gift-1.jpg', 'mock-blob', {
       contentType: 'image/jpeg',
     });
