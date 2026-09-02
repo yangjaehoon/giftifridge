@@ -14,9 +14,9 @@ import { useAuth } from '../../auth/context/AuthContext';
 import { useSpace } from '../hooks/useSpace';
 import SpaceMembersSkeleton from '../components/SpaceMembersSkeleton';
 import { deleteSpace, leaveSpace } from '../services/spaceService';
-import { getSpaceErrorMessage } from '../errors';
+import { getSpaceErrorMessage, getSpaceWriteErrorMessage } from '../errors';
 import { buildInviteUrl } from '../inviteLink';
-import { withTimeout, TimeoutError, WRITE_TIMEOUT_MS } from '../../../shared/utils/withTimeout';
+import { withTimeout, WRITE_TIMEOUT_MS } from '../../../shared/utils/withTimeout';
 import type { RootStackParamList } from '../../../app/RootNavigator';
 import { colors } from '../../../shared/theme/colors';
 
@@ -61,10 +61,7 @@ export default function SpaceMembersScreen({ route, navigation }: Props) {
             await withTimeout(leaveSpace(spaceId, user.uid), WRITE_TIMEOUT_MS);
             navigation.navigate('Home');
           } catch (err) {
-            Alert.alert(
-              '오류',
-              getSpaceErrorMessage(err instanceof TimeoutError ? 'timeout' : 'leave'),
-            );
+            Alert.alert('오류', getSpaceWriteErrorMessage(err, 'leave'));
           } finally {
             setBusy(false);
           }
@@ -91,10 +88,7 @@ export default function SpaceMembersScreen({ route, navigation }: Props) {
             );
             navigation.navigate('Home');
           } catch (err) {
-            Alert.alert(
-              '오류',
-              getSpaceErrorMessage(err instanceof TimeoutError ? 'timeout' : 'delete'),
-            );
+            Alert.alert('오류', getSpaceWriteErrorMessage(err, 'delete'));
           } finally {
             setBusy(false);
           }

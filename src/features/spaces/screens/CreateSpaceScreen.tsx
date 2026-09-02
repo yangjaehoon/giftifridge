@@ -11,8 +11,8 @@ import {
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useAuth } from '../../auth/context/AuthContext';
 import { createSpace, newSpaceId } from '../services/spaceService';
-import { getSpaceErrorMessage } from '../errors';
-import { withTimeout, TimeoutError, WRITE_TIMEOUT_MS } from '../../../shared/utils/withTimeout';
+import { getSpaceWriteErrorMessage } from '../errors';
+import { withTimeout, WRITE_TIMEOUT_MS } from '../../../shared/utils/withTimeout';
 import type { RootStackParamList } from '../../../app/RootNavigator';
 import { colors } from '../../../shared/theme/colors';
 
@@ -40,7 +40,7 @@ export default function CreateSpaceScreen({ navigation }: Props) {
       );
       navigation.replace('SpaceMembers', { spaceId });
     } catch (err) {
-      Alert.alert('오류', getSpaceErrorMessage(err instanceof TimeoutError ? 'timeout' : 'create'));
+      Alert.alert('오류', getSpaceWriteErrorMessage(err, 'create'));
     } finally {
       setSaving(false);
     }

@@ -33,10 +33,9 @@ import { CATEGORY_LABELS } from '../types';
 import Chip from '../../../shared/components/Chip';
 import { formatDate, parseDate, toDateString } from '../../../shared/utils/date';
 import { getCurrentLocation } from '../../../shared/utils/location';
-import { isPermissionDenied } from '../../../shared/utils/firebaseError';
-import { withTimeout, TimeoutError, WRITE_TIMEOUT_MS } from '../../../shared/utils/withTimeout';
+import { withTimeout, WRITE_TIMEOUT_MS } from '../../../shared/utils/withTimeout';
 import type { RootStackParamList } from '../../../app/RootNavigator';
-import { getGifticonErrorMessage } from '../errors';
+import { getGifticonErrorMessage, getGifticonWriteErrorMessage } from '../errors';
 import { colors } from '../../../shared/theme/colors';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'AddGifticon'>;
@@ -275,9 +274,7 @@ export default function AddGifticonScreen({ navigation, route }: Props) {
 
       navigation.goBack();
     } catch (err) {
-      const action =
-        err instanceof TimeoutError ? 'network' : isPermissionDenied(err) ? 'permission' : 'save';
-      Alert.alert('오류', getGifticonErrorMessage(action));
+      Alert.alert('오류', getGifticonWriteErrorMessage(err, 'save'));
     } finally {
       setSaving(false);
     }

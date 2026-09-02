@@ -157,7 +157,7 @@ describe('GifticonDetailScreen', () => {
     expect(mockedCancel).not.toHaveBeenCalled();
   });
 
-  it('maps a timeout on mark-used to the network error message', async () => {
+  it('maps a timeout on mark-used to the timeout message', async () => {
     mockedMarkUsed.mockRejectedValue(new TimeoutError('slow'));
     const { getByText } = await renderScreen();
 
@@ -168,7 +168,7 @@ describe('GifticonDetailScreen', () => {
     await waitFor(() =>
       expect(Alert.alert).toHaveBeenCalledWith(
         '오류',
-        '네트워크 연결을 확인해주세요. 오프라인 상태일 수 있어요.',
+        '응답이 늦어지고 있어요. 잠시 후 목록에서 확인해주세요.',
       ),
     );
   });

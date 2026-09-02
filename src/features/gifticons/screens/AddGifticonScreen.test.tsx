@@ -228,7 +228,7 @@ describe('AddGifticonScreen — create', () => {
     expect(mockedCreate).not.toHaveBeenCalled();
   });
 
-  it('maps a save timeout to the network error message', async () => {
+  it('maps a save timeout to the timeout message', async () => {
     mockedCreate.mockRejectedValue(new TimeoutError('slow'));
     const { getByText, getByPlaceholderText } = await renderScreen(undefined);
 
@@ -244,7 +244,7 @@ describe('AddGifticonScreen — create', () => {
     await waitFor(() =>
       expect(Alert.alert).toHaveBeenCalledWith(
         '오류',
-        '네트워크 연결을 확인해주세요. 오프라인 상태일 수 있어요.',
+        '응답이 늦어지고 있어요. 잠시 후 목록에서 확인해주세요.',
       ),
     );
   });

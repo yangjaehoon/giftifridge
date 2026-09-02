@@ -19,10 +19,9 @@ import GifticonDetailSkeleton from '../components/GifticonDetailSkeleton';
 import { CATEGORY_LABELS } from '../types';
 import { daysUntil, formatDate } from '../../../shared/utils/date';
 import { formatCurrency } from '../../../shared/utils/currency';
-import { withTimeout, TimeoutError, WRITE_TIMEOUT_MS } from '../../../shared/utils/withTimeout';
-import { isPermissionDenied } from '../../../shared/utils/firebaseError';
+import { withTimeout, WRITE_TIMEOUT_MS } from '../../../shared/utils/withTimeout';
 import type { RootStackParamList } from '../../../app/RootNavigator';
-import { getGifticonErrorMessage } from '../errors';
+import { getGifticonErrorMessage, getGifticonWriteErrorMessage } from '../errors';
 import { colors } from '../../../shared/theme/colors';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'GifticonDetail'>;
@@ -82,9 +81,7 @@ export default function GifticonDetailScreen({ route, navigation }: Props) {
       }
       navigation.goBack();
     } catch (err) {
-      const action =
-        err instanceof TimeoutError ? 'network' : isPermissionDenied(err) ? 'permission' : 'update';
-      Alert.alert('오류', getGifticonErrorMessage(action));
+      Alert.alert('오류', getGifticonWriteErrorMessage(err, 'update'));
     } finally {
       setBusy(false);
     }
@@ -108,13 +105,7 @@ export default function GifticonDetailScreen({ route, navigation }: Props) {
             await withTimeout(deleteGifticon(gifticon), WRITE_TIMEOUT_MS);
             navigation.goBack();
           } catch (err) {
-            const action =
-              err instanceof TimeoutError
-                ? 'network'
-                : isPermissionDenied(err)
-                  ? 'permission'
-                  : 'delete';
-            Alert.alert('오류', getGifticonErrorMessage(action));
+            Alert.alert('오류', getGifticonWriteErrorMessage(err, 'delete'));
           } finally {
             setBusy(false);
           }
