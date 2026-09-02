@@ -1,9 +1,8 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
   Image,
-  Modal,
   ScrollView,
   StyleSheet,
   Text,
@@ -11,29 +10,26 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import * as ImagePicker from 'expo-image-picker';
-import { CameraView, useCameraPermissions } from 'expo-camera';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useAuth } from '../../auth/context/AuthContext';
-import {
-  createGifticon,
-  newGifticonId,
-  updateGifticon,
-  uploadGifticonImage,
-} from '../services/gifticonService';
+import { newGifticonId } from '../services/gifticonService';
+import { saveGifticon } from '../services/saveGifticon';
 import { syncGifticonReminders } from '../services/gifticonReminders';
-import { recognizeExpiryDate } from '../services/ocrService';
 import { useGifticon } from '../hooks/useGifticon';
 import { useGifticons } from '../hooks/useGifticons';
 import { useSpaceGifticons } from '../hooks/useSpaceGifticons';
+import { useGifticonForm } from '../hooks/useGifticonForm';
+import { useGifticonImage } from '../hooks/useGifticonImage';
+import { useBarcodeScanner } from '../hooks/useBarcodeScanner';
 import GifticonDetailSkeleton from '../components/GifticonDetailSkeleton';
-import type { GifticonCategory, NewGifticon } from '../types';
+import BarcodeScannerModal from '../components/BarcodeScannerModal';
+import type { GifticonCategory } from '../types';
 import { CATEGORY_LABELS } from '../types';
 import Chip from '../../../shared/components/Chip';
-import { formatDate, parseDate, toDateString } from '../../../shared/utils/date';
+import { formatDate, toDateString } from '../../../shared/utils/date';
 import { getCurrentLocation } from '../../../shared/utils/location';
-import { withTimeout, WRITE_TIMEOUT_MS } from '../../../shared/utils/withTimeout';
+import { confirmAsync } from '../../../shared/utils/confirmAsync';
 import type { RootStackParamList } from '../../../app/RootNavigator';
 import { getGifticonErrorMessage, getGifticonWriteErrorMessage } from '../errors';
 import { colors } from '../../../shared/theme/colors';
@@ -42,32 +38,13 @@ type Props = NativeStackScreenProps<RootStackParamList, 'AddGifticon'>;
 
 const CATEGORIES = Object.keys(CATEGORY_LABELS) as GifticonCategory[];
 
-function confirmAsync(title: string, message: string): Promise<boolean> {
-  return new Promise((resolve) => {
-    Alert.alert(
-      title,
-      message,
-      [
-        { text: '취소', style: 'cancel', onPress: () => resolve(false) },
-        { text: '계속', onPress: () => resolve(true) },
-      ],
-      { cancelable: true, onDismiss: () => resolve(false) },
-    );
-  });
-}
-
-const defaultExpiry = () => {
-  const d = new Date();
-  d.setMonth(d.getMonth() + 1);
-  return d;
-};
-
 export default function AddGifticonScreen({ navigation, route }: Props) {
   const spaceId = route.params?.spaceId;
   const gifticonId = route.params?.gifticonId;
   const isEditing = Boolean(gifticonId);
   const { user } = useAuth();
   const { gifticon: existing, loading: loadingExisting } = useGifticon(gifticonId);
+
   // The list for whichever context this gifticon belongs to, used only to warn
   // about a duplicate barcode on save. On the edit path the route carries no
   // spaceId, so fall back to the loaded gifticon's own.
@@ -75,58 +52,23 @@ export default function AddGifticonScreen({ navigation, route }: Props) {
   const personalList = useGifticons(contextSpaceId ? undefined : user?.uid);
   const spaceList = useSpaceGifticons(contextSpaceId);
   const contextGifticons = contextSpaceId ? spaceList.items : personalList.items;
+
   // Fixed for the life of the screen so a save retried after a timeout targets
   // the same doc id instead of creating a duplicate. Unused when editing.
   const [draftId] = useState(newGifticonId);
-  const [hydrated, setHydrated] = useState(!isEditing);
-  const [originalImageUrl, setOriginalImageUrl] = useState<string | null>(null);
-  const [imageUri, setImageUri] = useState<string | null>(null);
-  const [name, setName] = useState('');
-  const [brand, setBrand] = useState('');
-  const [amount, setAmount] = useState('');
-  const [category, setCategory] = useState<GifticonCategory>('cafe');
-  const [barcode, setBarcode] = useState('');
-  const [expiresAt, setExpiresAt] = useState<Date>(defaultExpiry());
+  const form = useGifticonForm(existing, isEditing);
+  const image = useGifticonImage({
+    onImageChosen: form.setImage,
+    onExpiryDetected: form.setExpiresAt,
+  });
+  const scanner = useBarcodeScanner(form.setBarcode);
   const [showDatePicker, setShowDatePicker] = useState(false);
-  const [showScanner, setShowScanner] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [recognizingDate, setRecognizingDate] = useState(false);
-  const [dateAutoDetected, setDateAutoDetected] = useState(false);
-  // A ref, not state: detectExpiryDate() reads it after an await and must see
-  // the current value, not the one captured when the image was picked (the same
-  // handler flips it just before kicking OCR off). Nothing renders from it.
-  const dateManuallyEditedRef = useRef(false);
-  // Bumped on every image pick so a slow OCR run for an earlier image can't
-  // overwrite the result for the image the user actually kept.
-  const ocrRunRef = useRef(0);
-  const [location, setLocation] = useState<{ latitude: number; longitude: number } | null>(null);
   const [locationSaving, setLocationSaving] = useState(false);
-  const [fieldErrors, setFieldErrors] = useState<{ image?: string; name?: string; brand?: string }>(
-    {},
-  );
-
-  const [permission, requestPermission] = useCameraPermissions();
 
   useEffect(() => {
     navigation.setOptions({ title: isEditing ? '기프티콘 수정' : '기프티콘 등록' });
   }, [navigation, isEditing]);
-
-  useEffect(() => {
-    if (!existing || hydrated) return;
-    // Deferred so the hydration setState calls don't run synchronously inside the effect.
-    queueMicrotask(() => {
-      setImageUri(existing.imageUrl);
-      setOriginalImageUrl(existing.imageUrl);
-      setName(existing.name);
-      setBrand(existing.brand);
-      setAmount(existing.amount ? String(existing.amount) : '');
-      setCategory(existing.category);
-      setBarcode(existing.barcode ?? '');
-      setExpiresAt(parseDate(existing.expiresAt));
-      setLocation(existing.location ?? null);
-      setHydrated(true);
-    });
-  }, [existing, hydrated]);
 
   const saveCurrentLocation = async () => {
     setLocationSaving(true);
@@ -136,7 +78,7 @@ export default function AddGifticonScreen({ navigation, route }: Props) {
         Alert.alert('알림', '위치 접근 권한이 필요해요.');
         return;
       }
-      setLocation(coords);
+      form.setLocation(coords);
     } catch {
       Alert.alert('오류', '위치를 가져오지 못했어요.');
     } finally {
@@ -144,84 +86,15 @@ export default function AddGifticonScreen({ navigation, route }: Props) {
     }
   };
 
-  const detectExpiryDate = async (uri: string) => {
-    const run = ++ocrRunRef.current;
-    setDateAutoDetected(false);
-    setRecognizingDate(true);
-    try {
-      const detected = await recognizeExpiryDate(uri);
-      // A newer image was picked while this OCR was running — discard the result.
-      if (run !== ocrRunRef.current) return;
-      if (detected && !dateManuallyEditedRef.current) {
-        setExpiresAt(parseDate(detected));
-        setDateAutoDetected(true);
-      }
-    } finally {
-      if (run === ocrRunRef.current) setRecognizingDate(false);
-    }
-  };
-
-  const onImagePicked = (uri: string) => {
-    setImageUri(uri);
-    setFieldErrors((e) => ({ ...e, image: undefined }));
-    dateManuallyEditedRef.current = false;
-    detectExpiryDate(uri);
-  };
-
-  const pickFromLibrary = async () => {
-    try {
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ['images'],
-        quality: 0.8,
-      });
-      if (!result.canceled) {
-        onImagePicked(result.assets[0].uri);
-      }
-    } catch {
-      Alert.alert('오류', '사진첩에 접근하지 못했어요. 권한을 확인해주세요.');
-    }
-  };
-
-  const takePhoto = async () => {
-    try {
-      const result = await ImagePicker.launchCameraAsync({ quality: 0.8 });
-      if (!result.canceled) {
-        onImagePicked(result.assets[0].uri);
-      }
-    } catch {
-      Alert.alert('오류', '카메라를 사용하지 못했어요. 권한을 확인해주세요.');
-    }
-  };
-
-  const openScanner = async () => {
-    if (!permission?.granted) {
-      const res = await requestPermission();
-      if (!res.granted) {
-        Alert.alert('알림', '바코드 스캔을 위해 카메라 권한이 필요해요.');
-        return;
-      }
-    }
-    setShowScanner(true);
-  };
-
-  const onBarcodeScanned = (result: { data: string }) => {
-    setBarcode(result.data);
-    setShowScanner(false);
-  };
-
   const save = async () => {
     if (!user) {
       Alert.alert('오류', '로그인 정보를 확인하지 못했어요. 앱을 다시 시작해주세요.');
       return;
     }
-    const nextFieldErrors: typeof fieldErrors = {};
-    if (!imageUri) nextFieldErrors.image = '기프티콘 사진을 등록해주세요.';
-    if (!name.trim()) nextFieldErrors.name = '상품명을 입력해주세요.';
-    if (!brand.trim()) nextFieldErrors.brand = '브랜드를 입력해주세요.';
-    setFieldErrors(nextFieldErrors);
-    if (Object.keys(nextFieldErrors).length > 0 || !imageUri) return;
+    const imageUri = form.imageUri;
+    if (!form.validate() || !imageUri) return;
 
-    const trimmedBarcode = barcode.trim();
+    const trimmedBarcode = form.barcode.trim();
     if (trimmedBarcode) {
       const duplicate = contextGifticons.find(
         (g) => g.id !== gifticonId && g.barcode === trimmedBarcode,
@@ -237,36 +110,24 @@ export default function AddGifticonScreen({ navigation, route }: Props) {
 
     setSaving(true);
     try {
-      const expiresAtDate = toDateString(expiresAt);
-      const imageChanged = imageUri !== originalImageUrl;
-      const targetId = isEditing && gifticonId ? gifticonId : draftId;
-      const id = await withTimeout(
-        (async () => {
-          const imageUrl = imageChanged ? await uploadGifticonImage(targetId, imageUri) : imageUri;
-          const data: NewGifticon = {
-            name: name.trim(),
-            brand: brand.trim(),
-            category,
-            barcode: barcode.trim() || undefined,
-            amount: amount.trim() ? Number(amount) : undefined,
-            imageUrl,
-            expiresAt: expiresAtDate,
-            location: location ?? undefined,
-            spaceId,
-          };
-          if (isEditing && gifticonId) {
-            await updateGifticon(gifticonId, data);
-            return gifticonId;
-          }
-          return createGifticon(draftId, user.uid, data);
-        })(),
-        WRITE_TIMEOUT_MS,
-      );
+      const id = await saveGifticon({
+        editingId: isEditing ? gifticonId : undefined,
+        draftId,
+        ownerId: user.uid,
+        imageUri,
+        imageChanged: imageUri !== form.originalImageUrl,
+        fields: { ...form.buildFields(), spaceId },
+      });
 
-      // The gifticon itself is saved at this point; reminders are a best-effort
-      // follow-up that must never surface as a save failure.
+      // The gifticon is saved now; reminders are a best-effort follow-up that
+      // must never surface as a save failure.
       await syncGifticonReminders({
-        gifticon: { id, name: name.trim(), brand: brand.trim(), expiresAt: expiresAtDate },
+        gifticon: {
+          id,
+          name: form.name.trim(),
+          brand: form.brand.trim(),
+          expiresAt: toDateString(form.expiresAt),
+        },
         isOwner: !isEditing || existing?.ownerId === user.uid,
         isEditing,
         previousNotificationIds: existing?.notificationIds,
@@ -298,49 +159,43 @@ export default function AddGifticonScreen({ navigation, route }: Props) {
         testID="image-picker"
         style={[
           styles.imagePicker,
-          !imageUri && styles.imagePickerEmpty,
-          fieldErrors.image && styles.inputError,
+          !form.imageUri && styles.imagePickerEmpty,
+          form.fieldErrors.image && styles.inputError,
         ]}
-        onPress={pickFromLibrary}
-        onLongPress={takePhoto}
+        onPress={image.pickFromLibrary}
+        onLongPress={image.takePhoto}
       >
-        {imageUri ? (
-          <Image source={{ uri: imageUri }} style={styles.image} />
+        {form.imageUri ? (
+          <Image source={{ uri: form.imageUri }} style={styles.image} />
         ) : (
           <Text style={styles.imagePlaceholder}>탭하여 사진 선택{'\n'}(길게 눌러 카메라 촬영)</Text>
         )}
       </TouchableOpacity>
-      {fieldErrors.image && <Text style={styles.errorText}>{fieldErrors.image}</Text>}
+      {form.fieldErrors.image && <Text style={styles.errorText}>{form.fieldErrors.image}</Text>}
 
       <Text style={styles.label}>상품명</Text>
       <TextInput
-        style={[styles.input, fieldErrors.name && styles.inputError]}
-        value={name}
-        onChangeText={(v) => {
-          setName(v);
-          setFieldErrors((e) => ({ ...e, name: undefined }));
-        }}
+        style={[styles.input, form.fieldErrors.name && styles.inputError]}
+        value={form.name}
+        onChangeText={form.setName}
         placeholder="아메리카노 Tall"
       />
-      {fieldErrors.name && <Text style={styles.errorText}>{fieldErrors.name}</Text>}
+      {form.fieldErrors.name && <Text style={styles.errorText}>{form.fieldErrors.name}</Text>}
 
       <Text style={styles.label}>브랜드</Text>
       <TextInput
-        style={[styles.input, fieldErrors.brand && styles.inputError]}
-        value={brand}
-        onChangeText={(v) => {
-          setBrand(v);
-          setFieldErrors((e) => ({ ...e, brand: undefined }));
-        }}
+        style={[styles.input, form.fieldErrors.brand && styles.inputError]}
+        value={form.brand}
+        onChangeText={form.setBrand}
         placeholder="스타벅스"
       />
-      {fieldErrors.brand && <Text style={styles.errorText}>{fieldErrors.brand}</Text>}
+      {form.fieldErrors.brand && <Text style={styles.errorText}>{form.fieldErrors.brand}</Text>}
 
       <Text style={styles.label}>금액 (선택)</Text>
       <TextInput
         style={styles.input}
-        value={amount}
-        onChangeText={setAmount}
+        value={form.amount}
+        onChangeText={form.setAmount}
         placeholder="10000"
         keyboardType="number-pad"
       />
@@ -351,8 +206,8 @@ export default function AddGifticonScreen({ navigation, route }: Props) {
           <Chip
             key={c}
             label={CATEGORY_LABELS[c]}
-            active={category === c}
-            onPress={() => setCategory(c)}
+            active={form.category === c}
+            onPress={() => form.setCategory(c)}
           />
         ))}
       </View>
@@ -361,12 +216,12 @@ export default function AddGifticonScreen({ navigation, route }: Props) {
       <View style={styles.barcodeRow}>
         <TextInput
           style={[styles.input, styles.barcodeInput]}
-          value={barcode}
-          onChangeText={setBarcode}
+          value={form.barcode}
+          onChangeText={form.setBarcode}
           placeholder="숫자 직접 입력 또는 스캔"
           keyboardType="number-pad"
         />
-        <TouchableOpacity style={styles.scanButton} onPress={openScanner}>
+        <TouchableOpacity style={styles.scanButton} onPress={scanner.open}>
           <Text style={styles.scanButtonText}>스캔</Text>
         </TouchableOpacity>
       </View>
@@ -381,36 +236,35 @@ export default function AddGifticonScreen({ navigation, route }: Props) {
           <ActivityIndicator size="small" color={colors.primary} />
         ) : (
           <Text style={styles.locationButtonText}>
-            {location ? '현재 위치로 저장됨 ✓' : '지금 여기를 매장 위치로 저장'}
+            {form.location ? '현재 위치로 저장됨 ✓' : '지금 여기를 매장 위치로 저장'}
           </Text>
         )}
       </TouchableOpacity>
-      {location && (
+      {form.location && (
         <Text style={styles.ocrHint}>근처에 다시 왔을 때 이 기프티콘을 알려드려요.</Text>
       )}
 
       <View style={styles.dateLabelRow}>
         <Text style={styles.label}>유효기한</Text>
-        {recognizingDate && <ActivityIndicator size="small" color={colors.primary} />}
+        {image.recognizingDate && <ActivityIndicator size="small" color={colors.primary} />}
       </View>
       <TouchableOpacity style={styles.input} onPress={() => setShowDatePicker(true)}>
-        <Text>{formatDate(toDateString(expiresAt))}</Text>
+        <Text>{formatDate(toDateString(form.expiresAt))}</Text>
       </TouchableOpacity>
-      {dateAutoDetected && (
+      {image.dateAutoDetected && (
         <Text style={styles.ocrHint}>사진에서 유효기한을 자동으로 인식했어요. 확인해주세요.</Text>
       )}
       {showDatePicker && (
         <DateTimePicker
-          value={expiresAt}
+          value={form.expiresAt}
           mode="date"
           display="default"
           minimumDate={new Date()}
           onChange={(_, selected) => {
             setShowDatePicker(false);
             if (selected) {
-              setExpiresAt(selected);
-              dateManuallyEditedRef.current = true;
-              setDateAutoDetected(false);
+              form.setExpiresAt(selected);
+              image.markDateManuallyEdited();
             }
           }}
         />
@@ -424,20 +278,11 @@ export default function AddGifticonScreen({ navigation, route }: Props) {
         )}
       </TouchableOpacity>
 
-      <Modal visible={showScanner} animationType="slide">
-        <View style={styles.scannerContainer}>
-          <CameraView
-            style={StyleSheet.absoluteFill}
-            barcodeScannerSettings={{
-              barcodeTypes: ['code128', 'code39', 'ean13', 'ean8', 'qr', 'upc_a', 'upc_e'],
-            }}
-            onBarcodeScanned={showScanner ? onBarcodeScanned : undefined}
-          />
-          <TouchableOpacity style={styles.closeScanner} onPress={() => setShowScanner(false)}>
-            <Text style={styles.closeScannerText}>닫기</Text>
-          </TouchableOpacity>
-        </View>
-      </Modal>
+      <BarcodeScannerModal
+        visible={scanner.visible}
+        onScanned={scanner.handleScanned}
+        onClose={scanner.close}
+      />
     </ScrollView>
   );
 }
@@ -503,15 +348,4 @@ const styles = StyleSheet.create({
     marginTop: 28,
   },
   saveButtonText: { color: colors.surface, fontWeight: '700', fontSize: 16 },
-  scannerContainer: { flex: 1, backgroundColor: colors.shadow },
-  closeScanner: {
-    position: 'absolute',
-    bottom: 40,
-    alignSelf: 'center',
-    backgroundColor: colors.surface,
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 24,
-  },
-  closeScannerText: { fontWeight: '700', color: colors.gray900 },
 });
