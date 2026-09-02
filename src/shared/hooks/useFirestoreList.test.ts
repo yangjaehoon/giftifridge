@@ -138,6 +138,42 @@ describe('useFirestoreList', () => {
     expect(result.current.loading).toBe(true);
   });
 
+  it('gives a new key a fresh backoff budget instead of inheriting the old one', async () => {
+    const { subscribe, calls } = createMockSubscribe<{ id: string }>();
+    const { rerender } = await renderHook(
+      ({ key }: { key: string }) => useFirestoreList(key, subscribe),
+      { initialProps: { key: 'owner-1' } },
+    );
+
+    // owner-1 fails twice: backoff would grow to ~2s for the next retry.
+    await act(async () => {
+      calls[0].onError(new Error('fail 1'));
+    });
+    await act(async () => {
+      jest.advanceTimersByTime(1000);
+    });
+    await act(async () => {
+      calls[1].onError(new Error('fail 2'));
+    });
+    await act(async () => {
+      jest.advanceTimersByTime(2000);
+    });
+    expect(subscribe).toHaveBeenCalledTimes(3);
+
+    // Switch to a healthy-then-failing key: its first retry should be the base
+    // 1s delay, not the inherited ~4s.
+    await rerender({ key: 'owner-2' });
+    expect(subscribe).toHaveBeenCalledTimes(4);
+
+    await act(async () => {
+      calls[3].onError(new Error('owner-2 blip'));
+    });
+    await act(async () => {
+      jest.advanceTimersByTime(1000);
+    });
+    expect(subscribe).toHaveBeenCalledTimes(5);
+  });
+
   it('refresh() marks refreshing and triggers a resubscribe', async () => {
     const { subscribe, calls } = createMockSubscribe<{ id: string }>();
     const { result } = await renderHook(() => useFirestoreList('owner-1', subscribe));

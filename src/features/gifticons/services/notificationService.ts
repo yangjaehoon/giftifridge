@@ -3,14 +3,33 @@ import * as Device from 'expo-device';
 import { Platform } from 'react-native';
 import type { Gifticon } from '../types';
 
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowBanner: true,
-    shouldShowList: true,
-    shouldPlaySound: false,
-    shouldSetBadge: false,
-  }),
-});
+let initialized = false;
+
+/**
+ * One-time setup: registers the foreground presentation handler and (on Android)
+ * the notification channel. Called from App so importing this module has no side
+ * effects, and so the channel isn't re-created on every gifticon save.
+ */
+export async function initNotifications(): Promise<void> {
+  if (initialized) return;
+  initialized = true;
+
+  Notifications.setNotificationHandler({
+    handleNotification: async () => ({
+      shouldShowBanner: true,
+      shouldShowList: true,
+      shouldPlaySound: false,
+      shouldSetBadge: false,
+    }),
+  });
+
+  if (Platform.OS === 'android') {
+    await Notifications.setNotificationChannelAsync('default', {
+      name: 'default',
+      importance: Notifications.AndroidImportance.DEFAULT,
+    });
+  }
+}
 
 export async function ensureNotificationPermission(): Promise<boolean> {
   if (!Device.isDevice) return false;
@@ -19,12 +38,6 @@ export async function ensureNotificationPermission(): Promise<boolean> {
   if (status !== 'granted') {
     const requested = await Notifications.requestPermissionsAsync();
     status = requested.status;
-  }
-  if (Platform.OS === 'android') {
-    await Notifications.setNotificationChannelAsync('default', {
-      name: 'default',
-      importance: Notifications.AndroidImportance.DEFAULT,
-    });
   }
   return status === 'granted';
 }

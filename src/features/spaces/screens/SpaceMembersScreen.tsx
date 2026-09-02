@@ -15,6 +15,7 @@ import { useSpace } from '../hooks/useSpace';
 import SpaceMembersSkeleton from '../components/SpaceMembersSkeleton';
 import { deleteSpace, leaveSpace } from '../services/spaceService';
 import { getSpaceErrorMessage } from '../errors';
+import { buildInviteUrl } from '../inviteLink';
 import { withTimeout, TimeoutError } from '../../../shared/utils/withTimeout';
 import type { RootStackParamList } from '../../../app/RootNavigator';
 import { colors } from '../../../shared/theme/colors';
@@ -41,7 +42,7 @@ export default function SpaceMembersScreen({ route, navigation }: Props) {
         message:
           `기프티냉장콘 "${space?.name}" 스페이스에 초대할게요!\n\n` +
           `앱에서 "코드로 참여"를 눌러 아래 코드를 입력하세요:\n${spaceId}\n\n` +
-          `앱이 설치돼 있다면: giftifridge://join/${spaceId}`,
+          `앱이 설치돼 있다면: ${buildInviteUrl(spaceId)}`,
       });
     } catch {
       // user dismissed the share sheet; nothing to do

@@ -51,6 +51,14 @@ describe('parseExpiryDateFromText', () => {
   it('rejects an invalid month/day', () => {
     expect(parseExpiryDateFromText('2026.13.40')).toBeNull();
   });
+
+  it('rejects a day that does not exist in that month (2026.02.30)', () => {
+    expect(parseExpiryDateFromText('유효기한 2026.02.30까지')).toBeNull();
+  });
+
+  it('accepts a valid leap day', () => {
+    expect(parseExpiryDateFromText('유효기한 2028.02.29까지')).toBe(isoDate(2028, 2, 29));
+  });
 });
 
 describe('recognizeExpiryDate', () => {

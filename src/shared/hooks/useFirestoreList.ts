@@ -28,6 +28,7 @@ export function useFirestoreList<T>(key: string | undefined, subscribe: Subscrib
   const [refreshKey, setRefreshKey] = useState(0);
   const [prevKey, setPrevKey] = useState(key);
   const retryCountRef = useRef(0);
+  const subscribedKeyRef = useRef(key);
 
   if (key !== prevKey) {
     setPrevKey(key);
@@ -38,6 +39,12 @@ export function useFirestoreList<T>(key: string | undefined, subscribe: Subscrib
 
   useEffect(() => {
     if (!key) return;
+    // A genuinely new key gets a fresh backoff budget; a re-run triggered by the
+    // retry itself (refreshKey bump) must keep the growing delay.
+    if (subscribedKeyRef.current !== key) {
+      subscribedKeyRef.current = key;
+      retryCountRef.current = 0;
+    }
     let retryTimeout: ReturnType<typeof setTimeout>;
 
     const unsubscribe = subscribe(

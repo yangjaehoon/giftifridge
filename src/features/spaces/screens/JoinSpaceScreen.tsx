@@ -12,6 +12,7 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useAuth } from '../../auth/context/AuthContext';
 import { getSpacePreview, joinSpace } from '../services/spaceService';
 import { getSpaceErrorMessage } from '../errors';
+import { extractSpaceCode } from '../inviteLink';
 import type { Space } from '../types';
 import { withTimeout, TimeoutError } from '../../../shared/utils/withTimeout';
 import type { RootStackParamList } from '../../../app/RootNavigator';
@@ -20,11 +21,6 @@ import { colors } from '../../../shared/theme/colors';
 const WRITE_TIMEOUT_MS = 15000;
 
 type Props = NativeStackScreenProps<RootStackParamList, 'JoinSpace'>;
-
-function extractSpaceId(input: string): string {
-  const trimmed = input.trim();
-  return trimmed.match(/join\/([^/?#]+)/)?.[1] ?? trimmed;
-}
 
 export default function JoinSpaceScreen({ route, navigation }: Props) {
   const { user } = useAuth();
@@ -85,7 +81,7 @@ export default function JoinSpaceScreen({ route, navigation }: Props) {
 
       <TouchableOpacity
         style={styles.secondaryButton}
-        onPress={() => lookup(extractSpaceId(code))}
+        onPress={() => lookup(extractSpaceCode(code))}
         disabled={!code.trim() || loading}
       >
         {loading ? (

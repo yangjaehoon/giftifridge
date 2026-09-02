@@ -1,4 +1,12 @@
-import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import React, {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import {
   EmailAuthProvider,
   linkWithCredential,
@@ -23,17 +31,30 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
+// Guard against onAuthStateChanged(null) → signInAnonymously → onAuthStateChanged(null)
+// looping forever if the anonymous session keeps getting invalidated (e.g.
+// Anonymous sign-in disabled mid-session).
+const MAX_ANON_ATTEMPTS = 3;
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [initializing, setInitializing] = useState(isFirebaseConfigured);
   const [authError, setAuthError] = useState<string | null>(null);
+  const anonAttemptsRef = useRef(0);
 
-  const attemptAnonymousSignIn = () => {
-    signInAnonymously(auth).catch(() => {
-      setAuthError('로그인 정보를 확인하지 못했어요.');
-      setInitializing(false);
-    });
-  };
+  const failAnonymousSignIn = useCallback(() => {
+    setAuthError('로그인 정보를 확인하지 못했어요.');
+    setInitializing(false);
+  }, []);
+
+  const attemptAnonymousSignIn = useCallback(() => {
+    if (anonAttemptsRef.current >= MAX_ANON_ATTEMPTS) {
+      failAnonymousSignIn();
+      return;
+    }
+    anonAttemptsRef.current += 1;
+    signInAnonymously(auth).catch(failAnonymousSignIn);
+  }, [failAnonymousSignIn]);
 
   useEffect(() => {
     if (!isFirebaseConfigured) return;
@@ -42,12 +63,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         attemptAnonymousSignIn();
         return;
       }
+      anonAttemptsRef.current = 0;
       setAuthError(null);
       setUser(u);
       setInitializing(false);
     });
     return unsubscribe;
-  }, []);
+  }, [attemptAnonymousSignIn]);
 
   const value = useMemo<AuthContextValue>(
     () => ({
@@ -56,6 +78,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       initializing,
       authError,
       retryAnonymousSignIn: () => {
+        anonAttemptsRef.current = 0;
         setAuthError(null);
         setInitializing(true);
         attemptAnonymousSignIn();
@@ -80,7 +103,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         await firebaseSignOut(auth);
       },
     }),
-    [user, initializing, authError],
+    [user, initializing, authError, attemptAnonymousSignIn],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

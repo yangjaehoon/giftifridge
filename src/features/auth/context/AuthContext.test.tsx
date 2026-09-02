@@ -144,6 +144,53 @@ describe('AuthProvider', () => {
     expect(getByTestId('error').props.children).toBe('none');
   });
 
+  it('stops retrying anonymous sign-in after 3 consecutive failures', async () => {
+    let emit: (user: unknown) => void = () => {};
+    mockedOnAuthStateChanged.mockImplementation((_auth, cb) => {
+      emit = cb;
+      return jest.fn();
+    });
+    // Every attempt "succeeds" but the session is immediately invalidated, so
+    // onAuthStateChanged keeps firing null — the classic loop this guards against.
+    mockedSignInAnonymously.mockImplementation(async () => {
+      emit(null);
+      return {};
+    });
+
+    await renderProvider();
+    await act(async () => {
+      emit(null);
+    });
+
+    // 3 attempts, then it gives up and surfaces the error instead of looping.
+    expect(mockedSignInAnonymously).toHaveBeenCalledTimes(3);
+  });
+
+  it('resets the retry budget after retryAnonymousSignIn', async () => {
+    let emit: (user: unknown) => void = () => {};
+    mockedOnAuthStateChanged.mockImplementation((_auth, cb) => {
+      emit = cb;
+      return jest.fn();
+    });
+    mockedSignInAnonymously.mockImplementation(async () => {
+      emit(null);
+      return {};
+    });
+
+    await renderProvider();
+    await act(async () => {
+      emit(null);
+    });
+    expect(mockedSignInAnonymously).toHaveBeenCalledTimes(3);
+
+    await act(async () => {
+      authValue().retryAnonymousSignIn();
+    });
+
+    // Budget reset → 3 more attempts.
+    expect(mockedSignInAnonymously).toHaveBeenCalledTimes(6);
+  });
+
   it('signIn delegates to signInWithEmailAndPassword', async () => {
     mockedOnAuthStateChanged.mockReturnValue(jest.fn());
     await renderProvider();

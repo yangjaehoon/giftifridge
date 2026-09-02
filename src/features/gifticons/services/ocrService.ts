@@ -15,13 +15,20 @@ interface DateMatch {
   day: number;
 }
 
+// Rejects impossible dates the regex still lets through (e.g. 2026.02.30),
+// which would otherwise roll over silently in `new Date(...)`.
+function isRealCalendarDate(year: number, month: number, day: number): boolean {
+  const d = new Date(year, month - 1, day);
+  return d.getFullYear() === year && d.getMonth() === month - 1 && d.getDate() === day;
+}
+
 function collectMatches(text: string, re: RegExp): DateMatch[] {
   const matches: DateMatch[] = [];
   for (const m of text.matchAll(re)) {
     const year = Number(m[1]);
     const month = Number(m[2]);
     const day = Number(m[3]);
-    if (month < 1 || month > 12 || day < 1 || day > 31) continue;
+    if (!isRealCalendarDate(year, month, day)) continue;
     matches.push({ index: m.index ?? 0, length: m[0].length, year, month, day });
   }
   return matches;

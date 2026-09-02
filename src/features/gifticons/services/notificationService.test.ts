@@ -5,6 +5,7 @@ import {
   scheduleExpiryNotifications,
   cancelNotifications,
   ensureNotificationPermission,
+  initNotifications,
 } from './notificationService';
 
 jest.mock('expo-device', () => ({ isDevice: true }));
@@ -22,15 +23,50 @@ jest.mock('expo-notifications', () => ({
 
 const mockedNotifications = Notifications as jest.Mocked<typeof Notifications>;
 
-describe('notification handler', () => {
-  it('shows a banner and list entry without sound or badge', async () => {
-    const [{ handleNotification }] = (Notifications.setNotificationHandler as jest.Mock).mock
-      .calls[0];
-    await expect(handleNotification()).resolves.toEqual({
+describe('initNotifications', () => {
+  afterEach(() => {
+    Platform.OS = 'ios';
+  });
+
+  it('registers a foreground handler that shows a banner without sound or badge', async () => {
+    await initNotifications();
+
+    const [handler] = mockedNotifications.setNotificationHandler.mock.calls[0] as [
+      { handleNotification: () => Promise<unknown> },
+    ];
+    await expect(handler.handleNotification()).resolves.toEqual({
       shouldShowBanner: true,
       shouldShowList: true,
       shouldPlaySound: false,
       shouldSetBadge: false,
+    });
+  });
+
+  it('is guarded so repeat calls do no native work', async () => {
+    // The first real call ran in the test above (Platform 'ios'), flipping the
+    // module-level `initialized` flag. Everything after that is a no-op.
+    mockedNotifications.setNotificationHandler.mockClear();
+    Platform.OS = 'android';
+
+    await initNotifications();
+    await initNotifications();
+
+    expect(mockedNotifications.setNotificationHandler).not.toHaveBeenCalled();
+    expect(mockedNotifications.setNotificationChannelAsync).not.toHaveBeenCalled();
+  });
+
+  it('creates the Android channel on a fresh module load', async () => {
+    await jest.isolateModulesAsync(async () => {
+      /* eslint-disable @typescript-eslint/no-require-imports */
+      require('react-native').Platform.OS = 'android';
+      const notifs = require('expo-notifications') as jest.Mocked<typeof Notifications>;
+      const { initNotifications: freshInit } = require('./notificationService');
+      /* eslint-enable @typescript-eslint/no-require-imports */
+      await freshInit();
+      expect(notifs.setNotificationChannelAsync).toHaveBeenCalledWith(
+        'default',
+        expect.objectContaining({ name: 'default' }),
+      );
     });
   });
 });
@@ -39,10 +75,6 @@ describe('ensureNotificationPermission', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     (Device as { isDevice: boolean }).isDevice = true;
-  });
-
-  afterEach(() => {
-    Platform.OS = 'ios';
   });
 
   it('returns false on a simulator without asking for permission', async () => {
@@ -63,16 +95,14 @@ describe('ensureNotificationPermission', () => {
     await expect(ensureNotificationPermission()).resolves.toBe(false);
   });
 
-  it('creates the default Android notification channel', async () => {
+  it('no longer touches the Android channel (that moved to initNotifications)', async () => {
     Platform.OS = 'android';
     mockedNotifications.getPermissionsAsync.mockResolvedValue({ status: 'granted' } as never);
 
     await ensureNotificationPermission();
 
-    expect(mockedNotifications.setNotificationChannelAsync).toHaveBeenCalledWith(
-      'default',
-      expect.objectContaining({ name: 'default' }),
-    );
+    expect(mockedNotifications.setNotificationChannelAsync).not.toHaveBeenCalled();
+    Platform.OS = 'ios';
   });
 });
 

@@ -17,6 +17,8 @@ import SetupRequiredScreen from './SetupRequiredScreen';
 import AuthErrorScreen from './AuthErrorScreen';
 import OfflineBanner from '../shared/components/OfflineBanner';
 import { navigationRef } from './navigationRef';
+import { navigateWhenReady, flushDeferredNavigations } from './deferredNavigation';
+import { parseInviteUrl } from '../features/spaces/inviteLink';
 
 export type RootStackParamList = {
   Home: undefined;
@@ -30,26 +32,6 @@ export type RootStackParamList = {
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
-// A notification tap or deep link can resolve before the NavigationContainer has
-// mounted — while auth is still initializing, RootNavigator renders a skeleton
-// and navigationRef.isReady() is false. Queue those navigations and flush them
-// from onReady instead of silently dropping them.
-const pendingNavigations: (() => void)[] = [];
-
-function navigateWhenReady(run: () => void) {
-  if (navigationRef.isReady()) {
-    run();
-  } else {
-    pendingNavigations.push(run);
-  }
-}
-
-function flushPendingNavigations() {
-  while (pendingNavigations.length > 0) {
-    pendingNavigations.shift()?.();
-  }
-}
-
 function openGifticonFromNotification(response: Notifications.NotificationResponse | null) {
   const gifticonId = response?.notification.request.content.data?.gifticonId;
   if (typeof gifticonId === 'string') {
@@ -57,13 +39,8 @@ function openGifticonFromNotification(response: Notifications.NotificationRespon
   }
 }
 
-function parseJoinSpaceId(url: string | null): string | undefined {
-  if (!url) return undefined;
-  return url.match(/^giftifridge:\/\/join\/([^/?#]+)/)?.[1];
-}
-
 function openJoinSpaceFromUrl(url: string | null) {
-  const spaceId = parseJoinSpaceId(url);
+  const spaceId = parseInviteUrl(url);
   if (spaceId) {
     navigateWhenReady(() => navigationRef.navigate('JoinSpace', { spaceId }));
   }
@@ -115,7 +92,7 @@ export default function RootNavigator() {
   return (
     <>
       <OfflineBanner />
-      <NavigationContainer ref={navigationRef} onReady={flushPendingNavigations}>
+      <NavigationContainer ref={navigationRef} onReady={flushDeferredNavigations}>
         <Stack.Navigator>
           <Stack.Screen name="Home" component={HomeScreen} options={{ title: '기프티냉장콘' }} />
           <Stack.Screen
