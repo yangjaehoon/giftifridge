@@ -97,6 +97,9 @@ export default function AddGifticonScreen({ navigation, route }: Props) {
   // the current value, not the one captured when the image was picked (the same
   // handler flips it just before kicking OCR off). Nothing renders from it.
   const dateManuallyEditedRef = useRef(false);
+  // Bumped on every image pick so a slow OCR run for an earlier image can't
+  // overwrite the result for the image the user actually kept.
+  const ocrRunRef = useRef(0);
   const [location, setLocation] = useState<{ latitude: number; longitude: number } | null>(null);
   const [locationSaving, setLocationSaving] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<{ image?: string; name?: string; brand?: string }>(
@@ -143,17 +146,27 @@ export default function AddGifticonScreen({ navigation, route }: Props) {
   };
 
   const detectExpiryDate = async (uri: string) => {
+    const run = ++ocrRunRef.current;
     setDateAutoDetected(false);
     setRecognizingDate(true);
     try {
       const isoDate = await recognizeExpiryDate(uri);
+      // A newer image was picked while this OCR was running — discard the result.
+      if (run !== ocrRunRef.current) return;
       if (isoDate && !dateManuallyEditedRef.current) {
         setExpiresAt(new Date(isoDate));
         setDateAutoDetected(true);
       }
     } finally {
-      setRecognizingDate(false);
+      if (run === ocrRunRef.current) setRecognizingDate(false);
     }
+  };
+
+  const onImagePicked = (uri: string) => {
+    setImageUri(uri);
+    setFieldErrors((e) => ({ ...e, image: undefined }));
+    dateManuallyEditedRef.current = false;
+    detectExpiryDate(uri);
   };
 
   const pickFromLibrary = async () => {
@@ -163,10 +176,7 @@ export default function AddGifticonScreen({ navigation, route }: Props) {
         quality: 0.8,
       });
       if (!result.canceled) {
-        setImageUri(result.assets[0].uri);
-        setFieldErrors((e) => ({ ...e, image: undefined }));
-        dateManuallyEditedRef.current = false;
-        detectExpiryDate(result.assets[0].uri);
+        onImagePicked(result.assets[0].uri);
       }
     } catch {
       Alert.alert('오류', '사진첩에 접근하지 못했어요. 권한을 확인해주세요.');
@@ -177,10 +187,7 @@ export default function AddGifticonScreen({ navigation, route }: Props) {
     try {
       const result = await ImagePicker.launchCameraAsync({ quality: 0.8 });
       if (!result.canceled) {
-        setImageUri(result.assets[0].uri);
-        setFieldErrors((e) => ({ ...e, image: undefined }));
-        dateManuallyEditedRef.current = false;
-        detectExpiryDate(result.assets[0].uri);
+        onImagePicked(result.assets[0].uri);
       }
     } catch {
       Alert.alert('오류', '카메라를 사용하지 못했어요. 권한을 확인해주세요.');
@@ -290,6 +297,7 @@ export default function AddGifticonScreen({ navigation, route }: Props) {
   return (
     <ScrollView contentContainerStyle={styles.container}>
       <TouchableOpacity
+        testID="image-picker"
         style={[
           styles.imagePicker,
           !imageUri && styles.imagePickerEmpty,

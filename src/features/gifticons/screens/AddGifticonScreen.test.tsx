@@ -156,6 +156,27 @@ describe('AddGifticonScreen — create', () => {
     expect(queryByText('기프티콘 사진을 등록해주세요.')).toBeNull();
   });
 
+  it('discards a stale OCR result when a newer image is picked before it resolves', async () => {
+    const resolvers: ((v: string | null) => void)[] = [];
+    mockedRecognize.mockImplementation(
+      () => new Promise<string | null>((resolve) => resolvers.push(resolve)),
+    );
+    const { getByText, getByTestId, queryByText } = await renderScreen(undefined);
+
+    // Pick image A (its OCR stays pending), then image B.
+    mockedLibrary.mockResolvedValue({ canceled: false, assets: [{ uri: 'file:///a.jpg' }] });
+    await act(async () => fireEvent.press(getByTestId('image-picker')));
+    mockedLibrary.mockResolvedValue({ canceled: false, assets: [{ uri: 'file:///b.jpg' }] });
+    await act(async () => fireEvent.press(getByTestId('image-picker')));
+
+    // B's OCR resolves first with a date, then A's resolves late with a different one.
+    await act(async () => resolvers[1]('2027-05-05T00:00:00.000Z'));
+    await act(async () => resolvers[0]('2020-01-01T00:00:00.000Z'));
+
+    expect(getByText('2027.05.05')).toBeTruthy();
+    expect(queryByText('2020.01.01')).toBeNull();
+  });
+
   it('encodes the image, creates the gifticon, schedules reminders, and goes back', async () => {
     const { getByText, getByPlaceholderText, navigation } = await renderScreen(undefined);
 
