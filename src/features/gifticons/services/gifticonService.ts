@@ -189,7 +189,8 @@ export async function setGifticonNotificationIds(id: string, notificationIds: st
 
 export async function deleteGifticon(gifticon: Gifticon) {
   await deleteDoc(doc(db, COLLECTION, gifticon.id));
-  // The doc is what matters; a leftover image is harmless and cleaned up here
-  // on a best-effort basis.
-  await deleteGifticonImage(gifticon.id);
+  // The doc is what matters and is now gone; clean the image up in the
+  // background so a slow/failed Storage delete can't make the delete look
+  // like it failed (deleteGifticonImage swallows its own errors).
+  void deleteGifticonImage(gifticon.id);
 }

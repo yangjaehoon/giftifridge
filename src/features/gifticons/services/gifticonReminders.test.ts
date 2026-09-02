@@ -62,10 +62,13 @@ describe('syncGifticonReminders', () => {
   });
 
   it('never throws when a downstream call fails (the gifticon is already saved)', async () => {
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
     mockedSchedule.mockRejectedValue(new Error('scheduling blew up'));
 
     await expect(
       syncGifticonReminders({ gifticon, isOwner: true, isEditing: false }),
     ).resolves.toBeUndefined();
+
+    warn.mockRestore();
   });
 });

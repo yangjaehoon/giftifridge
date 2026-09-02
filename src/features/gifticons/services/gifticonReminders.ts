@@ -45,7 +45,8 @@ export async function syncGifticonReminders({
     if (notificationIds.length > 0 || isEditing) {
       await withTimeout(setGifticonNotificationIds(gifticon.id, notificationIds), WRITE_TIMEOUT_MS);
     }
-  } catch {
+  } catch (err) {
     // gifticon already saved; reminder scheduling can't be retried from here
+    if (__DEV__) console.warn('syncGifticonReminders failed', err);
   }
 }
