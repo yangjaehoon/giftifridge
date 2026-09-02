@@ -56,6 +56,7 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "test": "jest",
+    "test:coverage": "jest --coverage",
     "test:rules": "firebase emulators:exec --only firestore \"jest --config jest.rules.config.js\"",
     "prepare": "husky"
   },
@@ -65,7 +66,20 @@
     "testPathIgnorePatterns": [
       "<rootDir>/node_modules/",
       "<rootDir>/firestore.rules.test.ts"
-    ]
+    ],
+    "collectCoverageFrom": [
+      "src/**/*.{ts,tsx}",
+      "!src/**/*.test.{ts,tsx}",
+      "!src/**/types.ts"
+    ],
+    "coverageThreshold": {
+      "global": {
+        "statements": 18,
+        "branches": 13,
+        "functions": 18,
+        "lines": 18
+      }
+    }
   },
   "lint-staged": {
     "*.{js,jsx,ts,tsx}": [
