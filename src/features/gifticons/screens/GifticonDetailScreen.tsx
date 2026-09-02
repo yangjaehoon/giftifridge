@@ -12,14 +12,12 @@ import {
 import * as Clipboard from 'expo-clipboard';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useCurrentUser } from '../../auth/context/AuthContext';
-import { deleteGifticon, markGifticonUsed } from '../services/gifticonService';
-import { cancelNotifications } from '../services/notificationService';
+import { removeGifticon, setGifticonUsed } from '../services/gifticonLifecycle';
 import { useGifticon } from '../hooks/useGifticon';
 import GifticonDetailSkeleton from '../components/GifticonDetailSkeleton';
 import { CATEGORY_LABELS } from '../types';
 import { daysUntil, formatDate } from '../../../shared/utils/date';
 import { formatCurrency } from '../../../shared/utils/currency';
-import { withTimeout, WRITE_TIMEOUT_MS } from '../../../shared/utils/withTimeout';
 import type { RootStackParamList } from '../../../app/RootNavigator';
 import { getGifticonErrorMessage, getGifticonWriteErrorMessage } from '../errors';
 import { colors } from '../../../shared/theme/colors';
@@ -66,19 +64,7 @@ export default function GifticonDetailScreen({ route, navigation }: Props) {
     if (!gifticon) return;
     setBusy(true);
     try {
-      const nextUsed = !gifticon.isUsed;
-      await withTimeout(markGifticonUsed(gifticon.id, nextUsed), WRITE_TIMEOUT_MS);
-      // The reminder ids on the doc were scheduled on the owner's device, so
-      // only the owner can actually cancel them. A member marking a shared
-      // gifticon used can't stop the owner's "expires soon" alert — that needs
-      // server push, not local notifications.
-      if (nextUsed && gifticon.ownerId === user?.uid) {
-        try {
-          await withTimeout(cancelNotifications(gifticon.notificationIds), WRITE_TIMEOUT_MS);
-        } catch {
-          // usage state already saved; a stuck/failed notification cancel shouldn't block this
-        }
-      }
+      await setGifticonUsed(gifticon, !gifticon.isUsed, user?.uid);
       navigation.goBack();
     } catch (err) {
       Alert.alert('오류', getGifticonWriteErrorMessage(err, 'update'));
@@ -97,12 +83,7 @@ export default function GifticonDetailScreen({ route, navigation }: Props) {
         onPress: async () => {
           setBusy(true);
           try {
-            try {
-              await withTimeout(cancelNotifications(gifticon.notificationIds), WRITE_TIMEOUT_MS);
-            } catch {
-              // best-effort cleanup; don't block the delete the user just confirmed
-            }
-            await withTimeout(deleteGifticon(gifticon), WRITE_TIMEOUT_MS);
+            await removeGifticon(gifticon);
             navigation.goBack();
           } catch (err) {
             Alert.alert('오류', getGifticonWriteErrorMessage(err, 'delete'));

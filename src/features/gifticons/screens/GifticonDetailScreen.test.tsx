@@ -5,24 +5,21 @@ import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
 import GifticonDetailScreen from './GifticonDetailScreen';
 import { useCurrentUser } from '../../auth/context/AuthContext';
 import { useGifticon } from '../hooks/useGifticon';
-import { deleteGifticon, markGifticonUsed } from '../services/gifticonService';
-import { cancelNotifications } from '../services/notificationService';
+import { removeGifticon, setGifticonUsed } from '../services/gifticonLifecycle';
 import { TimeoutError } from '../../../shared/utils/withTimeout';
 import type { Gifticon } from '../types';
 
 jest.mock('../../auth/context/AuthContext', () => ({ useCurrentUser: jest.fn() }));
 jest.mock('../hooks/useGifticon', () => ({ useGifticon: jest.fn() }));
-jest.mock('../services/gifticonService', () => ({
-  deleteGifticon: jest.fn(),
-  markGifticonUsed: jest.fn(),
+jest.mock('../services/gifticonLifecycle', () => ({
+  removeGifticon: jest.fn(),
+  setGifticonUsed: jest.fn(),
 }));
-jest.mock('../services/notificationService', () => ({ cancelNotifications: jest.fn() }));
 jest.mock('expo-clipboard', () => ({ setStringAsync: jest.fn() }));
 
 const mockedUseGifticon = useGifticon as jest.Mock;
-const mockedMarkUsed = markGifticonUsed as jest.Mock;
-const mockedDelete = deleteGifticon as jest.Mock;
-const mockedCancel = cancelNotifications as jest.Mock;
+const mockedSetUsed = setGifticonUsed as jest.Mock;
+const mockedRemove = removeGifticon as jest.Mock;
 const mockedClipboard = Clipboard.setStringAsync as jest.Mock;
 const mockedUseAuth = useCurrentUser as jest.Mock;
 
@@ -81,9 +78,8 @@ beforeEach(() => {
   jest.spyOn(Alert, 'alert').mockImplementation(() => {});
   // makeGifticon defaults ownerId to 'owner', so the viewer owns it by default.
   mockedUseAuth.mockReturnValue({ user: { uid: 'owner' } });
-  mockedMarkUsed.mockResolvedValue(undefined);
-  mockedDelete.mockResolvedValue(undefined);
-  mockedCancel.mockResolvedValue(undefined);
+  mockedSetUsed.mockResolvedValue(undefined);
+  mockedRemove.mockResolvedValue(undefined);
   mockedClipboard.mockResolvedValue(undefined);
   setHook();
 });
@@ -119,7 +115,7 @@ describe('GifticonDetailScreen', () => {
     expect(getByText(/D-10/)).toBeTruthy();
   });
 
-  it('marks the gifticon used, cancels its notifications, and goes back', async () => {
+  it('marks the gifticon used with the acting uid and goes back', async () => {
     setHook({ gifticon: makeGifticon({ notificationIds: ['n1'] }) });
     const { getByText, navigation } = await renderScreen();
 
@@ -127,12 +123,15 @@ describe('GifticonDetailScreen', () => {
       fireEvent.press(getByText('사용완료로 표시'));
     });
 
-    expect(mockedMarkUsed).toHaveBeenCalledWith('g1', true);
-    expect(mockedCancel).toHaveBeenCalledWith(['n1']);
+    expect(mockedSetUsed).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'g1', notificationIds: ['n1'] }),
+      true,
+      'owner',
+    );
     await waitFor(() => expect(navigation.goBack).toHaveBeenCalled());
   });
 
-  it('reverts a used gifticon without cancelling notifications', async () => {
+  it('reverts a used gifticon by marking it unused', async () => {
     setHook({ gifticon: makeGifticon({ isUsed: true, notificationIds: ['n1'] }) });
     const { getByText } = await renderScreen();
 
@@ -140,11 +139,14 @@ describe('GifticonDetailScreen', () => {
       fireEvent.press(getByText('사용가능으로 되돌리기'));
     });
 
-    expect(mockedMarkUsed).toHaveBeenCalledWith('g1', false);
-    expect(mockedCancel).not.toHaveBeenCalled();
+    expect(mockedSetUsed).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'g1' }),
+      false,
+      'owner',
+    );
   });
 
-  it('does not try to cancel notifications when a non-owner marks a shared gifticon used', async () => {
+  it('passes the viewer uid through so the service can apply the owner-only rule', async () => {
     mockedUseAuth.mockReturnValue({ user: { uid: 'someone-else' } });
     setHook({ gifticon: makeGifticon({ ownerId: 'owner', notificationIds: ['n1'] }) });
     const { getByText } = await renderScreen();
@@ -153,12 +155,15 @@ describe('GifticonDetailScreen', () => {
       fireEvent.press(getByText('사용완료로 표시'));
     });
 
-    expect(mockedMarkUsed).toHaveBeenCalledWith('g1', true);
-    expect(mockedCancel).not.toHaveBeenCalled();
+    expect(mockedSetUsed).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'g1' }),
+      true,
+      'someone-else',
+    );
   });
 
   it('maps a timeout on mark-used to the timeout message', async () => {
-    mockedMarkUsed.mockRejectedValue(new TimeoutError('slow'));
+    mockedSetUsed.mockRejectedValue(new TimeoutError('slow'));
     const { getByText } = await renderScreen();
 
     await act(async () => {
@@ -184,8 +189,7 @@ describe('GifticonDetailScreen', () => {
       await pressAlertAction('삭제');
     });
 
-    expect(mockedCancel).toHaveBeenCalledWith(['n1', 'n2']);
-    expect(mockedDelete).toHaveBeenCalledWith(expect.objectContaining({ id: 'g1' }));
+    expect(mockedRemove).toHaveBeenCalledWith(expect.objectContaining({ id: 'g1' }));
     await waitFor(() => expect(navigation.goBack).toHaveBeenCalled());
   });
 
