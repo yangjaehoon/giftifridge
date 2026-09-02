@@ -26,4 +26,14 @@ describe('withTimeout', () => {
 
     await assertion;
   });
+
+  it('clears the pending timeout when the promise resolves first', async () => {
+    const clearSpy = jest.spyOn(global, 'clearTimeout');
+
+    await withTimeout(Promise.resolve('done'), 5000);
+
+    expect(clearSpy).toHaveBeenCalled();
+    expect(jest.getTimerCount()).toBe(0);
+    clearSpy.mockRestore();
+  });
 });
