@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 import {
   FlatList,
   RefreshControl,
@@ -11,17 +11,16 @@ import {
 } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useCurrentUser } from '../../auth/context/AuthContext';
-import { useGifticons } from '../hooks/useGifticons';
-import { useSpaceGifticons } from '../hooks/useSpaceGifticons';
 import { useNearbyGifticons } from '../hooks/useNearbyGifticons';
 import { useGifticonListView } from '../hooks/useGifticonListView';
-import { useMySpaces } from '../../spaces/hooks/useMySpaces';
-import SpaceSwitcher, { type HomeContext } from '../../spaces/components/SpaceSwitcher';
+import { useHomeGifticonContext } from '../hooks/useHomeGifticonContext';
+import SpaceSwitcher from '../../spaces/components/SpaceSwitcher';
 import Chip from '../../../shared/components/Chip';
 import GifticonCard from '../components/GifticonCard';
 import GifticonCardSkeleton from '../components/GifticonCardSkeleton';
 import GifticonStats from '../components/GifticonStats';
 import NearbyGifticonBanner from '../components/NearbyGifticonBanner';
+import StatusTabs from '../components/StatusTabs';
 import { getGifticonErrorMessage } from '../errors';
 import { CATEGORY_LABELS } from '../types';
 import { CATEGORY_FILTERS, EMPTY_TEXT, SORT_KEYS, SORT_LABELS } from '../gifticonFilters';
@@ -32,23 +31,8 @@ type Props = NativeStackScreenProps<RootStackParamList, 'Home'>;
 
 export default function HomeScreen({ navigation }: Props) {
   const { user } = useCurrentUser();
-  const [selectedContext, setSelectedContext] = useState<HomeContext>({ type: 'personal' });
-  const { spaces, loading: spacesLoading } = useMySpaces(user?.uid);
-
-  // A space the user just left or an owner deleted disappears from `spaces`.
-  // Derive the context so it falls back to personal in that case — otherwise it
-  // stays pointed at the space and useSpaceGifticons retries a permission-denied
-  // subscription on a backoff loop forever.
-  const context: HomeContext =
-    selectedContext.type === 'space' &&
-    !spacesLoading &&
-    !spaces.some((s) => s.id === selectedContext.spaceId)
-      ? { type: 'personal' }
-      : selectedContext;
-  const personal = useGifticons(context.type === 'personal' ? user?.uid : undefined);
-  const spaceGifticons = useSpaceGifticons(context.type === 'space' ? context.spaceId : undefined);
-  const { items, loading, refreshing, error, refresh } =
-    context.type === 'personal' ? personal : spaceGifticons;
+  const { context, setContext, spaces, list } = useHomeGifticonContext(user?.uid);
+  const { items, loading, refreshing, error, refresh } = list;
   const nearbyItems = useNearbyGifticons(items);
   const {
     visible,
@@ -81,7 +65,7 @@ export default function HomeScreen({ navigation }: Props) {
       <SpaceSwitcher
         spaces={spaces}
         selected={context}
-        onSelect={setSelectedContext}
+        onSelect={setContext}
         onCreatePress={() => navigation.navigate('CreateSpace')}
       />
       {context.type === 'space' && (
@@ -95,32 +79,7 @@ export default function HomeScreen({ navigation }: Props) {
       <GifticonStats items={items.filter((i) => !i.isUsed)} />
       <NearbyGifticonBanner items={nearbyItems} />
 
-      <View style={styles.tabs}>
-        <TouchableOpacity
-          style={[styles.tab, tab === 'active' && styles.tabActive]}
-          onPress={() => setTab('active')}
-        >
-          <Text style={[styles.tabText, tab === 'active' && styles.tabTextActive]}>
-            사용가능 ({counts.active})
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.tab, tab === 'expired' && styles.tabActive]}
-          onPress={() => setTab('expired')}
-        >
-          <Text style={[styles.tabText, tab === 'expired' && styles.tabTextActive]}>
-            기한만료 ({counts.expired})
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.tab, tab === 'used' && styles.tabActive]}
-          onPress={() => setTab('used')}
-        >
-          <Text style={[styles.tabText, tab === 'used' && styles.tabTextActive]}>
-            사용완료 ({counts.used})
-          </Text>
-        </TouchableOpacity>
-      </View>
+      <StatusTabs tab={tab} counts={counts} onChange={setTab} />
 
       <ScrollView
         horizontal
@@ -257,17 +216,6 @@ const styles = StyleSheet.create({
   settingsLink: { color: colors.primary, fontSize: 13, marginRight: 4 },
   membersLink: { alignSelf: 'flex-end', marginRight: 16, marginTop: 6 },
   membersLinkText: { color: colors.primary, fontSize: 12, fontWeight: '600' },
-  tabs: { flexDirection: 'row', paddingHorizontal: 16, paddingTop: 12, gap: 8 },
-  tab: {
-    flex: 1,
-    paddingVertical: 10,
-    borderRadius: 10,
-    alignItems: 'center',
-    backgroundColor: colors.surfaceMuted,
-  },
-  tabActive: { backgroundColor: colors.primary },
-  tabText: { fontSize: 13, fontWeight: '600', color: colors.gray500 },
-  tabTextActive: { color: colors.surface },
   categoryScroll: { flexGrow: 0, flexShrink: 0 },
   categoryRow: { paddingHorizontal: 16, paddingTop: 10, gap: 8, alignItems: 'center' },
   searchRow: {
