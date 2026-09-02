@@ -201,38 +201,136 @@ describe('subscribeToSpaceMembers', () => {
 });
 
 describe('subscribeToMySpaces', () => {
+  type SnapCall = {
+    ref: unknown;
+    onNext: (snap: unknown) => void;
+    onError?: (err: Error) => void;
+    unsub: jest.Mock;
+  };
+
+  let snaps: SnapCall[];
+
+  function spaceRef(id: string) {
+    return { id };
+  }
+  function memberDoc(id: string | null) {
+    return { ref: { parent: { parent: id === null ? null : spaceRef(id) } } };
+  }
+  function spaceSnap(id: string, data: Record<string, unknown> | null) {
+    return { id, exists: () => data !== null, data: () => data };
+  }
+  // The space subscription for a given id (created after the members snapshot).
+  function subFor(id: string): SnapCall {
+    const call = snaps.find((s) => (s.ref as { id?: string })?.id === id);
+    if (!call) throw new Error(`no space subscription for ${id}`);
+    return call;
+  }
+
+  beforeEach(() => {
+    snaps = [];
+    mockedOnSnapshot.mockImplementation(
+      (ref: unknown, onNext: (s: unknown) => void, onError?: (e: Error) => void) => {
+        const unsub = jest.fn();
+        snaps.push({ ref, onNext, onError, unsub });
+        return unsub;
+      },
+    );
+  });
+
   it('queries the members collection group by uid', () => {
     subscribeToMySpaces('user-1', jest.fn());
     expect(collectionGroup).toHaveBeenCalledWith('mock-db', 'members');
     expect(where).toHaveBeenCalledWith('uid', '==', 'user-1');
   });
 
-  it('resolves each membership to its parent space, dropping missing and unreadable ones', async () => {
+  it('subscribes per space and emits them (sorted by createdAt) once all have reported', () => {
     const onChange = jest.fn();
     subscribeToMySpaces('user-1', onChange);
-    const [, onNext] = mockedOnSnapshot.mock.calls[0];
 
-    mockedGetDoc.mockImplementation(async (ref: string) => {
-      if (ref === 'space-ref-ok') {
-        return { exists: () => true, id: 'space-1', data: () => ({ name: '집' }) };
-      }
-      if (ref === 'space-ref-gone') {
-        return { exists: () => false };
-      }
-      throw new Error('permission denied');
-    });
+    // members snapshot: user is in space-b and space-a
+    snaps[0].onNext({ docs: [memberDoc('space-b'), memberDoc('space-a'), memberDoc(null)] });
 
-    onNext({
-      docs: [
-        { ref: { parent: { parent: 'space-ref-ok' } } },
-        { ref: { parent: { parent: 'space-ref-gone' } } },
-        { ref: { parent: { parent: 'space-ref-error' } } },
-        { ref: { parent: { parent: null } } },
-      ],
-    });
+    // one space still pending → no emit yet
+    subFor('space-b').onNext(spaceSnap('space-b', { name: 'B', createdAt: '2026-02-01' }));
+    expect(onChange).not.toHaveBeenCalled();
 
-    await new Promise((resolve) => setImmediate(resolve));
+    subFor('space-a').onNext(spaceSnap('space-a', { name: 'A', createdAt: '2026-01-01' }));
+    expect(onChange).toHaveBeenCalledWith([
+      { id: 'space-a', name: 'A', createdAt: '2026-01-01' },
+      { id: 'space-b', name: 'B', createdAt: '2026-02-01' },
+    ]);
+  });
 
-    expect(onChange).toHaveBeenCalledWith([{ id: 'space-1', name: '집' } as Space]);
+  it('reflects a later space rename without re-reading every space', () => {
+    const onChange = jest.fn();
+    subscribeToMySpaces('user-1', onChange);
+    snaps[0].onNext({ docs: [memberDoc('space-a')] });
+    subFor('space-a').onNext(spaceSnap('space-a', { name: '옛이름', createdAt: '2026-01-01' }));
+    onChange.mockClear();
+
+    subFor('space-a').onNext(spaceSnap('space-a', { name: '새이름', createdAt: '2026-01-01' }));
+
+    expect(onChange).toHaveBeenCalledWith([
+      { id: 'space-a', name: '새이름', createdAt: '2026-01-01' },
+    ]);
+  });
+
+  it('drops a space whose document no longer exists', () => {
+    const onChange = jest.fn();
+    subscribeToMySpaces('user-1', onChange);
+    snaps[0].onNext({ docs: [memberDoc('space-a'), memberDoc('space-b')] });
+    subFor('space-a').onNext(spaceSnap('space-a', { name: 'A', createdAt: '2026-01-01' }));
+    subFor('space-b').onNext(spaceSnap('space-b', null));
+
+    expect(onChange).toHaveBeenLastCalledWith([
+      { id: 'space-a', name: 'A', createdAt: '2026-01-01' },
+    ]);
+  });
+
+  it('drops just the unreadable space when its subscription errors', () => {
+    const onChange = jest.fn();
+    subscribeToMySpaces('user-1', onChange);
+    snaps[0].onNext({ docs: [memberDoc('space-a'), memberDoc('space-b')] });
+    subFor('space-a').onNext(spaceSnap('space-a', { name: 'A', createdAt: '2026-01-01' }));
+    subFor('space-b').onError?.(new Error('permission-denied'));
+
+    expect(onChange).toHaveBeenLastCalledWith([
+      { id: 'space-a', name: 'A', createdAt: '2026-01-01' },
+    ]);
+  });
+
+  it('tears down the subscription for a space the user has left', () => {
+    const onChange = jest.fn();
+    subscribeToMySpaces('user-1', onChange);
+    snaps[0].onNext({ docs: [memberDoc('space-a'), memberDoc('space-b')] });
+    subFor('space-a').onNext(spaceSnap('space-a', { name: 'A', createdAt: '2026-01-01' }));
+    subFor('space-b').onNext(spaceSnap('space-b', { name: 'B', createdAt: '2026-02-01' }));
+    const bUnsub = subFor('space-b').unsub;
+
+    // next members snapshot: only space-a remains
+    snaps[0].onNext({ docs: [memberDoc('space-a')] });
+
+    expect(bUnsub).toHaveBeenCalledTimes(1);
+    expect(onChange).toHaveBeenLastCalledWith([
+      { id: 'space-a', name: 'A', createdAt: '2026-01-01' },
+    ]);
+  });
+
+  it('the returned unsubscribe stops every subscription and silences later emits', () => {
+    const onChange = jest.fn();
+    const unsubscribe = subscribeToMySpaces('user-1', onChange);
+    snaps[0].onNext({ docs: [memberDoc('space-a')] });
+    const spaceSub = subFor('space-a');
+    spaceSub.onNext(spaceSnap('space-a', { name: 'A', createdAt: '2026-01-01' }));
+    onChange.mockClear();
+
+    unsubscribe();
+
+    expect(snaps[0].unsub).toHaveBeenCalledTimes(1);
+    expect(spaceSub.unsub).toHaveBeenCalledTimes(1);
+
+    // a straggler snapshot after teardown must not call onChange
+    spaceSub.onNext(spaceSnap('space-a', { name: 'A2', createdAt: '2026-01-01' }));
+    expect(onChange).not.toHaveBeenCalled();
   });
 });
