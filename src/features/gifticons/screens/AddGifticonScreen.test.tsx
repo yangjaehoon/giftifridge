@@ -9,7 +9,7 @@ import { useGifticons } from '../hooks/useGifticons';
 import { useSpaceGifticons } from '../hooks/useSpaceGifticons';
 import {
   createGifticon,
-  encodeGifticonImage,
+  uploadGifticonImage,
   newGifticonId,
   setGifticonNotificationIds,
   updateGifticon,
@@ -27,7 +27,7 @@ jest.mock('../hooks/useGifticons', () => ({ useGifticons: jest.fn() }));
 jest.mock('../hooks/useSpaceGifticons', () => ({ useSpaceGifticons: jest.fn() }));
 jest.mock('../services/gifticonService', () => ({
   createGifticon: jest.fn(),
-  encodeGifticonImage: jest.fn(),
+  uploadGifticonImage: jest.fn(),
   newGifticonId: jest.fn(() => 'draft-id'),
   setGifticonNotificationIds: jest.fn(),
   updateGifticon: jest.fn(),
@@ -55,7 +55,7 @@ const mockedUseGifticons = useGifticons as jest.Mock;
 const mockedUseSpaceGifticons = useSpaceGifticons as jest.Mock;
 const mockedCreate = createGifticon as jest.Mock;
 const mockedUpdate = updateGifticon as jest.Mock;
-const mockedEncode = encodeGifticonImage as jest.Mock;
+const mockedUpload = uploadGifticonImage as jest.Mock;
 const mockedSetNotifIds = setGifticonNotificationIds as jest.Mock;
 const mockedCancelNotifs = cancelNotifications as jest.Mock;
 const mockedSchedule = scheduleExpiryNotifications as jest.Mock;
@@ -87,7 +87,7 @@ const existingGifticon: Gifticon = {
   name: '기존아메리카노',
   brand: '기존스타벅스',
   category: 'cafe',
-  imageUrl: 'data:image/jpeg;base64,existing',
+  imageUrl: 'https://storage.example/gifticons/g1.jpg',
   expiresAt: '2027-01-01',
   isUsed: false,
   createdAt: '2026-01-01T00:00:00.000Z',
@@ -102,7 +102,7 @@ beforeEach(() => {
   mockedUseGifticons.mockReturnValue({ items: [] });
   mockedUseSpaceGifticons.mockReturnValue({ items: [] });
   (newGifticonId as jest.Mock).mockReturnValue('draft-id');
-  mockedEncode.mockResolvedValue('data:image/jpeg;base64,encoded');
+  mockedUpload.mockResolvedValue('https://storage.example/gifticons/draft-id.jpg');
   mockedCreate.mockResolvedValue('draft-id');
   mockedUpdate.mockResolvedValue(undefined);
   mockedSetNotifIds.mockResolvedValue(undefined);
@@ -177,7 +177,7 @@ describe('AddGifticonScreen — create', () => {
     expect(queryByText('2020.01.01')).toBeNull();
   });
 
-  it('encodes the image, creates the gifticon, schedules reminders, and goes back', async () => {
+  it('uploads the image, creates the gifticon, schedules reminders, and goes back', async () => {
     const { getByText, getByPlaceholderText, navigation } = await renderScreen(undefined);
 
     await pickImage(getByText);
@@ -191,7 +191,7 @@ describe('AddGifticonScreen — create', () => {
     });
 
     await waitFor(() => expect(mockedCreate).toHaveBeenCalled());
-    expect(mockedEncode).toHaveBeenCalledWith('file:///photo.jpg');
+    expect(mockedUpload).toHaveBeenCalledWith('draft-id', 'file:///photo.jpg');
     const [draftId, uid, data] = mockedCreate.mock.calls[0];
     expect(draftId).toBe('draft-id');
     expect(uid).toBe('u1');
@@ -298,7 +298,7 @@ describe('AddGifticonScreen — edit', () => {
 
     await waitFor(() => expect(mockedUpdate).toHaveBeenCalledWith('g1', expect.any(Object)));
     // The image wasn't changed, so it should not be re-encoded.
-    expect(mockedEncode).not.toHaveBeenCalled();
+    expect(mockedUpload).not.toHaveBeenCalled();
     await waitFor(() => expect(navigation.goBack).toHaveBeenCalled());
   });
 });

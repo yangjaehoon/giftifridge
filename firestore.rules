@@ -19,10 +19,10 @@ service cloud.firestore {
     }
 
     // Shape guard for gifticon writes. Without this any signed-in caller — including
-    // a member of a shared space — could inject arbitrary fields or a multi-hundred-KB
-    // imageUrl that every other member's onSnapshot then downloads. request.resource.data
-    // is the full post-write doc on both create and update, so listing every allowed
-    // key here also pins the doc shape for partial updates.
+    // a member of a shared space — could inject arbitrary fields or a bogus
+    // imageUrl. request.resource.data is the full post-write doc on both create
+    // and update, so listing every allowed key here also pins the doc shape for
+    // partial updates. The image itself lives in Storage; only its URL is here.
     function isValidGifticon(data) {
       return data.keys().hasOnly(['ownerId', 'name', 'brand', 'category', 'imageUrl',
           'expiresAt', 'isUsed', 'createdAt', 'barcode', 'amount', 'usedAt',
@@ -31,7 +31,7 @@ service cloud.firestore {
         && data.name is string && data.name.size() > 0 && data.name.size() <= 200
         && data.brand is string && data.brand.size() > 0 && data.brand.size() <= 200
         && data.category in ['cafe', 'convenience', 'restaurant', 'culture', 'etc']
-        && data.imageUrl is string && data.imageUrl.size() > 0 && data.imageUrl.size() <= 700000
+        && data.imageUrl is string && data.imageUrl.size() > 0 && data.imageUrl.size() <= 2000
         && data.expiresAt is string && data.expiresAt.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
         && data.isUsed is bool
         && data.createdAt is string

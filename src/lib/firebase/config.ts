@@ -4,6 +4,7 @@ import { initializeAuth, getAuth, type Auth } from 'firebase/auth';
 // but is missing from the published type definitions.
 import { getReactNativePersistence } from 'firebase/auth';
 import { getFirestore, type Firestore } from 'firebase/firestore';
+import { getStorage, type FirebaseStorage } from 'firebase/storage';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
 
@@ -25,6 +26,7 @@ export const isFirebaseConfigured = Boolean(
 // auth/invalid-api-key) before the app ever gets to render the setup-required screen.
 let auth: Auth;
 let db: Firestore;
+let storage: FirebaseStorage;
 
 if (isFirebaseConfigured) {
   const app: FirebaseApp = getApps().length ? getApp() : initializeApp(firebaseConfig);
@@ -40,9 +42,11 @@ if (isFirebaseConfigured) {
   }
 
   db = getFirestore(app);
+  storage = getStorage(app);
 } else {
   auth = undefined as unknown as Auth;
   db = undefined as unknown as Firestore;
+  storage = undefined as unknown as FirebaseStorage;
 }
 
-export { auth, db };
+export { auth, db, storage };

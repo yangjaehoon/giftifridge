@@ -1,9 +1,10 @@
 import * as ImageManipulator from 'expo-image-manipulator';
 import { deleteDoc, doc, onSnapshot, orderBy, setDoc, updateDoc, where } from 'firebase/firestore';
+import { deleteObject, getDownloadURL, ref, uploadBytes } from 'firebase/storage';
 import {
   createGifticon,
   deleteGifticon,
-  encodeGifticonImage,
+  deleteGifticonImage,
   markGifticonUsed,
   newGifticonId,
   setGifticonNotificationIds,
@@ -11,10 +12,11 @@ import {
   subscribeToGifticons,
   subscribeToSpaceGifticons,
   updateGifticon,
+  uploadGifticonImage,
 } from './gifticonService';
 import type { Gifticon, NewGifticon } from '../types';
 
-jest.mock('../../../lib/firebase/config', () => ({ db: 'mock-db' }));
+jest.mock('../../../lib/firebase/config', () => ({ db: 'mock-db', storage: 'mock-storage' }));
 
 jest.mock('firebase/firestore', () => ({
   collection: jest.fn((_db, name) => `collection:${name}`),
@@ -30,6 +32,13 @@ jest.mock('firebase/firestore', () => ({
   where: jest.fn((field, op, value) => `where:${field}${op}${value}`),
 }));
 
+jest.mock('firebase/storage', () => ({
+  ref: jest.fn((_storage, path) => `ref:${path}`),
+  uploadBytes: jest.fn(),
+  getDownloadURL: jest.fn(),
+  deleteObject: jest.fn(),
+}));
+
 jest.mock('expo-image-manipulator', () => ({
   manipulateAsync: jest.fn(),
   SaveFormat: { JPEG: 'jpeg' },
@@ -40,13 +49,27 @@ const mockedDeleteDoc = deleteDoc as jest.Mock;
 const mockedOnSnapshot = onSnapshot as jest.Mock;
 const mockedUpdateDoc = updateDoc as jest.Mock;
 const mockedManipulateAsync = ImageManipulator.manipulateAsync as jest.Mock;
+const mockedUploadBytes = uploadBytes as jest.Mock;
+const mockedGetDownloadURL = getDownloadURL as jest.Mock;
+const mockedDeleteObject = deleteObject as jest.Mock;
+const mockedRef = ref as jest.Mock;
+
+const originalFetch = global.fetch;
+beforeAll(() => {
+  global.fetch = jest.fn(async () => ({
+    blob: async () => 'mock-blob',
+  })) as unknown as typeof fetch;
+});
+afterAll(() => {
+  global.fetch = originalFetch;
+});
 
 function makeNewGifticon(overrides: Partial<NewGifticon> = {}): NewGifticon {
   return {
     name: '아메리카노',
     brand: '스타벅스',
     category: 'cafe',
-    imageUrl: 'data:image/jpeg;base64,xyz',
+    imageUrl: 'https://storage.example/gifticons/x.jpg',
     expiresAt: '2026-08-01T00:00:00.000Z',
     ...overrides,
   };
@@ -59,7 +82,7 @@ function storedDoc(overrides: Record<string, unknown> = {}) {
     name: '아메리카노',
     brand: '스타벅스',
     category: 'cafe',
-    imageUrl: 'data:image/jpeg;base64,xyz',
+    imageUrl: 'https://storage.example/gifticons/x.jpg',
     expiresAt: '2026-08-01T00:00:00.000Z',
     isUsed: false,
     createdAt: '2026-01-01T00:00:00.000Z',
@@ -127,7 +150,7 @@ describe('updateGifticon', () => {
       name: '아메리카노',
       brand: '스타벅스',
       category: 'cafe',
-      imageUrl: 'data:image/jpeg;base64,xyz',
+      imageUrl: 'https://storage.example/gifticons/x.jpg',
       expiresAt: '2026-08-01T00:00:00.000Z',
       barcode: null,
       amount: null,
@@ -279,35 +302,66 @@ describe('setGifticonNotificationIds', () => {
 });
 
 describe('deleteGifticon', () => {
-  it('deletes the Firestore doc by id', async () => {
+  beforeEach(() => {
+    mockedDeleteObject.mockResolvedValue(undefined);
+  });
+
+  it('deletes the Firestore doc and best-effort removes the Storage image', async () => {
     const gifticon = { id: 'gift-1' } as Gifticon;
 
     await deleteGifticon(gifticon);
 
     expect(doc).toHaveBeenCalledWith('mock-db', 'gifticons', 'gift-1');
     expect(mockedDeleteDoc).toHaveBeenCalledTimes(1);
+    expect(mockedRef).toHaveBeenCalledWith('mock-storage', 'gifticons/gift-1.jpg');
+    expect(mockedDeleteObject).toHaveBeenCalledWith('ref:gifticons/gift-1.jpg');
+  });
+
+  it('does not fail the delete if the image is already gone', async () => {
+    mockedDeleteObject.mockRejectedValue(new Error('object-not-found'));
+
+    await expect(deleteGifticon({ id: 'gift-1' } as Gifticon)).resolves.toBeUndefined();
+    expect(mockedDeleteDoc).toHaveBeenCalledTimes(1);
   });
 });
 
-describe('encodeGifticonImage', () => {
-  it('resizes, compresses, and returns a base64 data URL', async () => {
-    mockedManipulateAsync.mockResolvedValue({ base64: 'abc123' });
+describe('deleteGifticonImage', () => {
+  it('swallows a missing-object error', async () => {
+    mockedDeleteObject.mockRejectedValue(new Error('not found'));
+    await expect(deleteGifticonImage('gift-9')).resolves.toBeUndefined();
+  });
+});
 
-    const result = await encodeGifticonImage('file:///photo.jpg');
-
-    expect(result).toBe('data:image/jpeg;base64,abc123');
-    expect(mockedManipulateAsync).toHaveBeenCalledWith(
-      'file:///photo.jpg',
-      [{ resize: { width: 900 } }],
-      expect.objectContaining({ compress: 0.5, format: 'jpeg', base64: true }),
+describe('uploadGifticonImage', () => {
+  beforeEach(() => {
+    mockedManipulateAsync.mockResolvedValue({ uri: 'file:///resized.jpg' });
+    mockedUploadBytes.mockResolvedValue(undefined);
+    mockedGetDownloadURL.mockResolvedValue(
+      'https://storage.example/gifticons/gift-1.jpg?token=abc',
     );
   });
 
-  it('throws when the manipulator does not return base64 data', async () => {
-    mockedManipulateAsync.mockResolvedValue({ base64: undefined });
+  it('resizes, uploads to the id-keyed path, and returns the download URL', async () => {
+    const url = await uploadGifticonImage('gift-1', 'file:///photo.jpg');
 
-    await expect(encodeGifticonImage('file:///photo.jpg')).rejects.toThrow(
-      'Failed to encode gifticon image',
+    expect(mockedManipulateAsync).toHaveBeenCalledWith(
+      'file:///photo.jpg',
+      [{ resize: { width: 900 } }],
+      expect.objectContaining({ compress: 0.5, format: 'jpeg' }),
     );
+    expect(global.fetch).toHaveBeenCalledWith('file:///resized.jpg');
+    expect(mockedRef).toHaveBeenCalledWith('mock-storage', 'gifticons/gift-1.jpg');
+    expect(mockedUploadBytes).toHaveBeenCalledWith('ref:gifticons/gift-1.jpg', 'mock-blob', {
+      contentType: 'image/jpeg',
+    });
+    expect(url).toBe('https://storage.example/gifticons/gift-1.jpg?token=abc');
+  });
+
+  it('overwrites the same object on a retry (id-keyed path)', async () => {
+    await uploadGifticonImage('gift-1', 'file:///a.jpg');
+    await uploadGifticonImage('gift-1', 'file:///b.jpg');
+
+    expect(mockedUploadBytes.mock.calls[0][0]).toBe('ref:gifticons/gift-1.jpg');
+    expect(mockedUploadBytes.mock.calls[1][0]).toBe('ref:gifticons/gift-1.jpg');
   });
 });

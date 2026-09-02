@@ -18,9 +18,9 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useAuth } from '../../auth/context/AuthContext';
 import {
   createGifticon,
-  encodeGifticonImage,
   newGifticonId,
   updateGifticon,
+  uploadGifticonImage,
 } from '../services/gifticonService';
 import { syncGifticonReminders } from '../services/gifticonReminders';
 import { recognizeExpiryDate } from '../services/ocrService';
@@ -240,9 +240,10 @@ export default function AddGifticonScreen({ navigation, route }: Props) {
     try {
       const expiresAtDate = toDateString(expiresAt);
       const imageChanged = imageUri !== originalImageUrl;
+      const targetId = isEditing && gifticonId ? gifticonId : draftId;
       const id = await withTimeout(
         (async () => {
-          const imageUrl = imageChanged ? await encodeGifticonImage(imageUri) : imageUri;
+          const imageUrl = imageChanged ? await uploadGifticonImage(targetId, imageUri) : imageUri;
           const data: NewGifticon = {
             name: name.trim(),
             brand: brand.trim(),

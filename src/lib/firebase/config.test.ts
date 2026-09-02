@@ -12,6 +12,9 @@ jest.mock('firebase/auth', () => ({
 jest.mock('firebase/firestore', () => ({
   getFirestore: jest.fn(() => ({ type: 'firestore' })),
 }));
+jest.mock('firebase/storage', () => ({
+  getStorage: jest.fn(() => ({ type: 'storage' })),
+}));
 jest.mock('@react-native-async-storage/async-storage', () => ({}));
 
 const FIREBASE_ENV_KEYS = [
@@ -28,6 +31,7 @@ const originalEnv = process.env;
 type AppMock = { initializeApp: jest.Mock; getApps: jest.Mock; getApp: jest.Mock };
 type AuthMock = { initializeAuth: jest.Mock; getAuth: jest.Mock };
 type FirestoreMock = { getFirestore: jest.Mock };
+type StorageMock = { getStorage: jest.Mock };
 
 // jest.resetModules() re-runs the mock factories, so the fresh instances have to
 // be re-grabbed after each reset rather than captured once at file scope.
@@ -35,12 +39,14 @@ function loadConfig() {
   const app = require('firebase/app') as AppMock;
   const auth = require('firebase/auth') as AuthMock;
   const firestore = require('firebase/firestore') as FirestoreMock;
+  const storage = require('firebase/storage') as StorageMock;
   const mod = require('./config') as {
     isFirebaseConfigured: boolean;
     auth: unknown;
     db: unknown;
+    storage: unknown;
   };
-  return { app, auth, firestore, mod };
+  return { app, auth, firestore, storage, mod };
 }
 
 beforeEach(() => {
@@ -61,18 +67,20 @@ function setConfiguredEnv() {
 
 describe('firebase config', () => {
   it('reports not configured and never touches firebase when the env vars are missing', () => {
-    const { app, firestore, mod } = loadConfig();
+    const { app, firestore, storage, mod } = loadConfig();
 
     expect(mod.isFirebaseConfigured).toBe(false);
     expect(mod.auth).toBeUndefined();
     expect(mod.db).toBeUndefined();
+    expect(mod.storage).toBeUndefined();
     expect(app.initializeApp).not.toHaveBeenCalled();
     expect(firestore.getFirestore).not.toHaveBeenCalled();
+    expect(storage.getStorage).not.toHaveBeenCalled();
   });
 
-  it('initializes a new app and RN auth persistence when configured on native', () => {
+  it('initializes app, RN auth persistence, firestore, and storage when configured', () => {
     setConfiguredEnv();
-    const { app, auth, firestore, mod } = loadConfig();
+    const { app, auth, firestore, storage, mod } = loadConfig();
 
     expect(mod.isFirebaseConfigured).toBe(true);
     expect(app.initializeApp).toHaveBeenCalledWith(
@@ -80,7 +88,9 @@ describe('firebase config', () => {
     );
     expect(auth.initializeAuth).toHaveBeenCalled();
     expect(firestore.getFirestore).toHaveBeenCalled();
+    expect(storage.getStorage).toHaveBeenCalled();
     expect(mod.auth).toEqual({ type: 'rn-auth' });
+    expect(mod.storage).toEqual({ type: 'storage' });
   });
 
   it('reuses the existing app instead of re-initializing when one already exists', () => {

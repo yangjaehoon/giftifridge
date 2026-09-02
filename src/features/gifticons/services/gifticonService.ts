@@ -10,29 +10,45 @@ import {
   where,
   type DocumentData,
 } from 'firebase/firestore';
+import { deleteObject, getDownloadURL, ref, uploadBytes } from 'firebase/storage';
 import * as ImageManipulator from 'expo-image-manipulator';
-import { db } from '../../../lib/firebase/config';
+import { db, storage } from '../../../lib/firebase/config';
 import type { Gifticon, NewGifticon } from '../types';
 
 const COLLECTION = 'gifticons';
 const IMAGE_MAX_DIMENSION = 900;
 const IMAGE_COMPRESS_QUALITY = 0.5;
 
+function imageRef(gifticonId: string) {
+  return ref(storage, `gifticons/${gifticonId}.jpg`);
+}
+
 /**
- * Resizes/compresses the image and returns it as a data: URL so it can be
- * stored directly on the Firestore doc — needed for shared-space gifticons,
- * since a local file:// path is only ever visible on the device that made it.
+ * Resizes/compresses the picked image and uploads it to Storage, returning its
+ * download URL. Only the URL goes on the Firestore doc — a base64 image would
+ * push the doc toward the 1 MiB limit and force every space member's onSnapshot
+ * to re-download it on any write. The object is keyed by the gifticon id, so a
+ * retry after a timeout overwrites the same file instead of orphaning one.
  */
-export async function encodeGifticonImage(localUri: string): Promise<string> {
-  const result = await ImageManipulator.manipulateAsync(
+export async function uploadGifticonImage(gifticonId: string, localUri: string): Promise<string> {
+  const resized = await ImageManipulator.manipulateAsync(
     localUri,
     [{ resize: { width: IMAGE_MAX_DIMENSION } }],
-    { compress: IMAGE_COMPRESS_QUALITY, format: ImageManipulator.SaveFormat.JPEG, base64: true },
+    { compress: IMAGE_COMPRESS_QUALITY, format: ImageManipulator.SaveFormat.JPEG },
   );
-  if (!result.base64) {
-    throw new Error('Failed to encode gifticon image');
+  const blob = await (await fetch(resized.uri)).blob();
+  const objectRef = imageRef(gifticonId);
+  await uploadBytes(objectRef, blob, { contentType: 'image/jpeg' });
+  return getDownloadURL(objectRef);
+}
+
+/** Best-effort removal of a gifticon's Storage image (called on delete). */
+export async function deleteGifticonImage(gifticonId: string): Promise<void> {
+  try {
+    await deleteObject(imageRef(gifticonId));
+  } catch {
+    // already gone, or never uploaded (e.g. an old base64 doc)
   }
-  return `data:image/jpeg;base64,${result.base64}`;
 }
 
 // Firestore rejects any field explicitly set to `undefined` (e.g. an unset
@@ -173,4 +189,7 @@ export async function setGifticonNotificationIds(id: string, notificationIds: st
 
 export async function deleteGifticon(gifticon: Gifticon) {
   await deleteDoc(doc(db, COLLECTION, gifticon.id));
+  // The doc is what matters; a leftover image is harmless and cleaned up here
+  // on a best-effort basis.
+  await deleteGifticonImage(gifticon.id);
 }

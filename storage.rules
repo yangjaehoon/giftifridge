@@ -1,0 +1,18 @@
+rules_version = '2';
+
+// Gifticon images. Storage rules can't cheaply cross-reference Firestore, so
+// this can't be scoped to the gifticon's owner/space — but the object path is
+// the unguessable gifticon id, writes are limited to reasonably sized images,
+// and reads still require a signed-in user. The authoritative access control
+// for the gifticon record itself is in firestore.rules.
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /gifticons/{imageId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null
+        && request.resource.size < 1 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*');
+      allow delete: if request.auth != null;
+    }
+  }
+}
