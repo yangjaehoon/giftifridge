@@ -7,19 +7,20 @@ import React, {
   useRef,
   useState,
 } from 'react';
+import { isFirebaseConfigured } from '../../../lib/firebase/config';
 import {
-  EmailAuthProvider,
-  linkWithCredential,
-  onAuthStateChanged,
+  getCurrentAuthUser,
+  linkEmailCredential,
   signInAnonymously,
-  signInWithEmailAndPassword,
-  signOut as firebaseSignOut,
+  signInWithEmail,
+  signOut as authSignOut,
+  subscribeToAuthState,
   type User,
-} from 'firebase/auth';
-import { auth, isFirebaseConfigured } from '../../../lib/firebase/config';
+} from '../../../lib/firebase/auth';
+import type { AppUser } from '../types';
 
 interface CurrentUser {
-  user: User | null;
+  user: AppUser | null;
   isAnonymous: boolean;
 }
 
@@ -44,8 +45,11 @@ const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 // Anonymous sign-in disabled mid-session).
 const MAX_ANON_ATTEMPTS = 3;
 
+const toAppUser = (u: User): AppUser => ({ uid: u.uid, email: u.email ?? null });
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<AppUser | null>(null);
+  const [isAnonymous, setIsAnonymous] = useState(true);
   const [initializing, setInitializing] = useState(isFirebaseConfigured);
   const [authError, setAuthError] = useState<string | null>(null);
   const anonAttemptsRef = useRef(0);
@@ -61,19 +65,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return;
     }
     anonAttemptsRef.current += 1;
-    signInAnonymously(auth).catch(failAnonymousSignIn);
+    signInAnonymously().catch(failAnonymousSignIn);
   }, [failAnonymousSignIn]);
 
   useEffect(() => {
     if (!isFirebaseConfigured) return;
-    const unsubscribe = onAuthStateChanged(auth, (u) => {
+    const unsubscribe = subscribeToAuthState((u) => {
       if (!u) {
         attemptAnonymousSignIn();
         return;
       }
       anonAttemptsRef.current = 0;
       setAuthError(null);
-      setUser(u);
+      setUser(toAppUser(u));
+      setIsAnonymous(u.isAnonymous);
       setInitializing(false);
     });
     return unsubscribe;
@@ -82,7 +87,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const value = useMemo<AuthContextValue>(
     () => ({
       user,
-      isAnonymous: user?.isAnonymous ?? true,
+      isAnonymous,
       initializing,
       authError,
       retryAnonymousSignIn: () => {
@@ -92,10 +97,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         attemptAnonymousSignIn();
       },
       signIn: async (email, password) => {
-        await signInWithEmailAndPassword(auth, email, password);
+        await signInWithEmail(email, password);
       },
       linkEmail: async (email, password) => {
-        const current = auth.currentUser;
+        const current = getCurrentAuthUser();
         // linkEmail only ever upgrades the current anonymous account. The old
         // fallback here called createUserWithEmailAndPassword, which silently
         // signed into a brand-new account and stranded the anonymous one (and
@@ -104,14 +109,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (!current || !current.isAnonymous) {
           throw new Error('linkEmail: no anonymous account to upgrade');
         }
-        const credential = EmailAuthProvider.credential(email, password);
-        await linkWithCredential(current, credential);
+        await linkEmailCredential(current, email, password);
       },
       signOut: async () => {
-        await firebaseSignOut(auth);
+        await authSignOut();
       },
     }),
-    [user, initializing, authError, attemptAnonymousSignIn],
+    [user, isAnonymous, initializing, authError, attemptAnonymousSignIn],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

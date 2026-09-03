@@ -2,37 +2,30 @@ import React from 'react';
 import { Text } from 'react-native';
 import { act, render } from '@testing-library/react-native';
 import {
-  EmailAuthProvider,
-  linkWithCredential,
-  onAuthStateChanged,
+  getCurrentAuthUser,
+  linkEmailCredential,
   signInAnonymously,
-  signInWithEmailAndPassword,
-  signOut as firebaseSignOut,
-} from 'firebase/auth';
+  signInWithEmail,
+  signOut as authSignOut,
+  subscribeToAuthState,
+} from '../../../lib/firebase/auth';
 import { AuthProvider, useAuthActions, useAuthBootstrap, useCurrentUser } from './AuthContext';
 
-jest.mock('../../../lib/firebase/config', () => ({
-  auth: { currentUser: null },
-  isFirebaseConfigured: true,
-}));
+jest.mock('../../../lib/firebase/config', () => ({ isFirebaseConfigured: true }));
 
-jest.mock('firebase/auth', () => ({
-  EmailAuthProvider: { credential: jest.fn(() => 'mock-credential') },
-  linkWithCredential: jest.fn(),
-  onAuthStateChanged: jest.fn(),
+jest.mock('../../../lib/firebase/auth', () => ({
+  subscribeToAuthState: jest.fn(),
   signInAnonymously: jest.fn(),
-  signInWithEmailAndPassword: jest.fn(),
+  signInWithEmail: jest.fn(),
   signOut: jest.fn(),
+  getCurrentAuthUser: jest.fn(() => null),
+  linkEmailCredential: jest.fn(),
 }));
 
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const config = require('../../../lib/firebase/config') as {
-  auth: { currentUser: unknown };
-};
-
-const mockedOnAuthStateChanged = onAuthStateChanged as jest.Mock;
+const mockedSubscribe = subscribeToAuthState as jest.Mock;
 const mockedSignInAnonymously = signInAnonymously as jest.Mock;
-const mockedLinkWithCredential = linkWithCredential as jest.Mock;
+const mockedGetCurrentAuthUser = getCurrentAuthUser as jest.Mock;
+const mockedLinkEmailCredential = linkEmailCredential as jest.Mock;
 
 type AuthValue = ReturnType<typeof useCurrentUser> &
   ReturnType<typeof useAuthActions> &
@@ -71,14 +64,14 @@ async function renderProvider() {
 beforeEach(() => {
   jest.clearAllMocks();
   captured.value = null;
-  config.auth.currentUser = null;
+  mockedGetCurrentAuthUser.mockReturnValue(null);
   mockedSignInAnonymously.mockResolvedValue({});
 });
 
 describe('AuthProvider', () => {
   it('signs in anonymously when the auth listener reports no user', async () => {
     let emit: (user: unknown) => void = () => {};
-    mockedOnAuthStateChanged.mockImplementation((_auth, cb) => {
+    mockedSubscribe.mockImplementation((cb) => {
       emit = cb;
       return jest.fn();
     });
@@ -94,7 +87,7 @@ describe('AuthProvider', () => {
 
   it('exposes the signed-in user and stops initializing once a user arrives', async () => {
     let emit: (user: unknown) => void = () => {};
-    mockedOnAuthStateChanged.mockImplementation((_auth, cb) => {
+    mockedSubscribe.mockImplementation((cb) => {
       emit = cb;
       return jest.fn();
     });
@@ -112,7 +105,7 @@ describe('AuthProvider', () => {
   it('surfaces an auth error when the anonymous sign-in fails', async () => {
     mockedSignInAnonymously.mockRejectedValue(new Error('network'));
     let emit: (user: unknown) => void = () => {};
-    mockedOnAuthStateChanged.mockImplementation((_auth, cb) => {
+    mockedSubscribe.mockImplementation((cb) => {
       emit = cb;
       return jest.fn();
     });
@@ -129,7 +122,7 @@ describe('AuthProvider', () => {
   it('retryAnonymousSignIn clears the error and signs in again', async () => {
     mockedSignInAnonymously.mockRejectedValueOnce(new Error('network'));
     let emit: (user: unknown) => void = () => {};
-    mockedOnAuthStateChanged.mockImplementation((_auth, cb) => {
+    mockedSubscribe.mockImplementation((cb) => {
       emit = cb;
       return jest.fn();
     });
@@ -150,7 +143,7 @@ describe('AuthProvider', () => {
 
   it('stops retrying anonymous sign-in after 3 consecutive failures', async () => {
     let emit: (user: unknown) => void = () => {};
-    mockedOnAuthStateChanged.mockImplementation((_auth, cb) => {
+    mockedSubscribe.mockImplementation((cb) => {
       emit = cb;
       return jest.fn();
     });
@@ -172,7 +165,7 @@ describe('AuthProvider', () => {
 
   it('resets the retry budget after retryAnonymousSignIn', async () => {
     let emit: (user: unknown) => void = () => {};
-    mockedOnAuthStateChanged.mockImplementation((_auth, cb) => {
+    mockedSubscribe.mockImplementation((cb) => {
       emit = cb;
       return jest.fn();
     });
@@ -195,33 +188,32 @@ describe('AuthProvider', () => {
     expect(mockedSignInAnonymously).toHaveBeenCalledTimes(6);
   });
 
-  it('signIn delegates to signInWithEmailAndPassword', async () => {
-    mockedOnAuthStateChanged.mockReturnValue(jest.fn());
+  it('signIn delegates to the email sign-in wrapper', async () => {
+    mockedSubscribe.mockReturnValue(jest.fn());
     await renderProvider();
 
     await act(async () => {
       await authValue().signIn('a@b.com', 'pw');
     });
 
-    expect(signInWithEmailAndPassword).toHaveBeenCalledWith(expect.anything(), 'a@b.com', 'pw');
+    expect(signInWithEmail).toHaveBeenCalledWith('a@b.com', 'pw');
   });
 
   it('linkEmail links a credential onto the current anonymous account', async () => {
-    config.auth.currentUser = { isAnonymous: true };
-    mockedOnAuthStateChanged.mockReturnValue(jest.fn());
+    mockedGetCurrentAuthUser.mockReturnValue({ isAnonymous: true });
+    mockedSubscribe.mockReturnValue(jest.fn());
     await renderProvider();
 
     await act(async () => {
       await authValue().linkEmail('a@b.com', 'pw');
     });
 
-    expect(EmailAuthProvider.credential).toHaveBeenCalledWith('a@b.com', 'pw');
-    expect(mockedLinkWithCredential).toHaveBeenCalledWith({ isAnonymous: true }, 'mock-credential');
+    expect(mockedLinkEmailCredential).toHaveBeenCalledWith({ isAnonymous: true }, 'a@b.com', 'pw');
   });
 
   it('linkEmail refuses when there is no anonymous account to upgrade', async () => {
-    config.auth.currentUser = { isAnonymous: false };
-    mockedOnAuthStateChanged.mockReturnValue(jest.fn());
+    mockedGetCurrentAuthUser.mockReturnValue({ isAnonymous: false });
+    mockedSubscribe.mockReturnValue(jest.fn());
     await renderProvider();
 
     await expect(authValue().linkEmail('a@b.com', 'pw')).rejects.toThrow(
@@ -229,14 +221,14 @@ describe('AuthProvider', () => {
     );
   });
 
-  it('signOut delegates to firebase signOut', async () => {
-    mockedOnAuthStateChanged.mockReturnValue(jest.fn());
+  it('signOut delegates to the sign-out wrapper', async () => {
+    mockedSubscribe.mockReturnValue(jest.fn());
     await renderProvider();
 
     await act(async () => {
       await authValue().signOut();
     });
 
-    expect(firebaseSignOut).toHaveBeenCalledTimes(1);
+    expect(authSignOut).toHaveBeenCalledTimes(1);
   });
 });
