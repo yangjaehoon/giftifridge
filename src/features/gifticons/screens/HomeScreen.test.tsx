@@ -173,10 +173,26 @@ describe('HomeScreen', () => {
     expect(queryByText('아메리카노')).toBeNull();
   });
 
-  it('shows the full error screen when loading failed with no cached items', async () => {
-    setList({ error: new Error('boom'), items: [] });
+  it('shows the full error screen with a retry button when loading failed with no cached items', async () => {
+    const refresh = jest.fn();
+    setList({ error: new Error('boom'), items: [], refresh });
     const { getByText } = await renderScreen();
     expect(getByText('기프티콘을 불러오지 못했어요. 잠시 후 다시 시도해주세요.')).toBeTruthy();
+
+    await act(async () => {
+      fireEvent.press(getByText('다시 시도'));
+    });
+    expect(refresh).toHaveBeenCalled();
+  });
+
+  it('offers an add CTA in the empty active tab', async () => {
+    setList({ items: [] });
+    const { getByText, navigation } = await renderScreen();
+
+    await act(async () => {
+      fireEvent.press(getByText('기프티콘 등록'));
+    });
+    expect(navigation.navigate).toHaveBeenCalledWith('AddGifticon', undefined);
   });
 
   it('shows an inline error banner when a refresh fails but items are cached', async () => {

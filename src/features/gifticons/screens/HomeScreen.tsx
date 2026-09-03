@@ -15,6 +15,7 @@ import { useNearbyGifticons } from '../hooks/useNearbyGifticons';
 import { useGifticonListView } from '../hooks/useGifticonListView';
 import { useHomeGifticonContext } from '../hooks/useHomeGifticonContext';
 import SpaceSwitcher from '../../spaces/components/SpaceSwitcher';
+import Button from '../../../shared/components/Button';
 import Chip from '../../../shared/components/Chip';
 import GifticonCard from '../components/GifticonCard';
 import GifticonCardSkeleton from '../components/GifticonCardSkeleton';
@@ -49,6 +50,12 @@ export default function HomeScreen({ navigation }: Props) {
     toggleSortDir,
     isSearching,
   } = useGifticonListView(items);
+
+  const openAdd = () =>
+    navigation.navigate(
+      'AddGifticon',
+      context.type === 'space' ? { spaceId: context.spaceId } : undefined,
+    );
 
   useEffect(() => {
     navigation.setOptions({
@@ -165,6 +172,12 @@ export default function HomeScreen({ navigation }: Props) {
           }
         >
           <Text style={styles.emptyText}>{getGifticonErrorMessage('load')}</Text>
+          <Button
+            variant="secondary"
+            label="다시 시도"
+            onPress={refresh}
+            style={styles.emptyAction}
+          />
         </ScrollView>
       ) : (
         <>
@@ -197,6 +210,9 @@ export default function HomeScreen({ navigation }: Props) {
                 <Text style={styles.emptyText}>
                   {isSearching ? '검색 결과가 없어요' : EMPTY_TEXT[tab]}
                 </Text>
+                {!isSearching && tab === 'active' && (
+                  <Button label="기프티콘 등록" onPress={openAdd} style={styles.emptyAction} />
+                )}
               </View>
             }
           />
@@ -205,12 +221,7 @@ export default function HomeScreen({ navigation }: Props) {
 
       <TouchableOpacity
         style={styles.fab}
-        onPress={() =>
-          navigation.navigate(
-            'AddGifticon',
-            context.type === 'space' ? { spaceId: context.spaceId } : undefined,
-          )
-        }
+        onPress={openAdd}
         accessibilityRole="button"
         accessibilityLabel="기프티콘 등록"
       >
@@ -260,8 +271,9 @@ const styles = StyleSheet.create({
   },
   sortDirText: { fontSize: 12, fontWeight: '600', color: colors.gray700 },
   listContent: { paddingVertical: 8, paddingBottom: 100, flexGrow: 1 },
-  empty: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: 80 },
+  empty: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: 80, gap: 4 },
   emptyText: { color: colors.gray500, fontSize: 14 },
+  emptyAction: { marginTop: 12, minWidth: 160 },
   inlineError: {
     backgroundColor: colors.amber,
     marginHorizontal: 16,
