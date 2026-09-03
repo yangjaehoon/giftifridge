@@ -7,6 +7,7 @@ import { removeGifticon, setGifticonUsed } from '../services/gifticonLifecycle';
 import { useGifticon } from '../hooks/useGifticon';
 import Button from '../../../shared/components/Button';
 import { useToast } from '../../../shared/components/ToastProvider';
+import { useMaxBrightnessWhileFocused } from '../../../shared/hooks/useMaxBrightnessWhileFocused';
 import GifticonDetailSkeleton from '../components/GifticonDetailSkeleton';
 import GifticonBarcode from '../components/GifticonBarcode';
 import { CATEGORY_LABELS } from '../types';
@@ -24,6 +25,7 @@ export default function GifticonDetailScreen({ route, navigation }: Props) {
   const { user } = useCurrentUser();
   const showToast = useToast();
   const { gifticon, loading, error, refresh } = useGifticon(gifticonId);
+  useMaxBrightnessWhileFocused(Boolean(gifticon?.barcode));
   const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState(false);
   const copyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
