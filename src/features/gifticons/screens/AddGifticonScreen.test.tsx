@@ -118,7 +118,7 @@ type Screen = Awaited<ReturnType<typeof renderScreen>>;
 async function pickImage(getByText: Screen['getByText']) {
   mockedLibrary.mockResolvedValue({ canceled: false, assets: [{ uri: 'file:///photo.jpg' }] });
   await act(async () => {
-    fireEvent.press(getByText(/탭하여 사진 선택/));
+    fireEvent.press(getByText(/앨범에서 사진 선택/));
   });
 }
 
@@ -184,7 +184,7 @@ describe('AddGifticonScreen — create', () => {
     await act(async () => {
       fireEvent.changeText(getByPlaceholderText('아메리카노 Tall'), '  아메리카노  ');
       fireEvent.changeText(getByPlaceholderText('스타벅스'), '스타벅스');
-      fireEvent.changeText(getByPlaceholderText('10000'), '4500');
+      fireEvent.changeText(getByPlaceholderText('10,000'), '4500');
     });
     await act(async () => {
       fireEvent.press(getByText('등록하기'));

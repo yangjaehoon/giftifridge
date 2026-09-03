@@ -1,8 +1,10 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
   Image,
+  KeyboardAvoidingView,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -28,6 +30,7 @@ import type { GifticonCategory } from '../types';
 import { CATEGORY_LABELS } from '../types';
 import Chip from '../../../shared/components/Chip';
 import { formatDate, toDateString } from '../../../shared/utils/date';
+import { groupDigits } from '../../../shared/utils/currency';
 import { getCurrentLocation } from '../../../shared/utils/location';
 import type { RootStackParamList } from '../../../app/RootNavigator';
 import { getGifticonErrorMessage, getGifticonWriteErrorMessage } from '../errors';
@@ -64,6 +67,8 @@ export default function AddGifticonScreen({ navigation, route }: Props) {
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [saving, setSaving] = useState(false);
   const [locationSaving, setLocationSaving] = useState(false);
+  const brandRef = useRef<TextInput>(null);
+  const amountRef = useRef<TextInput>(null);
 
   useEffect(() => {
     navigation.setOptions({ title: isEditing ? '기프티콘 수정' : '기프티콘 등록' });
@@ -126,139 +131,163 @@ export default function AddGifticonScreen({ navigation, route }: Props) {
   }
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <TouchableOpacity
-        testID="image-picker"
-        style={[
-          styles.imagePicker,
-          !form.imageUri && styles.imagePickerEmpty,
-          form.fieldErrors.image && styles.inputError,
-        ]}
-        onPress={image.pickFromLibrary}
-        onLongPress={image.takePhoto}
-      >
-        {form.imageUri ? (
-          <Image source={{ uri: form.imageUri }} style={styles.image} />
-        ) : (
-          <Text style={styles.imagePlaceholder}>탭하여 사진 선택{'\n'}(길게 눌러 카메라 촬영)</Text>
-        )}
-      </TouchableOpacity>
-      {form.fieldErrors.image && <Text style={styles.errorText}>{form.fieldErrors.image}</Text>}
+    <KeyboardAvoidingView
+      style={styles.flex}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    >
+      <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
+        <TouchableOpacity
+          testID="image-picker"
+          style={[
+            styles.imagePicker,
+            !form.imageUri && styles.imagePickerEmpty,
+            form.fieldErrors.image && styles.inputError,
+          ]}
+          onPress={image.pickFromLibrary}
+          accessibilityRole="button"
+          accessibilityLabel="앨범에서 기프티콘 사진 선택"
+        >
+          {form.imageUri ? (
+            <Image
+              source={{ uri: form.imageUri }}
+              style={styles.image}
+              accessibilityLabel="선택한 기프티콘 사진"
+            />
+          ) : (
+            <Text style={styles.imagePlaceholder}>앨범에서 사진 선택</Text>
+          )}
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.cameraLink}
+          onPress={image.takePhoto}
+          accessibilityRole="button"
+        >
+          <Text style={styles.cameraLinkText}>카메라로 촬영</Text>
+        </TouchableOpacity>
+        {form.fieldErrors.image && <Text style={styles.errorText}>{form.fieldErrors.image}</Text>}
 
-      <Text style={styles.label}>상품명</Text>
-      <TextInput
-        style={[styles.input, form.fieldErrors.name && styles.inputError]}
-        value={form.name}
-        onChangeText={form.setName}
-        placeholder="아메리카노 Tall"
-      />
-      {form.fieldErrors.name && <Text style={styles.errorText}>{form.fieldErrors.name}</Text>}
-
-      <Text style={styles.label}>브랜드</Text>
-      <TextInput
-        style={[styles.input, form.fieldErrors.brand && styles.inputError]}
-        value={form.brand}
-        onChangeText={form.setBrand}
-        placeholder="스타벅스"
-      />
-      {form.fieldErrors.brand && <Text style={styles.errorText}>{form.fieldErrors.brand}</Text>}
-
-      <Text style={styles.label}>금액 (선택)</Text>
-      <TextInput
-        style={styles.input}
-        value={form.amount}
-        onChangeText={form.setAmount}
-        placeholder="10000"
-        keyboardType="number-pad"
-      />
-
-      <Text style={styles.label}>카테고리</Text>
-      <View style={styles.chipRow}>
-        {CATEGORIES.map((c) => (
-          <Chip
-            key={c}
-            label={CATEGORY_LABELS[c]}
-            active={form.category === c}
-            onPress={() => form.setCategory(c)}
-          />
-        ))}
-      </View>
-
-      <Text style={styles.label}>바코드 번호 (선택)</Text>
-      <View style={styles.barcodeRow}>
+        <Text style={styles.label}>상품명</Text>
         <TextInput
-          style={[styles.input, styles.barcodeInput]}
-          value={form.barcode}
-          onChangeText={form.setBarcode}
-          placeholder="숫자 직접 입력 또는 스캔"
+          style={[styles.input, form.fieldErrors.name && styles.inputError]}
+          value={form.name}
+          onChangeText={form.setName}
+          placeholder="아메리카노 Tall"
+          returnKeyType="next"
+          onSubmitEditing={() => brandRef.current?.focus()}
+        />
+        {form.fieldErrors.name && <Text style={styles.errorText}>{form.fieldErrors.name}</Text>}
+
+        <Text style={styles.label}>브랜드</Text>
+        <TextInput
+          ref={brandRef}
+          style={[styles.input, form.fieldErrors.brand && styles.inputError]}
+          value={form.brand}
+          onChangeText={form.setBrand}
+          placeholder="스타벅스"
+          returnKeyType="next"
+          onSubmitEditing={() => amountRef.current?.focus()}
+        />
+        {form.fieldErrors.brand && <Text style={styles.errorText}>{form.fieldErrors.brand}</Text>}
+
+        <Text style={styles.label}>금액 (선택)</Text>
+        <TextInput
+          ref={amountRef}
+          style={styles.input}
+          value={groupDigits(form.amount)}
+          onChangeText={(t) => form.setAmount(t.replace(/[^0-9]/g, ''))}
+          placeholder="10,000"
           keyboardType="number-pad"
         />
-        <TouchableOpacity style={styles.scanButton} onPress={scanner.open}>
-          <Text style={styles.scanButtonText}>스캔</Text>
+
+        <Text style={styles.label}>카테고리</Text>
+        <View style={styles.chipRow}>
+          {CATEGORIES.map((c) => (
+            <Chip
+              key={c}
+              label={CATEGORY_LABELS[c]}
+              active={form.category === c}
+              onPress={() => form.setCategory(c)}
+            />
+          ))}
+        </View>
+
+        <Text style={styles.label}>바코드 번호 (선택)</Text>
+        <View style={styles.barcodeRow}>
+          <TextInput
+            style={[styles.input, styles.barcodeInput]}
+            value={form.barcode}
+            onChangeText={form.setBarcode}
+            placeholder="숫자 직접 입력 또는 스캔"
+            keyboardType="number-pad"
+          />
+          <TouchableOpacity style={styles.scanButton} onPress={scanner.open}>
+            <Text style={styles.scanButtonText}>스캔</Text>
+          </TouchableOpacity>
+        </View>
+
+        <Text style={styles.label}>매장 위치 (선택)</Text>
+        <TouchableOpacity
+          style={styles.locationButton}
+          onPress={saveCurrentLocation}
+          disabled={locationSaving}
+        >
+          {locationSaving ? (
+            <ActivityIndicator size="small" color={colors.primary} />
+          ) : (
+            <Text style={styles.locationButtonText}>
+              {form.location ? '현재 위치로 저장됨 ✓' : '지금 여기를 매장 위치로 저장'}
+            </Text>
+          )}
         </TouchableOpacity>
-      </View>
-
-      <Text style={styles.label}>매장 위치 (선택)</Text>
-      <TouchableOpacity
-        style={styles.locationButton}
-        onPress={saveCurrentLocation}
-        disabled={locationSaving}
-      >
-        {locationSaving ? (
-          <ActivityIndicator size="small" color={colors.primary} />
-        ) : (
-          <Text style={styles.locationButtonText}>
-            {form.location ? '현재 위치로 저장됨 ✓' : '지금 여기를 매장 위치로 저장'}
-          </Text>
+        {form.location && (
+          <Text style={styles.ocrHint}>근처에 다시 왔을 때 이 기프티콘을 알려드려요.</Text>
         )}
-      </TouchableOpacity>
-      {form.location && (
-        <Text style={styles.ocrHint}>근처에 다시 왔을 때 이 기프티콘을 알려드려요.</Text>
-      )}
 
-      <View style={styles.dateLabelRow}>
-        <Text style={styles.label}>유효기한</Text>
-        {image.recognizingDate && <ActivityIndicator size="small" color={colors.primary} />}
-      </View>
-      <TouchableOpacity style={styles.input} onPress={() => setShowDatePicker(true)}>
-        <Text>{formatDate(toDateString(form.expiresAt))}</Text>
-      </TouchableOpacity>
-      {image.dateAutoDetected && (
-        <Text style={styles.ocrHint}>사진에서 유효기한을 자동으로 인식했어요. 확인해주세요.</Text>
-      )}
-      {showDatePicker && (
-        <DateTimePicker
-          value={form.expiresAt}
-          mode="date"
-          display="default"
-          minimumDate={new Date()}
-          onChange={(_, selected) => {
-            setShowDatePicker(false);
-            if (selected) {
-              form.setExpiresAt(selected);
-              image.markDateManuallyEdited();
-            }
-          }}
+        <View style={styles.dateLabelRow}>
+          <Text style={styles.label}>유효기한</Text>
+          {image.recognizingDate && <ActivityIndicator size="small" color={colors.primary} />}
+        </View>
+        <TouchableOpacity style={styles.input} onPress={() => setShowDatePicker(true)}>
+          <Text>{formatDate(toDateString(form.expiresAt))}</Text>
+        </TouchableOpacity>
+        {image.dateAutoDetected && (
+          <Text style={styles.ocrHint}>사진에서 유효기한을 자동으로 인식했어요. 확인해주세요.</Text>
+        )}
+        {showDatePicker && (
+          <DateTimePicker
+            value={form.expiresAt}
+            mode="date"
+            display="default"
+            minimumDate={new Date()}
+            onChange={(_, selected) => {
+              setShowDatePicker(false);
+              if (selected) {
+                form.setExpiresAt(selected);
+                image.markDateManuallyEdited();
+              }
+            }}
+          />
+        )}
+
+        <Button
+          label={isEditing ? '저장하기' : '등록하기'}
+          onPress={save}
+          loading={saving}
+          style={styles.submit}
         />
-      )}
-
-      <Button
-        label={isEditing ? '저장하기' : '등록하기'}
-        onPress={save}
-        loading={saving}
-        style={styles.submit}
-      />
+      </ScrollView>
 
       <BarcodeScannerModal
         visible={scanner.visible}
         onScanned={scanner.handleScanned}
         onClose={scanner.close}
       />
-    </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
+  flex: { flex: 1 },
   container: { padding: 20, paddingBottom: 60 },
   imagePicker: {
     aspectRatio: 3 / 4,
@@ -266,9 +295,11 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surfaceSubtle,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 20,
+    marginBottom: 8,
     overflow: 'hidden',
   },
+  cameraLink: { alignSelf: 'center', paddingVertical: 8, paddingHorizontal: 12, marginBottom: 8 },
+  cameraLinkText: { color: colors.primary, fontSize: 13, fontWeight: '600' },
   // Before a photo is chosen there's nothing to preview, so the picker is a
   // compact tap target instead of a full 3:4 placeholder box.
   imagePickerEmpty: {
