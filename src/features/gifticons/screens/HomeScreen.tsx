@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useCallback, useEffect } from 'react';
 import {
   FlatList,
   RefreshControl,
@@ -24,11 +24,14 @@ import NearbyGifticonBanner from '../components/NearbyGifticonBanner';
 import StatusTabs from '../components/StatusTabs';
 import { getGifticonErrorMessage } from '../errors';
 import { CATEGORY_LABELS } from '../types';
+import type { Gifticon } from '../types';
 import { CATEGORY_FILTERS, EMPTY_TEXT, SORT_KEYS, SORT_LABELS } from '../gifticonFilters';
 import type { RootStackParamList } from '../../../app/RootNavigator';
 import { colors } from '../../../shared/theme/colors';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Home'>;
+
+const keyExtractor = (item: Gifticon) => item.id;
 
 export default function HomeScreen({ navigation }: Props) {
   const { user } = useCurrentUser();
@@ -56,6 +59,15 @@ export default function HomeScreen({ navigation }: Props) {
       'AddGifticon',
       context.type === 'space' ? { spaceId: context.spaceId } : undefined,
     );
+
+  const openDetail = useCallback(
+    (g: Gifticon) => navigation.navigate('GifticonDetail', { gifticonId: g.id }),
+    [navigation],
+  );
+  const renderItem = useCallback(
+    ({ item }: { item: Gifticon }) => <GifticonCard gifticon={item} onPress={openDetail} />,
+    [openDetail],
+  );
 
   useEffect(() => {
     navigation.setOptions({
@@ -190,8 +202,11 @@ export default function HomeScreen({ navigation }: Props) {
           )}
           <FlatList
             data={visible}
-            keyExtractor={(item) => item.id}
+            keyExtractor={keyExtractor}
             contentContainerStyle={styles.listContent}
+            initialNumToRender={8}
+            windowSize={11}
+            removeClippedSubviews
             refreshControl={
               <RefreshControl
                 refreshing={refreshing}
@@ -199,12 +214,7 @@ export default function HomeScreen({ navigation }: Props) {
                 tintColor={colors.primary}
               />
             }
-            renderItem={({ item }) => (
-              <GifticonCard
-                gifticon={item}
-                onPress={() => navigation.navigate('GifticonDetail', { gifticonId: item.id })}
-              />
-            )}
+            renderItem={renderItem}
             ListEmptyComponent={
               <View style={styles.empty}>
                 <Text style={styles.emptyText}>

@@ -6,12 +6,14 @@ import { daysUntil, formatDate } from '../../../shared/utils/date';
 import { formatCurrency } from '../../../shared/utils/currency';
 import { colors } from '../../../shared/theme/colors';
 
-export default function GifticonCard({
+function GifticonCard({
   gifticon,
   onPress,
 }: {
   gifticon: Gifticon;
-  onPress: () => void;
+  // Takes the gifticon so the list can pass one stable handler and let React.memo
+  // actually skip unchanged rows.
+  onPress: (gifticon: Gifticon) => void;
 }) {
   const days = daysUntil(gifticon.expiresAt);
   const expired = days < 0;
@@ -23,7 +25,7 @@ export default function GifticonCard({
   return (
     <TouchableOpacity
       style={styles.card}
-      onPress={onPress}
+      onPress={() => onPress(gifticon)}
       activeOpacity={0.75}
       accessibilityRole="button"
       accessibilityLabel={`${gifticon.brand} ${gifticon.name}${priceLabel}, 유효기한 ${formatDate(gifticon.expiresAt)}, ${status}`}
@@ -66,6 +68,8 @@ export default function GifticonCard({
     </TouchableOpacity>
   );
 }
+
+export default React.memo(GifticonCard);
 
 const styles = StyleSheet.create({
   card: {

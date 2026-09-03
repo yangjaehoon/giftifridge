@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import type { Gifticon } from '../types';
 import { distanceInMeters } from '../../../shared/utils/geo';
@@ -16,15 +16,19 @@ function isUnusedWithLocation(
 export function useNearbyGifticons(items: Gifticon[]) {
   const [nearby, setNearby] = useState<Gifticon[]>([]);
 
-  const candidates = items.filter(isUnusedWithLocation);
+  const candidates = useMemo(() => items.filter(isUnusedWithLocation), [items]);
   // Firestore's realtime snapshots hand back a fresh `items` array on every
   // write, which would otherwise re-run this (and re-hit the GPS) on every
   // snapshot. Key off the located set's contents so it only re-runs when that
   // actually changes.
-  const candidatesKey = candidates
-    .map((item) => `${item.id}:${item.location.latitude},${item.location.longitude}`)
-    .sort()
-    .join('|');
+  const candidatesKey = useMemo(
+    () =>
+      candidates
+        .map((item) => `${item.id}:${item.location.latitude},${item.location.longitude}`)
+        .sort()
+        .join('|'),
+    [candidates],
+  );
 
   useFocusEffect(
     useCallback(() => {
