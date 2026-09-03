@@ -18,7 +18,7 @@ export default function GifticonDetailSkeleton() {
 
 const styles = StyleSheet.create({
   container: { padding: 20, paddingBottom: 60 },
-  image: { width: '100%', aspectRatio: 1, borderRadius: 12 },
+  image: { width: '100%', aspectRatio: 3 / 4, borderRadius: 12 },
   section: { marginTop: 20, gap: 10 },
   lineShort: { height: 12, width: '30%' },
   lineLong: { height: 22, width: '70%' },
