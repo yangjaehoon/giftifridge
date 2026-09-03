@@ -37,13 +37,17 @@ export function isExpired(item: Gifticon): boolean {
   return daysUntil(item.expiresAt) < 0;
 }
 
+// The used / expired / active partition lives here only. `countByStatus` and the
+// tab filter both derive from it, so they can't drift out of agreement.
+export function statusOf(item: Gifticon): FilterTab {
+  if (item.isUsed) return 'used';
+  if (isExpired(item)) return 'expired';
+  return 'active';
+}
+
 export function countByStatus(items: Gifticon[]): Record<FilterTab, number> {
   const counts: Record<FilterTab, number> = { active: 0, expired: 0, used: 0 };
-  for (const item of items) {
-    if (item.isUsed) counts.used += 1;
-    else if (isExpired(item)) counts.expired += 1;
-    else counts.active += 1;
-  }
+  for (const item of items) counts[statusOf(item)] += 1;
   return counts;
 }
 
@@ -63,16 +67,11 @@ const SORT_COMPARATORS: Record<SortKey, (a: Gifticon, b: Gifticon) => number> = 
   expiresAt: byField((g) => g.expiresAt),
 };
 
-function matchesTab(item: Gifticon, tab: FilterTab): boolean {
-  if (tab === 'used') return item.isUsed;
-  return !item.isUsed && isExpired(item) === (tab === 'expired');
-}
-
 export function filterAndSortGifticons(items: Gifticon[], c: ListCriteria): Gifticon[] {
   const q = c.query.trim().toLowerCase();
   const direction = c.sortDir === 'asc' ? 1 : -1;
   return items
-    .filter((item) => matchesTab(item, c.tab))
+    .filter((item) => statusOf(item) === c.tab)
     .filter((item) => c.category === 'all' || item.category === c.category)
     .filter(
       (item) =>

@@ -2,6 +2,7 @@ import {
   countByStatus,
   filterAndSortGifticons,
   isExpired,
+  statusOf,
   type ListCriteria,
 } from './gifticonFilters';
 import type { Gifticon } from './types';
@@ -52,6 +53,14 @@ describe('isExpired', () => {
   it('is true only for a past calendar day', () => {
     expect(isExpired(g({ id: 'x', expiresAt: daysFromNow(-1) }))).toBe(true);
     expect(isExpired(g({ id: 'x', expiresAt: daysFromNow(0) }))).toBe(false);
+  });
+});
+
+describe('statusOf', () => {
+  it('classifies used before expiry, then expiry, then active', () => {
+    expect(statusOf(g({ id: 'x', isUsed: true, expiresAt: daysFromNow(-5) }))).toBe('used');
+    expect(statusOf(g({ id: 'x', expiresAt: daysFromNow(-1) }))).toBe('expired');
+    expect(statusOf(g({ id: 'x', expiresAt: daysFromNow(5) }))).toBe('active');
   });
 });
 
