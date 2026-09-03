@@ -8,6 +8,10 @@ const KEYWORD_WINDOW = 15;
 const DOT_DATE_RE = /(20\d{2})[.\-/](0[1-9]|1[0-2]|[1-9])[.\-/](0[1-9]|[12]\d|3[01]|[1-9])(?!\d)/g;
 const KOREAN_DATE_RE = /(20\d{2})\s*년\s*(0?[1-9]|1[0-2])\s*월\s*(0?[1-9]|[12]\d|3[01])\s*일/g;
 
+// Each pattern must capture (year, month, day) in groups 1-3. Recognising a new
+// written form of a date is adding an entry here, not editing the scan below.
+const DATE_PATTERNS = [DOT_DATE_RE, KOREAN_DATE_RE];
+
 interface DateMatch {
   index: number;
   length: number;
@@ -53,7 +57,7 @@ function hasNearbyKeyword(text: string, match: DateMatch): boolean {
  * be a guess (no dates found, or multiple dates with no keyword to disambiguate).
  */
 export function parseExpiryDateFromText(text: string): string | null {
-  const matches = [...collectMatches(text, DOT_DATE_RE), ...collectMatches(text, KOREAN_DATE_RE)];
+  const matches = DATE_PATTERNS.flatMap((re) => collectMatches(text, re));
   if (matches.length === 0) return null;
 
   const withKeyword = matches.filter((match) => hasNearbyKeyword(text, match));
