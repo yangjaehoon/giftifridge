@@ -121,10 +121,16 @@ export default function GifticonDetailScreen({ route, navigation }: Props) {
   }
 
   const days = daysUntil(gifticon.expiresAt);
+  const expired = days < 0;
+  const soon = !expired && days <= 7;
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
-      <Image source={{ uri: gifticon.imageUrl }} style={styles.image} />
+      <Image
+        source={{ uri: gifticon.imageUrl }}
+        style={styles.image}
+        accessibilityLabel="기프티콘 이미지"
+      />
 
       <View style={styles.section}>
         <Text style={styles.brand}>
@@ -134,28 +140,44 @@ export default function GifticonDetailScreen({ route, navigation }: Props) {
         {gifticon.amount ? (
           <Text style={styles.amount}>{formatCurrency(gifticon.amount)}</Text>
         ) : null}
-        <Text style={styles.expiry}>
-          유효기한 {formatDate(gifticon.expiresAt)} ({days >= 0 ? `D-${days}` : '기한만료'})
-        </Text>
+
+        <View style={styles.expiryRow}>
+          <View
+            style={[
+              styles.ddayPill,
+              expired ? styles.ddayExpired : soon ? styles.ddaySoon : styles.ddayOk,
+            ]}
+          >
+            <Text style={[styles.ddayText, soon && !expired && styles.ddayTextOnColor]}>
+              {expired ? '기한만료' : `D-${days}`}
+            </Text>
+          </View>
+          <Text style={styles.expiry}>유효기한 {formatDate(gifticon.expiresAt)}</Text>
+        </View>
+
         <Text style={styles.meta}>등록일 {formatDate(gifticon.createdAt)}</Text>
         {gifticon.isUsed && gifticon.usedAt ? (
           <Text style={styles.meta}>사용일 {formatDate(gifticon.usedAt)}</Text>
         ) : null}
-        {gifticon.barcode ? (
-          <View style={styles.barcodeRow}>
-            <Text style={styles.barcode}>바코드 {gifticon.barcode}</Text>
-            <TouchableOpacity
-              style={styles.copyButton}
-              onPress={copyBarcode}
-              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-              accessibilityRole="button"
-              accessibilityLabel="바코드 번호 복사"
-            >
-              <Text style={styles.copyButtonText}>{copied ? '복사됨 ✓' : '복사'}</Text>
-            </TouchableOpacity>
-          </View>
-        ) : null}
       </View>
+
+      {gifticon.barcode ? (
+        <View style={styles.barcodeCard}>
+          <Text style={styles.barcodeLabel}>바코드 번호</Text>
+          <Text style={styles.barcodeNumber} selectable accessibilityLabel={gifticon.barcode}>
+            {gifticon.barcode.replace(/(.{4})/g, '$1 ').trim()}
+          </Text>
+          <TouchableOpacity
+            style={styles.copyButton}
+            onPress={copyBarcode}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            accessibilityRole="button"
+            accessibilityLabel="바코드 번호 복사"
+          >
+            <Text style={styles.copyButtonText}>{copied ? '복사됨 ✓' : '번호 복사'}</Text>
+          </TouchableOpacity>
+        </View>
+      ) : null}
 
       <Button
         label={gifticon.isUsed ? '사용가능으로 되돌리기' : '사용완료로 표시'}
@@ -190,17 +212,39 @@ const styles = StyleSheet.create({
   brand: { fontSize: 13, color: colors.gray500 },
   name: { fontSize: 20, fontWeight: '700', color: colors.gray900 },
   amount: { fontSize: 16, fontWeight: '700', color: colors.primary, marginTop: 2 },
-  expiry: { fontSize: 14, color: colors.gray700, marginTop: 6 },
+  expiryRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 10 },
+  ddayPill: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 999 },
+  ddayOk: { backgroundColor: colors.surfaceMuted },
+  ddaySoon: { backgroundColor: colors.amber },
+  ddayExpired: { backgroundColor: colors.border },
+  ddayText: { fontSize: 14, fontWeight: '800', color: colors.gray900 },
+  ddayTextOnColor: { color: colors.surface },
+  expiry: { fontSize: 14, color: colors.gray700 },
   meta: { fontSize: 12, color: colors.gray500, marginTop: 2 },
-  barcodeRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4 },
-  barcode: { fontSize: 13, color: colors.gray400 },
+  barcodeCard: {
+    marginTop: 24,
+    padding: 20,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: 'center',
+    gap: 10,
+  },
+  barcodeLabel: { fontSize: 12, color: colors.gray500, fontWeight: '600' },
+  barcodeNumber: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: colors.gray900,
+    letterSpacing: 2,
+    fontVariant: ['tabular-nums'],
+  },
   copyButton: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 10,
     backgroundColor: colors.surfaceMuted,
   },
-  copyButtonText: { fontSize: 12, color: colors.gray700, fontWeight: '600' },
+  copyButtonText: { fontSize: 13, color: colors.gray700, fontWeight: '700' },
   emptyText: { color: colors.gray500, fontSize: 14, textAlign: 'center' },
   primaryAction: { marginTop: 32 },
 });
