@@ -21,6 +21,7 @@ import { useSpaceGifticons } from '../hooks/useSpaceGifticons';
 import { useGifticonForm } from '../hooks/useGifticonForm';
 import { useGifticonImage } from '../hooks/useGifticonImage';
 import { useBarcodeScanner } from '../hooks/useBarcodeScanner';
+import Button from '../../../shared/components/Button';
 import GifticonDetailSkeleton from '../components/GifticonDetailSkeleton';
 import BarcodeScannerModal from '../components/BarcodeScannerModal';
 import type { GifticonCategory } from '../types';
@@ -241,13 +242,12 @@ export default function AddGifticonScreen({ navigation, route }: Props) {
         />
       )}
 
-      <TouchableOpacity style={styles.saveButton} onPress={save} disabled={saving}>
-        {saving ? (
-          <ActivityIndicator color={colors.surface} />
-        ) : (
-          <Text style={styles.saveButtonText}>{isEditing ? '저장하기' : '등록하기'}</Text>
-        )}
-      </TouchableOpacity>
+      <Button
+        label={isEditing ? '저장하기' : '등록하기'}
+        onPress={save}
+        loading={saving}
+        style={styles.submit}
+      />
 
       <BarcodeScannerModal
         visible={scanner.visible}
@@ -311,12 +311,5 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   locationButtonText: { color: colors.gray700, fontSize: 14, fontWeight: '600' },
-  saveButton: {
-    backgroundColor: colors.primary,
-    borderRadius: 10,
-    paddingVertical: 16,
-    alignItems: 'center',
-    marginTop: 28,
-  },
-  saveButtonText: { color: colors.surface, fontWeight: '700', fontSize: 16 },
+  submit: { marginTop: 28 },
 });

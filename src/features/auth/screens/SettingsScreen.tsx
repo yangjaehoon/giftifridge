@@ -1,6 +1,5 @@
 import React from 'react';
 import {
-  ActivityIndicator,
   Alert,
   KeyboardAvoidingView,
   Platform,
@@ -14,6 +13,7 @@ import { useAuthActions, useCurrentUser } from '../context/AuthContext';
 import { useEmailAuthForm } from '../hooks/useEmailAuthForm';
 import NotificationOffsetSettings from '../components/NotificationOffsetSettings';
 import DevSeedButton from '../components/DevSeedButton';
+import Button from '../../../shared/components/Button';
 import { colors } from '../../../shared/theme/colors';
 
 export default function SettingsScreen() {
@@ -35,9 +35,7 @@ export default function SettingsScreen() {
         <NotificationOffsetSettings />
         <Text style={styles.title}>계정</Text>
         <Text style={styles.subtitle}>{user.email}로 로그인되어 있어요.</Text>
-        <TouchableOpacity style={[styles.button, styles.signOutButton]} onPress={handleSignOut}>
-          <Text style={styles.buttonText}>로그아웃</Text>
-        </TouchableOpacity>
+        <Button label="로그아웃" onPress={handleSignOut} />
         <DevSeedButton uid={user.uid} />
       </View>
     );
@@ -72,13 +70,12 @@ export default function SettingsScreen() {
         onChangeText={form.setPassword}
       />
 
-      <TouchableOpacity style={styles.button} onPress={form.submit} disabled={form.loading}>
-        {form.loading ? (
-          <ActivityIndicator color={colors.surface} />
-        ) : (
-          <Text style={styles.buttonText}>{form.mode === 'signUp' ? '회원가입' : '로그인'}</Text>
-        )}
-      </TouchableOpacity>
+      <Button
+        label={form.mode === 'signUp' ? '회원가입' : '로그인'}
+        onPress={form.submit}
+        loading={form.loading}
+        style={styles.submit}
+      />
 
       <TouchableOpacity onPress={form.toggleMode} style={styles.switchMode}>
         <Text style={styles.switchModeText}>
@@ -110,15 +107,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     fontSize: 15,
   },
-  button: {
-    backgroundColor: colors.primary,
-    borderRadius: 10,
-    paddingVertical: 14,
-    alignItems: 'center',
-    marginTop: 8,
-  },
-  signOutButton: { marginTop: 0 },
-  buttonText: { color: colors.surface, fontWeight: '700', fontSize: 15 },
+  submit: { marginTop: 8 },
   switchMode: { marginTop: 20, alignItems: 'center' },
   switchModeText: { color: colors.gray600, fontSize: 13 },
 });

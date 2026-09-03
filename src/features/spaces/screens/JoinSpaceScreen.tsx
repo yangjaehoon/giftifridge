@@ -1,13 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import {
-  ActivityIndicator,
-  Alert,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-} from 'react-native';
+import { Alert, StyleSheet, Text, TextInput, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useCurrentUser } from '../../auth/context/AuthContext';
 import { getSpacePreview, joinSpace } from '../services/spaceService';
@@ -15,6 +7,7 @@ import { getSpaceErrorMessage, getSpaceWriteErrorMessage } from '../errors';
 import { extractSpaceCode } from '../inviteLink';
 import type { Space } from '../types';
 import { withTimeout, WRITE_TIMEOUT_MS } from '../../../shared/utils/withTimeout';
+import Button from '../../../shared/components/Button';
 import type { RootStackParamList } from '../../../app/RootNavigator';
 import { colors } from '../../../shared/theme/colors';
 
@@ -77,28 +70,19 @@ export default function JoinSpaceScreen({ route, navigation }: Props) {
         autoCapitalize="none"
       />
 
-      <TouchableOpacity
-        style={styles.secondaryButton}
+      <Button
+        variant="secondary"
+        label="확인"
         onPress={() => lookup(extractSpaceCode(code))}
-        disabled={!code.trim() || loading}
-      >
-        {loading ? (
-          <ActivityIndicator color={colors.primary} />
-        ) : (
-          <Text style={styles.secondaryButtonText}>확인</Text>
-        )}
-      </TouchableOpacity>
+        loading={loading}
+        disabled={!code.trim()}
+        style={styles.lookup}
+      />
 
       {preview && (
         <View style={styles.previewCard}>
           <Text style={styles.previewName}>{preview.name}</Text>
-          <TouchableOpacity style={styles.saveButton} onPress={join} disabled={joining}>
-            {joining ? (
-              <ActivityIndicator color={colors.surface} />
-            ) : (
-              <Text style={styles.saveButtonText}>참여하기</Text>
-            )}
-          </TouchableOpacity>
+          <Button label="참여하기" onPress={join} loading={joining} />
         </View>
       )}
     </View>
@@ -116,14 +100,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     fontSize: 15,
   },
-  secondaryButton: {
-    backgroundColor: colors.surfaceMuted,
-    borderRadius: 10,
-    paddingVertical: 14,
-    alignItems: 'center',
-    marginTop: 12,
-  },
-  secondaryButtonText: { color: colors.gray700, fontWeight: '700', fontSize: 15 },
+  lookup: { marginTop: 12 },
   previewCard: {
     marginTop: 24,
     padding: 16,
@@ -131,11 +108,4 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surfaceSubtle,
   },
   previewName: { fontSize: 18, fontWeight: '700', color: colors.gray900, marginBottom: 12 },
-  saveButton: {
-    backgroundColor: colors.primary,
-    borderRadius: 10,
-    paddingVertical: 16,
-    alignItems: 'center',
-  },
-  saveButtonText: { color: colors.surface, fontWeight: '700', fontSize: 16 },
 });

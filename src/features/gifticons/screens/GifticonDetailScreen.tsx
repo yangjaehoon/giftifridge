@@ -1,19 +1,11 @@
 import React, { useEffect, useRef, useState } from 'react';
-import {
-  ActivityIndicator,
-  Alert,
-  Image,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from 'react-native';
+import { Alert, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useCurrentUser } from '../../auth/context/AuthContext';
 import { removeGifticon, setGifticonUsed } from '../services/gifticonLifecycle';
 import { useGifticon } from '../hooks/useGifticon';
+import Button from '../../../shared/components/Button';
 import GifticonDetailSkeleton from '../components/GifticonDetailSkeleton';
 import { CATEGORY_LABELS } from '../types';
 import { daysUntil, formatDate } from '../../../shared/utils/date';
@@ -159,19 +151,14 @@ export default function GifticonDetailScreen({ route, navigation }: Props) {
         ) : null}
       </View>
 
-      <TouchableOpacity style={styles.primaryButton} onPress={toggleUsed} disabled={busy}>
-        {busy ? (
-          <ActivityIndicator color={colors.surface} />
-        ) : (
-          <Text style={styles.primaryButtonText}>
-            {gifticon.isUsed ? '사용가능으로 되돌리기' : '사용완료로 표시'}
-          </Text>
-        )}
-      </TouchableOpacity>
+      <Button
+        label={gifticon.isUsed ? '사용가능으로 되돌리기' : '사용완료로 표시'}
+        onPress={toggleUsed}
+        loading={busy}
+        style={styles.primaryAction}
+      />
 
-      <TouchableOpacity style={styles.deleteButton} onPress={remove} disabled={busy}>
-        <Text style={styles.deleteButtonText}>삭제하기</Text>
-      </TouchableOpacity>
+      <Button variant="ghostDanger" label="삭제하기" onPress={remove} disabled={busy} />
     </ScrollView>
   );
 }
@@ -209,14 +196,5 @@ const styles = StyleSheet.create({
   },
   copyButtonText: { fontSize: 12, color: colors.gray700, fontWeight: '600' },
   emptyText: { color: colors.gray500, fontSize: 14, textAlign: 'center' },
-  primaryButton: {
-    backgroundColor: colors.primary,
-    borderRadius: 10,
-    paddingVertical: 16,
-    alignItems: 'center',
-    marginTop: 32,
-  },
-  primaryButtonText: { color: colors.surface, fontWeight: '700', fontSize: 15 },
-  deleteButton: { alignItems: 'center', paddingVertical: 16 },
-  deleteButtonText: { color: colors.gray500, fontSize: 14 },
+  primaryAction: { marginTop: 32 },
 });

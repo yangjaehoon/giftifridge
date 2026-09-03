@@ -1,18 +1,11 @@
 import React, { useState } from 'react';
-import {
-  ActivityIndicator,
-  Alert,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-} from 'react-native';
+import { Alert, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useCurrentUser } from '../../auth/context/AuthContext';
 import { createSpace, newSpaceId } from '../services/spaceService';
 import { getSpaceWriteErrorMessage } from '../errors';
 import { withTimeout, WRITE_TIMEOUT_MS } from '../../../shared/utils/withTimeout';
+import Button from '../../../shared/components/Button';
 import type { RootStackParamList } from '../../../app/RootNavigator';
 import { colors } from '../../../shared/theme/colors';
 
@@ -51,13 +44,7 @@ export default function CreateSpaceScreen({ navigation }: Props) {
       <Text style={styles.label}>스페이스 이름</Text>
       <TextInput style={styles.input} value={name} onChangeText={setName} placeholder="우리 가족" />
 
-      <TouchableOpacity style={styles.saveButton} onPress={save} disabled={saving}>
-        {saving ? (
-          <ActivityIndicator color={colors.surface} />
-        ) : (
-          <Text style={styles.saveButtonText}>만들기</Text>
-        )}
-      </TouchableOpacity>
+      <Button label="만들기" onPress={save} loading={saving} style={styles.submit} />
 
       <TouchableOpacity style={styles.joinLink} onPress={() => navigation.navigate('JoinSpace')}>
         <Text style={styles.joinLinkText}>이미 초대받았나요? 코드로 참여하기</Text>
@@ -77,14 +64,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     fontSize: 15,
   },
-  saveButton: {
-    backgroundColor: colors.primary,
-    borderRadius: 10,
-    paddingVertical: 16,
-    alignItems: 'center',
-    marginTop: 28,
-  },
-  saveButtonText: { color: colors.surface, fontWeight: '700', fontSize: 16 },
+  submit: { marginTop: 28 },
   joinLink: { alignItems: 'center', marginTop: 20 },
   joinLinkText: { color: colors.gray600, fontSize: 13 },
 });

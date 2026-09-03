@@ -1,14 +1,5 @@
 import React, { useState } from 'react';
-import {
-  ActivityIndicator,
-  Alert,
-  FlatList,
-  Share,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from 'react-native';
+import { Alert, FlatList, Share, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useCurrentUser } from '../../auth/context/AuthContext';
 import { useSpace } from '../hooks/useSpace';
@@ -17,6 +8,7 @@ import { deleteSpace, leaveSpace } from '../services/spaceService';
 import { getSpaceErrorMessage, getSpaceWriteErrorMessage } from '../errors';
 import { buildInviteUrl } from '../inviteLink';
 import { withTimeout, WRITE_TIMEOUT_MS } from '../../../shared/utils/withTimeout';
+import Button from '../../../shared/components/Button';
 import type { RootStackParamList } from '../../../app/RootNavigator';
 import { colors } from '../../../shared/theme/colors';
 
@@ -135,26 +127,12 @@ export default function SpaceMembersScreen({ route, navigation }: Props) {
         )}
       />
 
-      <TouchableOpacity style={styles.button} onPress={shareInvite}>
-        <Text style={styles.buttonText}>초대 링크 공유</Text>
-      </TouchableOpacity>
+      <Button label="초대 링크 공유" onPress={shareInvite} style={styles.invite} />
 
       {isOwner ? (
-        <TouchableOpacity style={styles.deleteButton} onPress={remove} disabled={busy}>
-          {busy ? (
-            <ActivityIndicator color={colors.danger} />
-          ) : (
-            <Text style={styles.deleteButtonText}>스페이스 삭제</Text>
-          )}
-        </TouchableOpacity>
+        <Button variant="ghostDanger" label="스페이스 삭제" onPress={remove} loading={busy} />
       ) : (
-        <TouchableOpacity style={styles.deleteButton} onPress={leave} disabled={busy}>
-          {busy ? (
-            <ActivityIndicator color={colors.danger} />
-          ) : (
-            <Text style={styles.deleteButtonText}>나가기</Text>
-          )}
-        </TouchableOpacity>
+        <Button variant="ghostDanger" label="나가기" onPress={leave} loading={busy} />
       )}
     </View>
   );
@@ -179,14 +157,5 @@ const styles = StyleSheet.create({
     borderBottomColor: colors.border,
   },
   memberText: { fontSize: 14, color: colors.gray700 },
-  button: {
-    backgroundColor: colors.primary,
-    borderRadius: 10,
-    paddingVertical: 14,
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  buttonText: { color: colors.surface, fontWeight: '700', fontSize: 15 },
-  deleteButton: { alignItems: 'center', paddingVertical: 14 },
-  deleteButtonText: { color: colors.danger, fontSize: 14, fontWeight: '600' },
+  invite: { marginBottom: 12 },
 });
