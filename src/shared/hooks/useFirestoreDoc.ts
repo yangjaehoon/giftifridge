@@ -3,6 +3,13 @@ import { useEffect, useRef, useState } from 'react';
 const MAX_RETRY_DELAY_MS = 30000;
 
 type Unsubscribe = () => void;
+/**
+ * A keyed single-document subscription. Implementations must return an
+ * unsubscribe function, must not call `onChange` synchronously during the
+ * subscribe call, and must pass `null` (not a partial object) when the document
+ * is missing or fails validation. `onError` MAY fire on an unrecoverable
+ * listener failure; the hook then retries with backoff.
+ */
 type Subscribe<T> = (
   key: string,
   onChange: (doc: T | null) => void,

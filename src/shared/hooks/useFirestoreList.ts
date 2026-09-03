@@ -3,10 +3,21 @@ import { useEffect, useRef, useState } from 'react';
 const MAX_RETRY_DELAY_MS = 30000;
 
 // Stable reference so consumers that depend on `items` (e.g. useCallback/useEffect
-// deps) don't re-run every render while `key` is unset.
-const EMPTY_ITEMS: never[] = [];
+// deps) don't re-run every render while `key` is unset. Frozen at runtime
+// because it is shared across every hook instance — a stray in-place sort/push
+// would corrupt all of them. (Typed as never[] so the hook's return stays T[].)
+const EMPTY_ITEMS = Object.freeze([]) as never[];
 
 type Unsubscribe = () => void;
+/**
+ * A keyed live subscription. Implementations must:
+ *  - return an unsubscribe function
+ *  - never call `onChange` synchronously during the subscribe call
+ * `onError` MAY be called on an unrecoverable subscription failure (the hook
+ * then shows an error and retries with backoff); an implementation MAY instead
+ * absorb partial failures internally (e.g. subscribeToMySpaces drops a single
+ * unreadable space rather than failing the whole list).
+ */
 type Subscribe<T> = (
   key: string,
   onChange: (items: T[]) => void,

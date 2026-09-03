@@ -13,6 +13,13 @@ describe('withTimeout', () => {
     await expect(withTimeout(Promise.resolve('ok'), 1000)).resolves.toBe('ok');
   });
 
+  it('gives TimeoutError its own name and message', () => {
+    const err = new TimeoutError('slow');
+    expect(err.name).toBe('TimeoutError');
+    expect(err.message).toBe('slow');
+    expect(err).toBeInstanceOf(Error);
+  });
+
   it('rejects with the underlying error when the promise rejects first', async () => {
     await expect(withTimeout(Promise.reject(new Error('boom')), 1000)).rejects.toThrow('boom');
   });

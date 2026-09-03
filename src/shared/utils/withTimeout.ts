@@ -1,4 +1,8 @@
-export class TimeoutError extends Error {}
+export class TimeoutError extends Error {
+  // Error subclasses should carry their own name, or logs/telemetry that read
+  // `err.name` just see 'Error'.
+  name = 'TimeoutError';
+}
 
 // Shared budget for a single Firestore write before the UI stops waiting on it.
 export const WRITE_TIMEOUT_MS = 15000;
