@@ -21,8 +21,8 @@ const mockedLeaveSpace = leaveSpace as jest.Mock;
 
 const space: Space = { id: 'space-1', name: '우리집', ownerId: 'owner-1', createdAt: 't' };
 const members: SpaceMember[] = [
-  { uid: 'owner-1', role: 'owner', joinedAt: 't' },
-  { uid: 'user-2', role: 'member', joinedAt: 't' },
+  { uid: 'owner-1', role: 'owner', joinedAt: '2026-01-05T00:00:00.000Z' },
+  { uid: 'user-2', role: 'member', joinedAt: '2026-01-06T00:00:00.000Z' },
 ];
 
 function makeNavigation() {
@@ -82,10 +82,13 @@ describe('SpaceMembersScreen', () => {
     expect(refresh).toHaveBeenCalledTimes(1);
   });
 
-  it('lists members with role labels and marks the current user', async () => {
-    const { getByText } = await renderScreen();
-    expect(getByText('소유자 (나)')).toBeTruthy();
+  it('lists members with role, join date, and a marker for the current user', async () => {
+    const { getByText, getAllByText } = await renderScreen();
+    expect(getByText('소유자')).toBeTruthy();
     expect(getByText('멤버')).toBeTruthy();
+    expect(getByText('나')).toBeTruthy();
+    expect(getByText('멤버 2명')).toBeTruthy();
+    expect(getAllByText(/참여$/)).toHaveLength(2);
   });
 
   it('offers "스페이스 삭제" to the owner and deletes with the member uid list', async () => {

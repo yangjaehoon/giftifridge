@@ -7,6 +7,7 @@ import SpaceMembersSkeleton from '../components/SpaceMembersSkeleton';
 import { deleteSpace, leaveSpace } from '../services/spaceService';
 import { getSpaceErrorMessage, getSpaceWriteErrorMessage } from '../errors';
 import { buildInviteUrl } from '../inviteLink';
+import { formatDate } from '../../../shared/utils/date';
 import { withTimeout, WRITE_TIMEOUT_MS } from '../../../shared/utils/withTimeout';
 import Button from '../../../shared/components/Button';
 import { useToast } from '../../../shared/components/ToastProvider';
@@ -116,19 +117,24 @@ export default function SpaceMembersScreen({ route, navigation }: Props) {
   return (
     <View style={styles.container}>
       <Text style={styles.title}>{space?.name}</Text>
+      <Text style={styles.count}>멤버 {members.length}명</Text>
 
       <FlatList
         data={members}
         keyExtractor={(m) => m.uid}
         style={styles.list}
-        renderItem={({ item }) => (
-          <View style={styles.memberRow}>
-            <Text style={styles.memberText}>
-              {ROLE_LABELS[item.role]}
-              {item.uid === user?.uid ? ' (나)' : ''}
-            </Text>
-          </View>
-        )}
+        renderItem={({ item }) => {
+          const isMe = item.uid === user?.uid;
+          return (
+            <View style={styles.memberRow}>
+              <View style={styles.memberTop}>
+                <Text style={styles.memberRole}>{ROLE_LABELS[item.role]}</Text>
+                {isMe && <Text style={styles.meBadge}>나</Text>}
+              </View>
+              <Text style={styles.memberMeta}>{formatDate(item.joinedAt)} 참여</Text>
+            </View>
+          );
+        }}
       />
 
       <Button label="초대 링크 공유" onPress={shareInvite} style={styles.invite} />
@@ -153,13 +159,27 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   retryButtonText: { color: colors.gray700, fontWeight: '700', fontSize: 14 },
-  title: { fontSize: 20, fontWeight: '800', color: colors.gray900, marginBottom: 16 },
+  title: { fontSize: 20, fontWeight: '800', color: colors.gray900 },
+  count: { fontSize: 13, color: colors.gray500, marginTop: 4, marginBottom: 12 },
   list: { flexGrow: 0, marginBottom: 20 },
   memberRow: {
     paddingVertical: 12,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
+    gap: 3,
   },
-  memberText: { fontSize: 14, color: colors.gray700 },
+  memberTop: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  memberRole: { fontSize: 15, fontWeight: '600', color: colors.gray900 },
+  meBadge: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: colors.surface,
+    backgroundColor: colors.primary,
+    borderRadius: 8,
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    overflow: 'hidden',
+  },
+  memberMeta: { fontSize: 12, color: colors.gray500 },
   invite: { marginBottom: 12 },
 });
