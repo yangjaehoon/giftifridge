@@ -278,7 +278,7 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
   },
   image: { width: '100%', height: '100%' },
-  imagePlaceholder: { color: colors.gray400, textAlign: 'center', fontSize: 13, lineHeight: 20 },
+  imagePlaceholder: { color: colors.gray500, textAlign: 'center', fontSize: 13, lineHeight: 20 },
   label: { fontSize: 13, fontWeight: '600', color: colors.gray700, marginBottom: 6, marginTop: 14 },
   dateLabelRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   ocrHint: { fontSize: 12, color: colors.primary, marginTop: 6 },

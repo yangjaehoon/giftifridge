@@ -194,11 +194,11 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surfaceSubtle,
   },
   section: { marginTop: 20, gap: 4 },
-  brand: { fontSize: 13, color: colors.gray450 },
+  brand: { fontSize: 13, color: colors.gray500 },
   name: { fontSize: 20, fontWeight: '700', color: colors.gray900 },
   amount: { fontSize: 16, fontWeight: '700', color: colors.primary, marginTop: 2 },
   expiry: { fontSize: 14, color: colors.gray700, marginTop: 6 },
-  meta: { fontSize: 12, color: colors.gray450, marginTop: 2 },
+  meta: { fontSize: 12, color: colors.gray500, marginTop: 2 },
   barcodeRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4 },
   barcode: { fontSize: 13, color: colors.gray400 },
   copyButton: {
@@ -208,7 +208,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surfaceMuted,
   },
   copyButtonText: { fontSize: 12, color: colors.gray700, fontWeight: '600' },
-  emptyText: { color: colors.gray400, fontSize: 14, textAlign: 'center' },
+  emptyText: { color: colors.gray500, fontSize: 14, textAlign: 'center' },
   primaryButton: {
     backgroundColor: colors.primary,
     borderRadius: 10,
@@ -218,5 +218,5 @@ const styles = StyleSheet.create({
   },
   primaryButtonText: { color: colors.surface, fontWeight: '700', fontSize: 15 },
   deleteButton: { alignItems: 'center', paddingVertical: 16 },
-  deleteButtonText: { color: colors.gray400, fontSize: 14 },
+  deleteButtonText: { color: colors.gray500, fontSize: 14 },
 });

@@ -252,7 +252,7 @@ const styles = StyleSheet.create({
   sortDirText: { fontSize: 12, fontWeight: '600', color: colors.gray700 },
   listContent: { paddingVertical: 8, paddingBottom: 100, flexGrow: 1 },
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: 80 },
-  emptyText: { color: colors.gray400, fontSize: 14 },
+  emptyText: { color: colors.gray500, fontSize: 14 },
   inlineError: {
     backgroundColor: colors.amber,
     marginHorizontal: 16,

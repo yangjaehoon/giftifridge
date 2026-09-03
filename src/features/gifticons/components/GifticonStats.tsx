@@ -54,5 +54,5 @@ const styles = StyleSheet.create({
   },
   stat: { flex: 1, alignItems: 'center', gap: 2 },
   value: { fontSize: 15, fontWeight: '700', color: colors.gray900 },
-  label: { fontSize: 11, color: colors.gray450 },
+  label: { fontSize: 12, color: colors.gray500 },
 });

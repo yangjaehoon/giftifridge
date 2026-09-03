@@ -163,7 +163,7 @@ export default function SpaceMembersScreen({ route, navigation }: Props) {
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 20, backgroundColor: colors.surface },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 16, padding: 20 },
-  emptyText: { color: colors.gray400, fontSize: 14, textAlign: 'center' },
+  emptyText: { color: colors.gray500, fontSize: 14, textAlign: 'center' },
   retryButton: {
     backgroundColor: colors.surfaceMuted,
     borderRadius: 10,
