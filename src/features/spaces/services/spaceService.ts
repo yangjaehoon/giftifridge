@@ -13,6 +13,7 @@ import {
   writeBatch,
 } from '../../../lib/firebase/firestore';
 import { subscribeJoined } from '../../../lib/firebase/subscribeJoined';
+import { toSpace, toSpaceMember } from './spaceMapper';
 import type { Space, SpaceMember } from '../types';
 
 const SPACES_COLLECTION = 'spaces';
@@ -41,7 +42,7 @@ export async function createSpace(id: string, ownerId: string, name: string): Pr
 
 export async function getSpacePreview(spaceId: string): Promise<Space | null> {
   const snapshot = await getDoc(docRef(SPACES_COLLECTION, spaceId));
-  return snapshot.exists() ? ({ id: snapshot.id, ...snapshot.data() } as Space) : null;
+  return snapshot.exists() ? toSpace(snapshot.id, snapshot.data()) : null;
 }
 
 export function subscribeToSpace(
@@ -52,7 +53,7 @@ export function subscribeToSpace(
   return onSnapshot(
     docRef(SPACES_COLLECTION, spaceId),
     (snapshot) => {
-      onChange(snapshot.exists() ? ({ id: snapshot.id, ...snapshot.data() } as Space) : null);
+      onChange(snapshot.exists() ? toSpace(snapshot.id, snapshot.data()) : null);
     },
     onError,
   );
@@ -118,7 +119,11 @@ export function subscribeToSpaceMembers(
   return onSnapshot(
     collectionRef(SPACES_COLLECTION, spaceId, MEMBERS_SUBCOLLECTION),
     (snapshot) => {
-      onChange(snapshot.docs.map((d) => d.data() as SpaceMember));
+      onChange(
+        snapshot.docs
+          .map((d) => toSpaceMember(d.data()))
+          .filter((m): m is SpaceMember => m !== null),
+      );
     },
     onError,
   );

@@ -115,6 +115,15 @@ describe('getSpacePreview', () => {
     mockedGetDoc.mockResolvedValue({ exists: () => false });
     await expect(getSpacePreview('missing')).resolves.toBeNull();
   });
+
+  it('returns null when the stored doc is missing required fields', async () => {
+    mockedGetDoc.mockResolvedValue({
+      exists: () => true,
+      id: 'space-1',
+      data: () => ({ name: '집' }),
+    });
+    await expect(getSpacePreview('space-1')).resolves.toBeNull();
+  });
 });
 
 describe('subscribeToSpace', () => {
@@ -127,8 +136,17 @@ describe('subscribeToSpace', () => {
     expect(ref).toBe('doc:spaces/space-1');
     expect(passedOnError).toBe(onError);
 
-    onNext({ exists: () => true, id: 'space-1', data: () => ({ name: '집' }) });
-    expect(onChange).toHaveBeenCalledWith({ id: 'space-1', name: '집' });
+    onNext({
+      exists: () => true,
+      id: 'space-1',
+      data: () => ({ name: '집', ownerId: 'owner-1', createdAt: '2026-01-01' }),
+    });
+    expect(onChange).toHaveBeenCalledWith({
+      id: 'space-1',
+      name: '집',
+      ownerId: 'owner-1',
+      createdAt: '2026-01-01',
+    });
   });
 
   it('passes null when the space no longer exists', () => {
@@ -137,6 +155,15 @@ describe('subscribeToSpace', () => {
     const [, onNext] = mockedOnSnapshot.mock.calls[0];
 
     onNext({ exists: () => false });
+    expect(onChange).toHaveBeenCalledWith(null);
+  });
+
+  it('passes null when the stored doc is malformed', () => {
+    const onChange = jest.fn();
+    subscribeToSpace('space-1', onChange);
+    const [, onNext] = mockedOnSnapshot.mock.calls[0];
+
+    onNext({ exists: () => true, id: 'space-1', data: () => ({ name: 42 }) });
     expect(onChange).toHaveBeenCalledWith(null);
   });
 });
@@ -208,9 +235,30 @@ describe('subscribeToSpaceMembers', () => {
     expect(passedOnError).toBe(onError);
 
     onNext({
-      docs: [{ data: () => ({ uid: 'a', role: 'owner' }) }, { data: () => ({ uid: 'b' }) }],
+      docs: [
+        { data: () => ({ uid: 'a', role: 'owner', joinedAt: 't1' }) },
+        { data: () => ({ uid: 'b', role: 'member', joinedAt: 't2' }) },
+      ],
     });
-    expect(onChange).toHaveBeenCalledWith([{ uid: 'a', role: 'owner' }, { uid: 'b' }]);
+    expect(onChange).toHaveBeenCalledWith([
+      { uid: 'a', role: 'owner', joinedAt: 't1' },
+      { uid: 'b', role: 'member', joinedAt: 't2' },
+    ]);
+  });
+
+  it('drops member docs that are missing fields or have an unknown role', () => {
+    const onChange = jest.fn();
+    subscribeToSpaceMembers('space-1', onChange);
+    const [, onNext] = mockedOnSnapshot.mock.calls[0];
+
+    onNext({
+      docs: [
+        { data: () => ({ uid: 'ok', role: 'member', joinedAt: 't' }) },
+        { data: () => ({ uid: 'no-role', joinedAt: 't' }) },
+        { data: () => ({ uid: 'bad-role', role: 'admin', joinedAt: 't' }) },
+      ],
+    });
+    expect(onChange).toHaveBeenCalledWith([{ uid: 'ok', role: 'member', joinedAt: 't' }]);
   });
 });
 
@@ -228,7 +276,13 @@ describe('subscribeToMySpaces', () => {
     return { ref: { parent: { parent: id === null ? null : { id } } } };
   }
   function spaceSnap(id: string, data: Record<string, unknown> | null) {
-    return { id, exists: () => data !== null, data: () => data };
+    // toSpace() now requires ownerId/name/createdAt; inject a default ownerId so
+    // the per-test data only has to carry the fields the assertion cares about.
+    return {
+      id,
+      exists: () => data !== null,
+      data: () => (data === null ? null : { ownerId: 'owner-1', ...data }),
+    };
   }
   // The per-space document subscription (subscribeToSpace -> onSnapshot on the
   // doc ref) created after the members snapshot names that id.
@@ -268,8 +322,8 @@ describe('subscribeToMySpaces', () => {
 
     subFor('space-a').onNext(spaceSnap('space-a', { name: 'A', createdAt: '2026-01-01' }));
     expect(onChange).toHaveBeenCalledWith([
-      { id: 'space-a', name: 'A', createdAt: '2026-01-01' },
-      { id: 'space-b', name: 'B', createdAt: '2026-02-01' },
+      { id: 'space-a', name: 'A', ownerId: 'owner-1', createdAt: '2026-01-01' },
+      { id: 'space-b', name: 'B', ownerId: 'owner-1', createdAt: '2026-02-01' },
     ]);
   });
 
@@ -283,7 +337,7 @@ describe('subscribeToMySpaces', () => {
     subFor('space-a').onNext(spaceSnap('space-a', { name: '새이름', createdAt: '2026-01-01' }));
 
     expect(onChange).toHaveBeenCalledWith([
-      { id: 'space-a', name: '새이름', createdAt: '2026-01-01' },
+      { id: 'space-a', name: '새이름', ownerId: 'owner-1', createdAt: '2026-01-01' },
     ]);
   });
 
@@ -295,7 +349,7 @@ describe('subscribeToMySpaces', () => {
     subFor('space-b').onNext(spaceSnap('space-b', null));
 
     expect(onChange).toHaveBeenLastCalledWith([
-      { id: 'space-a', name: 'A', createdAt: '2026-01-01' },
+      { id: 'space-a', name: 'A', ownerId: 'owner-1', createdAt: '2026-01-01' },
     ]);
   });
 
@@ -307,7 +361,7 @@ describe('subscribeToMySpaces', () => {
     subFor('space-b').onError?.(new Error('permission-denied'));
 
     expect(onChange).toHaveBeenLastCalledWith([
-      { id: 'space-a', name: 'A', createdAt: '2026-01-01' },
+      { id: 'space-a', name: 'A', ownerId: 'owner-1', createdAt: '2026-01-01' },
     ]);
   });
 
@@ -324,7 +378,7 @@ describe('subscribeToMySpaces', () => {
 
     expect(bUnsub).toHaveBeenCalledTimes(1);
     expect(onChange).toHaveBeenLastCalledWith([
-      { id: 'space-a', name: 'A', createdAt: '2026-01-01' },
+      { id: 'space-a', name: 'A', ownerId: 'owner-1', createdAt: '2026-01-01' },
     ]);
   });
 
