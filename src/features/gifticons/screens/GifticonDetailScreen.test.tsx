@@ -16,6 +16,7 @@ jest.mock('../services/gifticonLifecycle', () => ({
   setGifticonUsed: jest.fn(),
 }));
 jest.mock('expo-clipboard', () => ({ setStringAsync: jest.fn() }));
+jest.mock('../components/GifticonBarcode', () => ({ __esModule: true, default: () => null }));
 
 const mockedUseGifticon = useGifticon as jest.Mock;
 const mockedSetUsed = setGifticonUsed as jest.Mock;

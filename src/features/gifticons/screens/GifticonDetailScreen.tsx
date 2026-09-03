@@ -8,6 +8,7 @@ import { useGifticon } from '../hooks/useGifticon';
 import Button from '../../../shared/components/Button';
 import { useToast } from '../../../shared/components/ToastProvider';
 import GifticonDetailSkeleton from '../components/GifticonDetailSkeleton';
+import GifticonBarcode from '../components/GifticonBarcode';
 import { CATEGORY_LABELS } from '../types';
 import { daysUntil, formatDate } from '../../../shared/utils/date';
 import { formatCurrency } from '../../../shared/utils/currency';
@@ -163,7 +164,7 @@ export default function GifticonDetailScreen({ route, navigation }: Props) {
 
       {gifticon.barcode ? (
         <View style={styles.barcodeCard}>
-          <Text style={styles.barcodeLabel}>바코드 번호</Text>
+          <GifticonBarcode value={gifticon.barcode} />
           <Text style={styles.barcodeNumber} selectable accessibilityLabel={gifticon.barcode}>
             {gifticon.barcode.replace(/(.{4})/g, '$1 ').trim()}
           </Text>
@@ -230,7 +231,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 10,
   },
-  barcodeLabel: { fontSize: 12, color: colors.gray500, fontWeight: '600' },
   barcodeNumber: {
     fontSize: 24,
     fontWeight: '700',
