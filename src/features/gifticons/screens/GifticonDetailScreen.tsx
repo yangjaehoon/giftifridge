@@ -12,6 +12,7 @@ import GifticonBarcode from '../components/GifticonBarcode';
 import { CATEGORY_LABELS } from '../types';
 import { daysUntil, formatDate } from '../../../shared/utils/date';
 import { formatCurrency } from '../../../shared/utils/currency';
+import { haptics } from '../../../shared/utils/haptics';
 import type { RootStackParamList } from '../../../app/RootNavigator';
 import { getGifticonErrorMessage, getGifticonWriteErrorMessage } from '../errors';
 import { colors } from '../../../shared/theme/colors';
@@ -36,6 +37,7 @@ export default function GifticonDetailScreen({ route, navigation }: Props) {
   const copyBarcode = async () => {
     if (!gifticon?.barcode) return;
     await Clipboard.setStringAsync(gifticon.barcode);
+    haptics.selection();
     setCopied(true);
     copyTimeoutRef.current = setTimeout(() => setCopied(false), 1500);
   };
@@ -63,6 +65,7 @@ export default function GifticonDetailScreen({ route, navigation }: Props) {
       await setGifticonUsed(gifticon, nextUsed, user?.uid);
       // Stay on the screen — the realtime doc flips isUsed and the user can
       // see the new state (and undo it) without navigating.
+      haptics.success();
       showToast(nextUsed ? '사용완료로 표시했어요' : '다시 사용가능으로 바꿨어요');
     } catch (err) {
       Alert.alert('오류', getGifticonWriteErrorMessage(err, 'update'));

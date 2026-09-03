@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Alert } from 'react-native';
 import { useCameraPermissions } from 'expo-camera';
+import { haptics } from '../../../shared/utils/haptics';
 
 /**
  * Camera-permission gate + visibility for the barcode scanner modal. The modal
@@ -24,6 +25,7 @@ export function useBarcodeScanner(onScanned: (code: string) => void) {
   const close = () => setVisible(false);
 
   const handleScanned = (result: { data: string }) => {
+    haptics.success();
     onScanned(result.data);
     setVisible(false);
   };

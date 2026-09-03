@@ -33,6 +33,7 @@ import Chip from '../../../shared/components/Chip';
 import { formatDate, toDateString } from '../../../shared/utils/date';
 import { groupDigits } from '../../../shared/utils/currency';
 import { getCurrentLocation } from '../../../shared/utils/location';
+import { haptics } from '../../../shared/utils/haptics';
 import type { RootStackParamList } from '../../../app/RootNavigator';
 import { getGifticonErrorMessage, getGifticonWriteErrorMessage } from '../errors';
 import { colors } from '../../../shared/theme/colors';
@@ -113,6 +114,7 @@ export default function AddGifticonScreen({ navigation, route }: Props) {
         siblings: contextGifticons,
       });
       if (result.status === 'saved') {
+        haptics.success();
         showToast(isEditing ? '수정되었어요' : '저장되었어요');
         navigation.goBack();
       }
