@@ -6,6 +6,7 @@ import { useCurrentUser } from '../../auth/context/AuthContext';
 import { removeGifticon, setGifticonUsed } from '../services/gifticonLifecycle';
 import { useGifticon } from '../hooks/useGifticon';
 import Button from '../../../shared/components/Button';
+import { useToast } from '../../../shared/components/ToastProvider';
 import GifticonDetailSkeleton from '../components/GifticonDetailSkeleton';
 import { CATEGORY_LABELS } from '../types';
 import { daysUntil, formatDate } from '../../../shared/utils/date';
@@ -19,6 +20,7 @@ type Props = NativeStackScreenProps<RootStackParamList, 'GifticonDetail'>;
 export default function GifticonDetailScreen({ route, navigation }: Props) {
   const { gifticonId } = route.params;
   const { user } = useCurrentUser();
+  const showToast = useToast();
   const { gifticon, loading, error, refresh } = useGifticon(gifticonId);
   const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -54,10 +56,13 @@ export default function GifticonDetailScreen({ route, navigation }: Props) {
 
   const toggleUsed = async () => {
     if (!gifticon) return;
+    const nextUsed = !gifticon.isUsed;
     setBusy(true);
     try {
-      await setGifticonUsed(gifticon, !gifticon.isUsed, user?.uid);
-      navigation.goBack();
+      await setGifticonUsed(gifticon, nextUsed, user?.uid);
+      // Stay on the screen — the realtime doc flips isUsed and the user can
+      // see the new state (and undo it) without navigating.
+      showToast(nextUsed ? '사용완료로 표시했어요' : '다시 사용가능으로 바꿨어요');
     } catch (err) {
       Alert.alert('오류', getGifticonWriteErrorMessage(err, 'update'));
     } finally {

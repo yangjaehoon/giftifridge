@@ -115,7 +115,7 @@ describe('GifticonDetailScreen', () => {
     expect(getByText(/D-10/)).toBeTruthy();
   });
 
-  it('marks the gifticon used with the acting uid and goes back', async () => {
+  it('marks the gifticon used with the acting uid and stays on the screen', async () => {
     setHook({ gifticon: makeGifticon({ notificationIds: ['n1'] }) });
     const { getByText, navigation } = await renderScreen();
 
@@ -128,7 +128,7 @@ describe('GifticonDetailScreen', () => {
       true,
       'owner',
     );
-    await waitFor(() => expect(navigation.goBack).toHaveBeenCalled());
+    expect(navigation.goBack).not.toHaveBeenCalled();
   });
 
   it('reverts a used gifticon by marking it unused', async () => {

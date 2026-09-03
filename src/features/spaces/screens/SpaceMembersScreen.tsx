@@ -9,6 +9,7 @@ import { getSpaceErrorMessage, getSpaceWriteErrorMessage } from '../errors';
 import { buildInviteUrl } from '../inviteLink';
 import { withTimeout, WRITE_TIMEOUT_MS } from '../../../shared/utils/withTimeout';
 import Button from '../../../shared/components/Button';
+import { useToast } from '../../../shared/components/ToastProvider';
 import type { RootStackParamList } from '../../../app/RootNavigator';
 import { colors } from '../../../shared/theme/colors';
 
@@ -20,6 +21,7 @@ export default function SpaceMembersScreen({ route, navigation }: Props) {
   const { spaceId } = route.params;
   const { user } = useCurrentUser();
   const { space, members, loading, error, refresh } = useSpace(spaceId);
+  const showToast = useToast();
   const [busy, setBusy] = useState(false);
 
   const isOwner = space?.ownerId === user?.uid;
@@ -51,6 +53,7 @@ export default function SpaceMembersScreen({ route, navigation }: Props) {
           setBusy(true);
           try {
             await withTimeout(leaveSpace(spaceId, user.uid), WRITE_TIMEOUT_MS);
+            showToast('스페이스에서 나갔어요');
             navigation.navigate('Home');
           } catch (err) {
             Alert.alert('오류', getSpaceWriteErrorMessage(err, 'leave'));
@@ -78,6 +81,7 @@ export default function SpaceMembersScreen({ route, navigation }: Props) {
               ),
               WRITE_TIMEOUT_MS,
             );
+            showToast('스페이스를 삭제했어요');
             navigation.navigate('Home');
           } catch (err) {
             Alert.alert('오류', getSpaceWriteErrorMessage(err, 'delete'));

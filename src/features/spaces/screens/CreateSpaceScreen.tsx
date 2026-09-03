@@ -6,6 +6,7 @@ import { createSpace, newSpaceId } from '../services/spaceService';
 import { getSpaceWriteErrorMessage } from '../errors';
 import { withTimeout, WRITE_TIMEOUT_MS } from '../../../shared/utils/withTimeout';
 import Button from '../../../shared/components/Button';
+import { useToast } from '../../../shared/components/ToastProvider';
 import type { RootStackParamList } from '../../../app/RootNavigator';
 import { colors } from '../../../shared/theme/colors';
 
@@ -13,6 +14,7 @@ type Props = NativeStackScreenProps<RootStackParamList, 'CreateSpace'>;
 
 export default function CreateSpaceScreen({ navigation }: Props) {
   const { user } = useCurrentUser();
+  const showToast = useToast();
   const [name, setName] = useState('');
   const [saving, setSaving] = useState(false);
   // Fixed for the life of the screen so a retry after a timeout targets the
@@ -31,6 +33,7 @@ export default function CreateSpaceScreen({ navigation }: Props) {
         createSpace(draftId, user.uid, name.trim()),
         WRITE_TIMEOUT_MS,
       );
+      showToast('스페이스를 만들었어요');
       navigation.replace('SpaceMembers', { spaceId });
     } catch (err) {
       Alert.alert('오류', getSpaceWriteErrorMessage(err, 'create'));

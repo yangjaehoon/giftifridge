@@ -24,6 +24,7 @@ import { useGifticonForm } from '../hooks/useGifticonForm';
 import { useGifticonImage } from '../hooks/useGifticonImage';
 import { useBarcodeScanner } from '../hooks/useBarcodeScanner';
 import Button from '../../../shared/components/Button';
+import { useToast } from '../../../shared/components/ToastProvider';
 import GifticonDetailSkeleton from '../components/GifticonDetailSkeleton';
 import BarcodeScannerModal from '../components/BarcodeScannerModal';
 import type { GifticonCategory } from '../types';
@@ -45,6 +46,7 @@ export default function AddGifticonScreen({ navigation, route }: Props) {
   const gifticonId = route.params?.gifticonId;
   const isEditing = Boolean(gifticonId);
   const { user } = useCurrentUser();
+  const showToast = useToast();
   const { gifticon: existing, loading: loadingExisting } = useGifticon(gifticonId);
 
   // The list for whichever context this gifticon belongs to, used only to warn
@@ -110,7 +112,10 @@ export default function AddGifticonScreen({ navigation, route }: Props) {
         fields: form.buildFields(),
         siblings: contextGifticons,
       });
-      if (result.status === 'saved') navigation.goBack();
+      if (result.status === 'saved') {
+        showToast(isEditing ? '수정되었어요' : '저장되었어요');
+        navigation.goBack();
+      }
     } catch (err) {
       Alert.alert('오류', getGifticonWriteErrorMessage(err, 'save'));
     } finally {
