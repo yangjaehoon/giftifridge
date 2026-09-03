@@ -19,6 +19,7 @@ export default function Chip({
       onPress={onPress}
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel ?? label}
+      accessibilityState={{ selected: active }}
     >
       <Text style={[styles.chipText, active && styles.chipTextActive]} numberOfLines={1}>
         {label}
@@ -30,7 +31,9 @@ export default function Chip({
 const styles = StyleSheet.create({
   chip: {
     paddingHorizontal: 14,
-    paddingVertical: 8,
+    paddingVertical: 9,
+    minHeight: 36,
+    justifyContent: 'center',
     borderRadius: 20,
     backgroundColor: colors.surfaceMuted,
   },

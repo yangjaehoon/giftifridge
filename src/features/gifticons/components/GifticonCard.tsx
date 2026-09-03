@@ -17,9 +17,23 @@ export default function GifticonCard({
   const expired = days < 0;
   const soon = !expired && days <= 3;
 
+  const status = gifticon.isUsed ? '사용완료' : expired ? '기한만료' : `${days}일 남음`;
+  const priceLabel = gifticon.amount ? `, ${formatCurrency(gifticon.amount)}` : '';
+
   return (
-    <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.75}>
-      <Image source={{ uri: gifticon.imageUrl }} style={styles.thumbnail} />
+    <TouchableOpacity
+      style={styles.card}
+      onPress={onPress}
+      activeOpacity={0.75}
+      accessibilityRole="button"
+      accessibilityLabel={`${gifticon.brand} ${gifticon.name}${priceLabel}, 유효기한 ${formatDate(gifticon.expiresAt)}, ${status}`}
+    >
+      <Image
+        source={{ uri: gifticon.imageUrl }}
+        style={styles.thumbnail}
+        accessibilityElementsHidden
+        importantForAccessibility="no"
+      />
       <View style={styles.info}>
         <Text style={styles.brand} numberOfLines={1}>
           {gifticon.brand} · {CATEGORY_LABELS[gifticon.category]}

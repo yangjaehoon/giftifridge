@@ -20,12 +20,15 @@ export default function StatusTabs({
   onChange: (tab: FilterTab) => void;
 }) {
   return (
-    <View style={styles.tabs}>
+    <View style={styles.tabs} accessibilityRole="tablist">
       {TABS.map(({ key, label }) => (
         <TouchableOpacity
           key={key}
           style={[styles.tab, tab === key && styles.tabActive]}
           onPress={() => onChange(key)}
+          accessibilityRole="tab"
+          accessibilityState={{ selected: tab === key }}
+          accessibilityLabel={`${label} ${counts[key]}개`}
         >
           <Text style={[styles.tabText, tab === key && styles.tabTextActive]}>
             {label} ({counts[key]})

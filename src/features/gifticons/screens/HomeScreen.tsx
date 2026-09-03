@@ -53,7 +53,12 @@ export default function HomeScreen({ navigation }: Props) {
   useEffect(() => {
     navigation.setOptions({
       headerRight: () => (
-        <TouchableOpacity onPress={() => navigation.navigate('Settings')}>
+        <TouchableOpacity
+          onPress={() => navigation.navigate('Settings')}
+          hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+          accessibilityRole="button"
+          accessibilityLabel="설정"
+        >
           <Text style={styles.settingsLink}>설정</Text>
         </TouchableOpacity>
       ),
@@ -72,6 +77,8 @@ export default function HomeScreen({ navigation }: Props) {
         <TouchableOpacity
           style={styles.membersLink}
           onPress={() => navigation.navigate('SpaceMembers', { spaceId: context.spaceId })}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          accessibilityRole="button"
         >
           <Text style={styles.membersLinkText}>멤버 관리</Text>
         </TouchableOpacity>
@@ -110,6 +117,7 @@ export default function HomeScreen({ navigation }: Props) {
           <TouchableOpacity
             style={styles.searchClear}
             onPress={() => setQuery('')}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             accessibilityRole="button"
             accessibilityLabel="검색어 지우기"
           >
@@ -131,6 +139,7 @@ export default function HomeScreen({ navigation }: Props) {
         <TouchableOpacity
           style={styles.sortDir}
           onPress={toggleSortDir}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           accessibilityRole="button"
           accessibilityLabel={`정렬 방향 ${sortDir === 'asc' ? '오름차순' : '내림차순'}, 눌러서 전환`}
         >

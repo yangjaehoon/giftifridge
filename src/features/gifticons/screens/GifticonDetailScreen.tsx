@@ -142,6 +142,7 @@ export default function GifticonDetailScreen({ route, navigation }: Props) {
             <TouchableOpacity
               style={styles.copyButton}
               onPress={copyBarcode}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
               accessibilityRole="button"
               accessibilityLabel="바코드 번호 복사"
             >

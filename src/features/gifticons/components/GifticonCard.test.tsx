@@ -90,4 +90,14 @@ describe('GifticonCard', () => {
     fireEvent.press(getByText('아메리카노'));
     expect(onPress).toHaveBeenCalledTimes(1);
   });
+
+  it('exposes a single spoken label summarising the card', async () => {
+    const { getByLabelText } = await render(
+      <GifticonCard
+        gifticon={makeGifticon({ id: '1', amount: 4500, expiresAt: daysFromNow(10) })}
+        onPress={jest.fn()}
+      />,
+    );
+    expect(getByLabelText(/스타벅스 아메리카노, 4,500원, 유효기한 .+, 10일 남음/)).toBeTruthy();
+  });
 });
