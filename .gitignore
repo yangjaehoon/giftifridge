@@ -48,3 +48,9 @@ firebase-debug.log
 # generated native folders
 /ios
 /android
+
+# firebase emulator
+firestore-debug.log
+firebase-debug.log
+ui-debug.log
+.firebase/
