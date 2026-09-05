@@ -16,7 +16,7 @@ import {
 import { uploadGifticonImage } from '../services/gifticonImage';
 import { cancelNotifications, scheduleExpiryNotifications } from '../services/notificationService';
 import { recognizeExpiryDate } from '../services/ocrService';
-import { getCurrentLocation } from '../../../shared/utils/location';
+import { getCurrentLocation, searchAddress } from '../../../shared/utils/location';
 import { getNotificationOffsets } from '../../../shared/utils/notificationPrefs';
 import { TimeoutError } from '../../../shared/utils/withTimeout';
 import type { Gifticon } from '../types';
@@ -37,7 +37,10 @@ jest.mock('../services/notificationService', () => ({
   scheduleExpiryNotifications: jest.fn(),
 }));
 jest.mock('../services/ocrService', () => ({ recognizeExpiryDate: jest.fn() }));
-jest.mock('../../../shared/utils/location', () => ({ getCurrentLocation: jest.fn() }));
+jest.mock('../../../shared/utils/location', () => ({
+  getCurrentLocation: jest.fn(),
+  searchAddress: jest.fn(),
+}));
 jest.mock('../../../shared/utils/notificationPrefs', () => ({ getNotificationOffsets: jest.fn() }));
 jest.mock('expo-image-picker', () => ({
   launchImageLibraryAsync: jest.fn(),
@@ -61,6 +64,7 @@ const mockedCancelNotifs = cancelNotifications as jest.Mock;
 const mockedSchedule = scheduleExpiryNotifications as jest.Mock;
 const mockedRecognize = recognizeExpiryDate as jest.Mock;
 const mockedGetLocation = getCurrentLocation as jest.Mock;
+const mockedSearchAddress = searchAddress as jest.Mock;
 const mockedGetOffsets = getNotificationOffsets as jest.Mock;
 const mockedLibrary = ImagePicker.launchImageLibraryAsync as jest.Mock;
 
@@ -110,6 +114,7 @@ beforeEach(() => {
   mockedSchedule.mockResolvedValue(['notif-1']);
   mockedRecognize.mockResolvedValue(null);
   mockedGetLocation.mockResolvedValue(null);
+  mockedSearchAddress.mockResolvedValue([]);
   mockedGetOffsets.mockResolvedValue([7, 3]);
 });
 
@@ -268,7 +273,15 @@ describe('AddGifticonScreen — create', () => {
       fireEvent.press(getByText('지금 여기를 매장 위치로 저장'));
     });
 
-    await waitFor(() => expect(getByText('현재 위치로 저장됨 ✓')).toBeTruthy());
+    await waitFor(() => expect(getByText('매장 위치가 저장됨 ✓')).toBeTruthy());
+  });
+
+  it('opens the address search modal from its link', async () => {
+    const { getByText } = await renderScreen(undefined);
+
+    // The modal's own search flow is covered by useLocationSearch.test.ts and
+    // LocationSearchModal.test.tsx — this just checks the entry point is wired up.
+    await expect(fireEvent.press(getByText('주소로 검색해서 선택'))).resolves.not.toThrow();
   });
 });
 

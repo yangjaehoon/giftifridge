@@ -2,6 +2,8 @@ jest.mock('expo-location', () => ({
   getForegroundPermissionsAsync: jest.fn(),
   requestForegroundPermissionsAsync: jest.fn(),
   getCurrentPositionAsync: jest.fn(),
+  geocodeAsync: jest.fn(),
+  reverseGeocodeAsync: jest.fn(),
   Accuracy: { Balanced: 3 },
 }));
 
@@ -13,10 +15,13 @@ type LocationMock = {
   getForegroundPermissionsAsync: jest.Mock;
   requestForegroundPermissionsAsync: jest.Mock;
   getCurrentPositionAsync: jest.Mock;
+  geocodeAsync: jest.Mock;
+  reverseGeocodeAsync: jest.Mock;
 };
 
 let Location: LocationMock;
 let getCurrentLocation: typeof import('./location').getCurrentLocation;
+let searchAddress: typeof import('./location').searchAddress;
 
 beforeEach(() => {
   // Reset so location.ts's module-level `lastFix` cache starts empty each test;
@@ -24,7 +29,7 @@ beforeEach(() => {
   jest.resetModules();
   /* eslint-disable @typescript-eslint/no-require-imports */
   Location = require('expo-location');
-  ({ getCurrentLocation } = require('./location'));
+  ({ getCurrentLocation, searchAddress } = require('./location'));
   /* eslint-enable @typescript-eslint/no-require-imports */
 });
 
@@ -101,5 +106,74 @@ describe('getCurrentLocation', () => {
 
     expect(Location.getCurrentPositionAsync).toHaveBeenCalledTimes(2);
     nowSpy.mockRestore();
+  });
+});
+
+describe('searchAddress', () => {
+  it('returns [] without geocoding for a blank query', async () => {
+    await expect(searchAddress('   ')).resolves.toEqual([]);
+    expect(Location.getForegroundPermissionsAsync).not.toHaveBeenCalled();
+  });
+
+  it('returns null when permission is denied and cannot be asked again', async () => {
+    Location.getForegroundPermissionsAsync.mockResolvedValue({
+      status: 'denied',
+      canAskAgain: false,
+    });
+
+    await expect(searchAddress('스타벅스 강남점')).resolves.toBeNull();
+    expect(Location.geocodeAsync).not.toHaveBeenCalled();
+  });
+
+  it('pairs each geocoded match with its reverse-geocoded label', async () => {
+    Location.getForegroundPermissionsAsync.mockResolvedValue({
+      status: 'granted',
+      canAskAgain: false,
+    });
+    Location.geocodeAsync.mockResolvedValue([{ latitude: 37.5, longitude: 127 }]);
+    Location.reverseGeocodeAsync.mockResolvedValue([
+      { formattedAddress: '서울 강남구 테헤란로 1' },
+    ]);
+
+    await expect(searchAddress('스타벅스 강남점')).resolves.toEqual([
+      { coordinates: { latitude: 37.5, longitude: 127 }, label: '서울 강남구 테헤란로 1' },
+    ]);
+  });
+
+  it('falls back to the query text when reverse geocoding finds no address', async () => {
+    Location.getForegroundPermissionsAsync.mockResolvedValue({
+      status: 'granted',
+      canAskAgain: false,
+    });
+    Location.geocodeAsync.mockResolvedValue([{ latitude: 37.5, longitude: 127 }]);
+    Location.reverseGeocodeAsync.mockResolvedValue([]);
+
+    await expect(searchAddress('스타벅스 강남점')).resolves.toEqual([
+      { coordinates: { latitude: 37.5, longitude: 127 }, label: '스타벅스 강남점' },
+    ]);
+  });
+
+  it('composes a label from address parts when formattedAddress is unavailable (iOS)', async () => {
+    Location.getForegroundPermissionsAsync.mockResolvedValue({
+      status: 'granted',
+      canAskAgain: false,
+    });
+    Location.geocodeAsync.mockResolvedValue([{ latitude: 37.5, longitude: 127 }]);
+    Location.reverseGeocodeAsync.mockResolvedValue([
+      {
+        formattedAddress: null,
+        name: '스타벅스 강남점',
+        street: '테헤란로',
+        city: '서울',
+        region: null,
+      },
+    ]);
+
+    await expect(searchAddress('스타벅스 강남점')).resolves.toEqual([
+      {
+        coordinates: { latitude: 37.5, longitude: 127 },
+        label: '스타벅스 강남점 테헤란로 서울',
+      },
+    ]);
   });
 });

@@ -23,10 +23,12 @@ import { useSpaceGifticons } from '../hooks/useSpaceGifticons';
 import { useGifticonForm } from '../hooks/useGifticonForm';
 import { useGifticonImage } from '../hooks/useGifticonImage';
 import { useBarcodeScanner } from '../hooks/useBarcodeScanner';
+import { useLocationSearch } from '../hooks/useLocationSearch';
 import Button from '../../../shared/components/Button';
 import { useToast } from '../../../shared/components/ToastProvider';
 import GifticonDetailSkeleton from '../components/GifticonDetailSkeleton';
 import BarcodeScannerModal from '../components/BarcodeScannerModal';
+import LocationSearchModal from '../components/LocationSearchModal';
 import type { GifticonCategory } from '../types';
 import { CATEGORY_LABELS } from '../types';
 import Chip from '../../../shared/components/Chip';
@@ -67,6 +69,7 @@ export default function AddGifticonScreen({ navigation, route }: Props) {
     onExpiryDetected: form.setExpiresAt,
   });
   const scanner = useBarcodeScanner(form.setBarcode);
+  const locationSearch = useLocationSearch(form.setLocation);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [saving, setSaving] = useState(false);
   const [locationSaving, setLocationSaving] = useState(false);
@@ -242,9 +245,12 @@ export default function AddGifticonScreen({ navigation, route }: Props) {
             <ActivityIndicator size="small" color={colors.primary} />
           ) : (
             <Text style={styles.locationButtonText}>
-              {form.location ? '현재 위치로 저장됨 ✓' : '지금 여기를 매장 위치로 저장'}
+              {form.location ? '매장 위치가 저장됨 ✓' : '지금 여기를 매장 위치로 저장'}
             </Text>
           )}
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.locationSearchLink} onPress={locationSearch.open}>
+          <Text style={styles.locationSearchLinkText}>주소로 검색해서 선택</Text>
         </TouchableOpacity>
         {form.location && (
           <Text style={styles.ocrHint}>근처에 다시 왔을 때 이 기프티콘을 알려드려요.</Text>
@@ -288,6 +294,16 @@ export default function AddGifticonScreen({ navigation, route }: Props) {
         visible={scanner.visible}
         onScanned={scanner.handleScanned}
         onClose={scanner.close}
+      />
+      <LocationSearchModal
+        visible={locationSearch.visible}
+        query={locationSearch.query}
+        onChangeQuery={locationSearch.setQuery}
+        results={locationSearch.results}
+        searching={locationSearch.searching}
+        onSearch={locationSearch.search}
+        onSelect={locationSearch.select}
+        onClose={locationSearch.close}
       />
     </KeyboardAvoidingView>
   );
@@ -349,5 +365,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   locationButtonText: { color: colors.gray700, fontSize: 14, fontWeight: '600' },
+  locationSearchLink: { alignSelf: 'center', paddingVertical: 8 },
+  locationSearchLinkText: { color: colors.primary, fontSize: 13, fontWeight: '600' },
   submit: { marginTop: 28 },
 });
