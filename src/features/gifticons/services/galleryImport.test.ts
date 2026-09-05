@@ -69,6 +69,10 @@ function fakeAsset(id: string, creationTime: number, uri = `file:///${id}.jpg`) 
   };
 }
 
+function ocrResult(text: string) {
+  return { text, lines: text.split('\n').map((line) => ({ text: line, height: 0 })) };
+}
+
 beforeEach(async () => {
   await AsyncStorage.clear();
   jest.clearAllMocks();
@@ -109,7 +113,9 @@ describe('scanGalleryForGifticons', () => {
 
   it('creates a gifticon from a photo with a parseable expiry date, guessing brand/name', async () => {
     mockedExe.mockResolvedValue([fakeAsset('a1', 1_000)]);
-    mockedRecognizeText.mockResolvedValue('스타벅스\n아메리카노 Tall\n유효기간 2026.12.31까지');
+    mockedRecognizeText.mockResolvedValue(
+      ocrResult('스타벅스\n아메리카노 Tall\n유효기간 2026.12.31까지'),
+    );
 
     await expect(scanGalleryForGifticons('u1')).resolves.toBe(1);
 
@@ -134,7 +140,7 @@ describe('scanGalleryForGifticons', () => {
 
   it('falls back to placeholder brand/name/category when nothing usable is guessed', async () => {
     mockedExe.mockResolvedValue([fakeAsset('a1', 1_000)]);
-    mockedRecognizeText.mockResolvedValue('기프티콘\n유효기간 2026.12.31까지');
+    mockedRecognizeText.mockResolvedValue(ocrResult('기프티콘\n유효기간 2026.12.31까지'));
 
     await scanGalleryForGifticons('u1');
 
@@ -152,7 +158,7 @@ describe('scanGalleryForGifticons', () => {
   it('includes an amount found in the text', async () => {
     mockedExe.mockResolvedValue([fakeAsset('a1', 1_000)]);
     mockedRecognizeText.mockResolvedValue(
-      '스타벅스\n아메리카노 Tall\n금액 10,000원\n유효기간 2026.12.31까지',
+      ocrResult('스타벅스\n아메리카노 Tall\n금액 10,000원\n유효기간 2026.12.31까지'),
     );
 
     await scanGalleryForGifticons('u1');
@@ -166,8 +172,26 @@ describe('scanGalleryForGifticons', () => {
 
   it('includes a barcode found in the photo itself', async () => {
     mockedExe.mockResolvedValue([fakeAsset('a1', 1_000)]);
-    mockedRecognizeText.mockResolvedValue('스타벅스\n아메리카노 Tall\n유효기간 2026.12.31까지');
+    mockedRecognizeText.mockResolvedValue(
+      ocrResult('스타벅스\n아메리카노 Tall\n유효기간 2026.12.31까지'),
+    );
     mockedRecognizeBarcode.mockResolvedValue('8801234567890');
+
+    await scanGalleryForGifticons('u1');
+
+    expect(mockedSaveGifticon).toHaveBeenCalledWith(
+      expect.objectContaining({
+        fields: expect.objectContaining({ barcode: '8801234567890' }),
+      }),
+    );
+  });
+
+  it('falls back to a barcode number printed in the OCR text when the photo itself has none', async () => {
+    mockedExe.mockResolvedValue([fakeAsset('a1', 1_000)]);
+    mockedRecognizeText.mockResolvedValue(
+      ocrResult('스타벅스\n아메리카노 Tall\n바코드 8801234567890\n유효기간 2026.12.31까지'),
+    );
+    mockedRecognizeBarcode.mockResolvedValue(null);
 
     await scanGalleryForGifticons('u1');
 
@@ -180,7 +204,7 @@ describe('scanGalleryForGifticons', () => {
 
   it('does not barcode-scan a photo that never even looked like a gifticon', async () => {
     mockedExe.mockResolvedValue([fakeAsset('a1', 1_000)]);
-    mockedRecognizeText.mockResolvedValue('오늘 점심 메뉴 사진');
+    mockedRecognizeText.mockResolvedValue(ocrResult('오늘 점심 메뉴 사진'));
 
     await scanGalleryForGifticons('u1');
 
@@ -189,7 +213,7 @@ describe('scanGalleryForGifticons', () => {
 
   it('creates a gifticon from a keyword match even without a parseable date', async () => {
     mockedExe.mockResolvedValue([fakeAsset('a1', 1_000)]);
-    mockedRecognizeText.mockResolvedValue('기프티콘 도착!');
+    mockedRecognizeText.mockResolvedValue(ocrResult('기프티콘 도착!'));
 
     await expect(scanGalleryForGifticons('u1')).resolves.toBe(1);
     expect(mockedSaveGifticon).toHaveBeenCalledTimes(1);
@@ -197,7 +221,7 @@ describe('scanGalleryForGifticons', () => {
 
   it('skips a photo whose OCR text has no gifticon signal', async () => {
     mockedExe.mockResolvedValue([fakeAsset('a1', 1_000)]);
-    mockedRecognizeText.mockResolvedValue('오늘 점심 메뉴 사진');
+    mockedRecognizeText.mockResolvedValue(ocrResult('오늘 점심 메뉴 사진'));
 
     await expect(scanGalleryForGifticons('u1')).resolves.toBe(0);
     expect(mockedSaveGifticon).not.toHaveBeenCalled();
@@ -213,7 +237,7 @@ describe('scanGalleryForGifticons', () => {
 
   it('never re-OCRs an asset id it has already processed', async () => {
     mockedExe.mockResolvedValue([fakeAsset('a1', 1_000)]);
-    mockedRecognizeText.mockResolvedValue('오늘 점심 메뉴 사진');
+    mockedRecognizeText.mockResolvedValue(ocrResult('오늘 점심 메뉴 사진'));
 
     await scanGalleryForGifticons('u1');
     await scanGalleryForGifticons('u1');
@@ -224,7 +248,7 @@ describe('scanGalleryForGifticons', () => {
   it('advances the scan cursor past the newest processed asset', async () => {
     await AsyncStorage.setItem('galleryImportLastCheckedAt', '1000');
     mockedExe.mockResolvedValueOnce([fakeAsset('a1', 5_000)]);
-    mockedRecognizeText.mockResolvedValue('오늘 점심 메뉴 사진');
+    mockedRecognizeText.mockResolvedValue(ocrResult('오늘 점심 메뉴 사진'));
 
     await scanGalleryForGifticons('u1');
 
@@ -265,7 +289,7 @@ describe('scanGalleryForGifticons', () => {
   it('persists progress made before a later asset in the batch fails to save', async () => {
     await AsyncStorage.setItem('galleryImportLastCheckedAt', '500');
     mockedExe.mockResolvedValue([fakeAsset('a1', 1_000), fakeAsset('a2', 2_000)]);
-    mockedRecognizeText.mockResolvedValue('기프티콘 도착!');
+    mockedRecognizeText.mockResolvedValue(ocrResult('기프티콘 도착!'));
     mockedSaveGifticon.mockResolvedValueOnce('draft-1').mockRejectedValueOnce(new Error('timeout'));
 
     await expect(scanGalleryForGifticons('u1')).rejects.toThrow('timeout');

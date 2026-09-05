@@ -6,6 +6,7 @@ import { syncGifticonReminders } from './gifticonReminders';
 import {
   guessGifticonFields,
   parseAmountFromText,
+  parseBarcodeFromText,
   parseExpiryDateFromText,
   recognizeText,
 } from './ocrService';
@@ -134,8 +135,8 @@ async function runScan(ownerId: string): Promise<number> {
       if (importedIds.has(asset.id)) continue;
 
       const uri = await asset.getUri();
-      const text = await recognizeText(uri);
-      if (text == null || !looksLikeGifticon(text)) {
+      const recognized = await recognizeText(uri);
+      if (recognized == null || !looksLikeGifticon(recognized.text)) {
         // Decided it's not a gifticon — remember that so it isn't re-OCR'd
         // every scan, but don't mark it done before a create is even tried.
         importedIds.add(asset.id);
@@ -144,16 +145,19 @@ async function runScan(ownerId: string): Promise<number> {
 
       // Only worth the extra native call for photos already confirmed to
       // look like a gifticon — no point barcode-scanning everything else.
-      const barcode = await recognizeBarcodeFromImage(uri);
-      const { brand, name, category } = guessGifticonFields(text);
+      // The graphic is the primary source; the same number printed as text
+      // beneath it is a fallback for when the graphic itself couldn't be read.
+      const scannedBarcode = await recognizeBarcodeFromImage(uri);
+      const barcode = scannedBarcode ?? parseBarcodeFromText(recognized.text);
+      const { brand, name, category } = guessGifticonFields(recognized);
       const draftId = newGifticonId();
       const fields = {
         name: name ?? FALLBACK_NAME,
         brand: brand ?? FALLBACK_BRAND,
         category: category ?? FALLBACK_CATEGORY,
-        expiresAt: parseExpiryDateFromText(text) ?? toDateString(defaultExpiryDate()),
+        expiresAt: parseExpiryDateFromText(recognized.text) ?? toDateString(defaultExpiryDate()),
         barcode: barcode ?? undefined,
-        amount: parseAmountFromText(text) ?? undefined,
+        amount: parseAmountFromText(recognized.text) ?? undefined,
       };
       await saveGifticon({ draftId, ownerId, imageUri: uri, imageChanged: true, fields });
       // Only marked done once the create actually went through — if

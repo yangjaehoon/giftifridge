@@ -121,16 +121,79 @@ export function parseAmountFromText(text: string): number | null {
   return candidates[0].amount;
 }
 
-/** Raw OCR text, or null if recognition failed. Callers derive whatever they
- * need from it (parseExpiryDateFromText, guessGifticonFields) — kept as one
- * recognition pass since running OCR twice per photo would be wasteful. */
-export async function recognizeText(imageUri: string): Promise<string | null> {
+export interface RecognizedLine {
+  text: string;
+  /** Line height in pixels — a proxy for font size, used to tell headline
+   * text (brand/product name) apart from the fine-print footer text real
+   * gifticon layouts consistently render smaller (see guessGifticonFields).
+   * 0 when this build/platform doesn't report a frame for the line. */
+  height: number;
+}
+
+export interface RecognizedText {
+  text: string;
+  lines: RecognizedLine[];
+}
+
+/** Raw OCR result, or null if recognition failed. Callers derive whatever
+ * they need from it (parseExpiryDateFromText, guessGifticonFields) — kept as
+ * one recognition pass since running OCR twice per photo would be wasteful. */
+export async function recognizeText(imageUri: string): Promise<RecognizedText | null> {
   try {
     const result = await TextRecognition.recognize(imageUri, TextRecognitionScript.KOREAN);
-    return result.text;
+    const lines = result.blocks.flatMap((block) =>
+      block.lines.map((line) => ({ text: line.text, height: line.frame?.height ?? 0 })),
+    );
+    return { text: result.text, lines };
   } catch {
     return null;
   }
+}
+
+const BARCODE_PREFIX_KEYWORDS = ['바코드'];
+// A barcode number is printed as one unbroken run of digits — unlike a
+// comma-grouped amount ("10,000") or a dash-separated phone number
+// ("1544-1650"), both of which break into shorter runs once split on any
+// non-digit character. A phone/order number that happens to be this long
+// either needs a nearby "바코드" label to be picked, or, lacking one, is left
+// unresolved rather than guessed at (same ambiguity rule as the date/amount
+// parsers above).
+const MIN_BARCODE_DIGITS = 8;
+const MAX_BARCODE_DIGITS = 20;
+
+interface BarcodeTextMatch {
+  index: number;
+  length: number;
+  digits: string;
+}
+
+function collectBarcodeMatches(text: string): BarcodeTextMatch[] {
+  const matches: BarcodeTextMatch[] = [];
+  for (const m of text.matchAll(/\d+/g)) {
+    const digits = m[0];
+    if (digits.length < MIN_BARCODE_DIGITS || digits.length > MAX_BARCODE_DIGITS) continue;
+    matches.push({ index: m.index ?? 0, length: digits.length, digits });
+  }
+  return matches;
+}
+
+/**
+ * Finds a single, unambiguous barcode-number-looking digit run in OCR text —
+ * a fallback for when the barcode graphic itself couldn't be read
+ * (recognizeBarcodeFromImage returned null; blur/glare on the photo), since
+ * the same number is almost always also printed as text beneath it.
+ */
+export function parseBarcodeFromText(text: string): string | null {
+  const matches = collectBarcodeMatches(text);
+  if (matches.length === 0) return null;
+
+  const withKeyword = matches.filter((match) =>
+    hasNearbyKeyword(text, match.index, match.length, BARCODE_PREFIX_KEYWORDS, []),
+  );
+  const candidates = withKeyword.length > 0 ? withKeyword : matches;
+  if (candidates.length !== 1) return null;
+
+  return candidates[0].digits;
 }
 
 // Boilerplate that shows up on gifticons but is never the brand/product name
@@ -280,31 +343,48 @@ export interface GuessedGifticonFields {
   category: GifticonCategory | null;
 }
 
+// Real gifticon layouts consistently render the brand/product-name headline
+// noticeably larger than footer fine print (usage terms, refund notice,
+// "전국 매장에서 사용 가능" disclaimers) — a more reliable "is this noise"
+// signal than trying to keyword-list every possible disclaimer phrasing. A
+// line under this fraction of the tallest remaining candidate's height reads
+// as fine print rather than headline text.
+const MIN_HEADLINE_HEIGHT_RATIO = 0.5;
+
+function keepHeadlineSizedLines(lines: RecognizedLine[]): RecognizedLine[] {
+  const heights = lines.map((line) => line.height).filter((h) => h > 0);
+  if (heights.length === 0) return lines; // no frame data available on this platform/build
+  const maxHeight = Math.max(...heights);
+  return lines.filter(
+    (line) => line.height === 0 || line.height >= maxHeight * MIN_HEADLINE_HEIGHT_RATIO,
+  );
+}
+
 /**
  * Best-effort brand/name/category guess from OCR text — there's no format to
  * anchor on the way a date has one, so this is a heuristic the user is
  * expected to double-check, not a reliable parse. A known brand name (see
  * KNOWN_BRANDS) is matched first since it's unambiguous and also gives a
  * category; otherwise, most gifticon layouts put the brand above the product
- * name, so the first two non-boilerplate lines are read as (brand, name) in
- * that order, with no category guess.
+ * name, so the first two non-boilerplate, headline-sized lines are read as
+ * (brand, name) in that order, with no category guess.
  */
-export function guessGifticonFields(text: string): GuessedGifticonFields {
-  const cleanLines = text
-    .split('\n')
-    .map((line) => line.trim())
-    .filter((line) => line.length > 0 && !isNoiseLine(line));
+export function guessGifticonFields(recognized: RecognizedText): GuessedGifticonFields {
+  const candidateLines = recognized.lines
+    .map((line) => ({ text: line.text.trim(), height: line.height }))
+    .filter((line) => line.text.length > 0 && !isNoiseLine(line.text));
+  const headlineLines = keepHeadlineSizedLines(candidateLines).map((line) => line.text);
 
-  const known = findKnownBrand(text);
+  const known = findKnownBrand(recognized.text);
   if (known) {
     const brandKey = compact(known.name);
     // A line that's nothing but the brand itself is excluded from being the
     // name too — but only an exact match: some brands' own menu items embed
     // the brand name (e.g. 설빙's "인절미설빙"), and excluding by mere
     // substring would wrongly throw away the real product name there.
-    const name = cleanLines.find((line) => compact(line) !== brandKey);
+    const name = headlineLines.find((line) => compact(line) !== brandKey);
     return { brand: known.name, name: name ?? null, category: known.category };
   }
 
-  return { brand: cleanLines[0] ?? null, name: cleanLines[1] ?? null, category: null };
+  return { brand: headlineLines[0] ?? null, name: headlineLines[1] ?? null, category: null };
 }

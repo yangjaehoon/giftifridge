@@ -2,9 +2,11 @@ import TextRecognition from '@react-native-ml-kit/text-recognition';
 import {
   guessGifticonFields,
   parseAmountFromText,
+  parseBarcodeFromText,
   parseExpiryDateFromText,
   recognizeText,
 } from './ocrService';
+import type { RecognizedText } from './ocrService';
 
 jest.mock('@react-native-ml-kit/text-recognition', () => ({
   __esModule: true,
@@ -16,6 +18,17 @@ const mockedRecognize = TextRecognition.recognize as jest.Mock;
 
 function isoDate(year: number, month: number, day: number): string {
   return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+}
+
+// guessGifticonFields takes recognizeText's richer result (line height comes
+// from the OCR engine's per-line bounding box); tests that don't care about
+// height wrap a plain multi-line string with height 0 for every line, which
+// keepHeadlineSizedLines treats as "no frame data available" and skips.
+function ocrResult(text: string, heights: number[] = []): RecognizedText {
+  return {
+    text,
+    lines: text.split('\n').map((line, i) => ({ text: line, height: heights[i] ?? 0 })),
+  };
 }
 
 describe('parseExpiryDateFromText', () => {
@@ -69,7 +82,7 @@ describe('parseExpiryDateFromText', () => {
 describe('guessGifticonFields', () => {
   it('reads the first two clean lines as (brand, name) and includes its category', () => {
     const text = '스타벅스\n아메리카노 Tall\n유효기간 2026.12.31까지\n바코드 8801234567890';
-    expect(guessGifticonFields(text)).toEqual({
+    expect(guessGifticonFields(ocrResult(text))).toEqual({
       brand: '스타벅스',
       name: '아메리카노 Tall',
       category: 'cafe',
@@ -84,7 +97,7 @@ describe('guessGifticonFields', () => {
       '아메리카노',
       '유효기간 2026.12.31까지',
     ].join('\n');
-    expect(guessGifticonFields(text)).toEqual({
+    expect(guessGifticonFields(ocrResult(text))).toEqual({
       brand: '이디야',
       name: '아메리카노',
       category: 'cafe',
@@ -92,7 +105,7 @@ describe('guessGifticonFields', () => {
   });
 
   it('returns null name when only one usable line is found', () => {
-    expect(guessGifticonFields('스타벅스\n유효기간 2026.12.31까지')).toEqual({
+    expect(guessGifticonFields(ocrResult('스타벅스\n유효기간 2026.12.31까지'))).toEqual({
       brand: '스타벅스',
       name: null,
       category: 'cafe',
@@ -100,7 +113,9 @@ describe('guessGifticonFields', () => {
   });
 
   it('returns null brand/name/category when nothing usable is found', () => {
-    expect(guessGifticonFields('기프티콘\n유효기간 2026.12.31까지\n8801234567890')).toEqual({
+    expect(
+      guessGifticonFields(ocrResult('기프티콘\n유효기간 2026.12.31까지\n8801234567890')),
+    ).toEqual({
       brand: null,
       name: null,
       category: null,
@@ -110,7 +125,7 @@ describe('guessGifticonFields', () => {
   it('has no category for an unlisted brand — the position guess only covers brand/name', () => {
     const text = 'CUP 사이즈 안내\n딸기 스무디\n유효기간 2026.12.31까지';
     // "CU" must not match inside "CUP" — falls back to the position guess.
-    expect(guessGifticonFields(text)).toEqual({
+    expect(guessGifticonFields(ocrResult(text))).toEqual({
       brand: 'CUP 사이즈 안내',
       name: '딸기 스무디',
       category: null,
@@ -119,7 +134,7 @@ describe('guessGifticonFields', () => {
 
   it('keeps a short brand name that happens to contain a couple of digits', () => {
     const text = 'GS25\n연세우유 크림빵\n유효기간 2026.12.31까지';
-    expect(guessGifticonFields(text)).toEqual({
+    expect(guessGifticonFields(ocrResult(text))).toEqual({
       brand: 'GS25',
       name: '연세우유 크림빵',
       category: 'convenience',
@@ -129,7 +144,7 @@ describe('guessGifticonFields', () => {
   it('finds a known brand regardless of which line it appears on', () => {
     // Name first, brand second — the opposite of the usual layout assumption.
     const text = '아메리카노 Tall\n스타벅스\n유효기간 2026.12.31까지';
-    expect(guessGifticonFields(text)).toEqual({
+    expect(guessGifticonFields(ocrResult(text))).toEqual({
       brand: '스타벅스',
       name: '아메리카노 Tall',
       category: 'cafe',
@@ -138,7 +153,7 @@ describe('guessGifticonFields', () => {
 
   it('finds a known brand even inside an otherwise-noisy line', () => {
     const text = '아메리카노 Tall\n전국 스타벅스 매장에서 교환 가능\n유효기간 2026.12.31까지';
-    expect(guessGifticonFields(text)).toEqual({
+    expect(guessGifticonFields(ocrResult(text))).toEqual({
       brand: '스타벅스',
       name: '아메리카노 Tall',
       category: 'cafe',
@@ -147,7 +162,7 @@ describe('guessGifticonFields', () => {
 
   it('matches a known brand case- and spacing-insensitively', () => {
     const text = 'b h c\n순살치킨\n유효기간 2026.12.31까지';
-    expect(guessGifticonFields(text)).toEqual({
+    expect(guessGifticonFields(ocrResult(text))).toEqual({
       brand: 'bhc',
       name: '순살치킨',
       category: 'restaurant',
@@ -155,20 +170,58 @@ describe('guessGifticonFields', () => {
   });
 
   it('recognizes brands from the newer categories (pizza, dessert, bookstore)', () => {
-    expect(guessGifticonFields('도미노피자\n페퍼로니 라지\n유효기간 2026.12.31까지')).toEqual({
+    expect(
+      guessGifticonFields(ocrResult('도미노피자\n페퍼로니 라지\n유효기간 2026.12.31까지')),
+    ).toEqual({
       brand: '도미노피자',
       name: '페퍼로니 라지',
       category: 'restaurant',
     });
-    expect(guessGifticonFields('설빙\n인절미설빙\n유효기간 2026.12.31까지')).toEqual({
+    expect(guessGifticonFields(ocrResult('설빙\n인절미설빙\n유효기간 2026.12.31까지'))).toEqual({
       brand: '설빙',
       name: '인절미설빙',
       category: 'cafe',
     });
-    expect(guessGifticonFields('교보문고\n도서상품권\n유효기간 2026.12.31까지')).toEqual({
-      brand: '교보문고',
-      name: '도서상품권',
-      category: 'culture',
+    expect(guessGifticonFields(ocrResult('교보문고\n도서상품권\n유효기간 2026.12.31까지'))).toEqual(
+      {
+        brand: '교보문고',
+        name: '도서상품권',
+        category: 'culture',
+      },
+    );
+  });
+
+  it('drops small-font fine print that is not on the noise keyword list, using line height', () => {
+    // "본사 정책에 따라 상품 구성이 변경될 수 있습니다" isn't caught by
+    // NOISE_KEYWORDS or the digit-density check, but real gifticons render it
+    // in a visibly smaller font than the brand/product-name headline.
+    const recognized: RecognizedText = {
+      text: '스타벅스\n본사 정책에 따라 상품 구성이 변경될 수 있습니다\n아메리카노 Tall',
+      lines: [
+        { text: '스타벅스', height: 40 },
+        { text: '본사 정책에 따라 상품 구성이 변경될 수 있습니다', height: 14 },
+        { text: '아메리카노 Tall', height: 38 },
+      ],
+    };
+    expect(guessGifticonFields(recognized)).toEqual({
+      brand: '스타벅스',
+      name: '아메리카노 Tall',
+      category: 'cafe',
+    });
+  });
+
+  it('keeps every candidate line when no frame/height data is available', () => {
+    const recognized: RecognizedText = {
+      text: '스타벅스\n아메리카노 Tall',
+      lines: [
+        { text: '스타벅스', height: 0 },
+        { text: '아메리카노 Tall', height: 0 },
+      ],
+    };
+    expect(guessGifticonFields(recognized)).toEqual({
+      brand: '스타벅스',
+      name: '아메리카노 Tall',
+      category: 'cafe',
     });
   });
 });
@@ -205,16 +258,71 @@ describe('recognizeText', () => {
     jest.clearAllMocks();
   });
 
-  it('runs OCR with the Korean script and returns the recognized text', async () => {
-    mockedRecognize.mockResolvedValue({ text: '유효기간 2026.03.15' });
+  it("runs OCR with the Korean script and returns the text with each line's height", async () => {
+    mockedRecognize.mockResolvedValue({
+      text: '스타벅스\n아메리카노 Tall',
+      blocks: [
+        {
+          text: '스타벅스\n아메리카노 Tall',
+          lines: [
+            { text: '스타벅스', frame: { top: 0, left: 0, width: 100, height: 40 } },
+            { text: '아메리카노 Tall', frame: { top: 40, left: 0, width: 120, height: 30 } },
+          ],
+        },
+      ],
+    });
 
-    await expect(recognizeText('file:///gifticon.jpg')).resolves.toBe('유효기간 2026.03.15');
+    await expect(recognizeText('file:///gifticon.jpg')).resolves.toEqual({
+      text: '스타벅스\n아메리카노 Tall',
+      lines: [
+        { text: '스타벅스', height: 40 },
+        { text: '아메리카노 Tall', height: 30 },
+      ],
+    });
     expect(mockedRecognize).toHaveBeenCalledWith('file:///gifticon.jpg', 'korean');
+  });
+
+  it("defaults a line's height to 0 when it has no frame", async () => {
+    mockedRecognize.mockResolvedValue({
+      text: '스타벅스',
+      blocks: [{ text: '스타벅스', lines: [{ text: '스타벅스' }] }],
+    });
+
+    await expect(recognizeText('file:///gifticon.jpg')).resolves.toEqual({
+      text: '스타벅스',
+      lines: [{ text: '스타벅스', height: 0 }],
+    });
   });
 
   it('returns null when OCR throws', async () => {
     mockedRecognize.mockRejectedValue(new Error('ml kit unavailable'));
 
     await expect(recognizeText('file:///gifticon.jpg')).resolves.toBeNull();
+  });
+});
+
+describe('parseBarcodeFromText', () => {
+  it('parses a long digit run next to the 바코드 keyword', () => {
+    expect(parseBarcodeFromText('바코드 8801234567890123')).toBe('8801234567890123');
+  });
+
+  it('falls back to the single long digit run found when no keyword is nearby', () => {
+    expect(parseBarcodeFromText('스타벅스\n아메리카노 Tall\n8801234567890')).toBe('8801234567890');
+  });
+
+  it('does not mistake a comma-grouped amount for a barcode', () => {
+    expect(parseBarcodeFromText('금액 10,000원')).toBeNull();
+  });
+
+  it('does not mistake a dash-separated phone number for a barcode', () => {
+    expect(parseBarcodeFromText('고객센터 1544-1650')).toBeNull();
+  });
+
+  it('returns null when multiple long digit runs are ambiguous with no keyword hint', () => {
+    expect(parseBarcodeFromText('8801234567890\n1234567890123456')).toBeNull();
+  });
+
+  it('returns null when no barcode-like text is found', () => {
+    expect(parseBarcodeFromText('스타벅스 아메리카노 Tall')).toBeNull();
   });
 });

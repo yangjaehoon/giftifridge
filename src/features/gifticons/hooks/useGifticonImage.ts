@@ -3,6 +3,7 @@ import * as ImagePicker from 'expo-image-picker';
 import {
   guessGifticonFields,
   parseAmountFromText,
+  parseBarcodeFromText,
   parseExpiryDateFromText,
   recognizeText,
 } from '../services/ocrService';
@@ -88,25 +89,30 @@ export function useGifticonImage({
     amount.reset();
     setRecognizing(true);
     try {
-      const [text, scannedBarcode] = await Promise.all([
+      const [recognized, scannedBarcode] = await Promise.all([
         recognizeText(uri),
         recognizeBarcodeFromImage(uri),
       ]);
       if (run !== runRef.current) return; // a newer image was picked meanwhile
 
-      if (text != null) {
-        const detectedDate = parseExpiryDateFromText(text);
+      if (recognized != null) {
+        const detectedDate = parseExpiryDateFromText(recognized.text);
         if (detectedDate) date.detect(parseDate(detectedDate));
 
-        const guessed = guessGifticonFields(text);
+        const guessed = guessGifticonFields(recognized);
         if (guessed.name) name.detect(guessed.name);
         if (guessed.brand) brand.detect(guessed.brand);
         if (guessed.category) category.detect(guessed.category);
 
-        const detectedAmount = parseAmountFromText(text);
+        const detectedAmount = parseAmountFromText(recognized.text);
         if (detectedAmount != null) amount.detect(detectedAmount);
       }
-      if (scannedBarcode) barcode.detect(scannedBarcode);
+      // The photo's barcode graphic is the primary source; the same number
+      // printed as text beneath it is a fallback for when the graphic itself
+      // couldn't be read (blur, glare).
+      const detectedBarcode =
+        scannedBarcode ?? (recognized ? parseBarcodeFromText(recognized.text) : null);
+      if (detectedBarcode) barcode.detect(detectedBarcode);
     } finally {
       if (run === runRef.current) setRecognizing(false);
     }

@@ -2,6 +2,7 @@ import { act, renderHook, waitFor } from '@testing-library/react-native';
 import { Alert } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { recognizeText } from '../services/ocrService';
+import type { RecognizedText } from '../services/ocrService';
 import { recognizeBarcodeFromImage } from '../services/barcodeRecognition';
 import { useGifticonImage } from './useGifticonImage';
 
@@ -21,6 +22,10 @@ const mockedRecognizeText = recognizeText as jest.Mock;
 const mockedRecognizeBarcode = recognizeBarcodeFromImage as jest.Mock;
 
 const GIFTICON_TEXT = '스타벅스\n아메리카노 Tall\n금액 10,000원\n유효기간 2026.12.31까지';
+
+function ocrResult(text: string): RecognizedText {
+  return { text, lines: text.split('\n').map((line) => ({ text: line, height: 0 })) };
+}
 
 function setup() {
   return {
@@ -44,7 +49,7 @@ beforeEach(() => {
 describe('useGifticonImage', () => {
   it('reports the chosen library image and auto-fills every field it can read', async () => {
     mockedLibrary.mockResolvedValue({ canceled: false, assets: [{ uri: 'file:///a.jpg' }] });
-    mockedRecognizeText.mockResolvedValue(GIFTICON_TEXT);
+    mockedRecognizeText.mockResolvedValue(ocrResult(GIFTICON_TEXT));
     mockedRecognizeBarcode.mockResolvedValue('8801234567890');
     const callbacks = setup();
     const { result } = await renderHook(() => useGifticonImage(callbacks));
@@ -67,6 +72,23 @@ describe('useGifticonImage', () => {
     expect(result.current.barcodeAutoDetected).toBe(true);
     expect(result.current.categoryAutoDetected).toBe(true);
     expect(result.current.amountAutoDetected).toBe(true);
+  });
+
+  it('falls back to a barcode number printed in the OCR text when the photo itself has none', async () => {
+    mockedLibrary.mockResolvedValue({ canceled: false, assets: [{ uri: 'file:///a.jpg' }] });
+    mockedRecognizeText.mockResolvedValue(
+      ocrResult('스타벅스\n아메리카노 Tall\n바코드 8801234567890\n유효기간 2026.12.31까지'),
+    );
+    mockedRecognizeBarcode.mockResolvedValue(null);
+    const callbacks = setup();
+    const { result } = await renderHook(() => useGifticonImage(callbacks));
+
+    await act(async () => {
+      await result.current.pickFromLibrary();
+    });
+
+    await waitFor(() => expect(callbacks.onBarcodeDetected).toHaveBeenCalledWith('8801234567890'));
+    expect(result.current.barcodeAutoDetected).toBe(true);
   });
 
   it('does the same for a camera photo', async () => {
@@ -116,9 +138,9 @@ describe('useGifticonImage', () => {
   });
 
   it('ignores a stale recognition result when a newer image was picked', async () => {
-    const resolvers: ((v: string | null) => void)[] = [];
+    const resolvers: ((v: RecognizedText | null) => void)[] = [];
     mockedRecognizeText.mockImplementation(
-      () => new Promise<string | null>((r) => resolvers.push(r)),
+      () => new Promise<RecognizedText | null>((r) => resolvers.push(r)),
     );
     mockedLibrary
       .mockResolvedValueOnce({ canceled: false, assets: [{ uri: 'file:///a.jpg' }] })
@@ -133,17 +155,17 @@ describe('useGifticonImage', () => {
       await result.current.pickFromLibrary();
     });
 
-    await act(async () => resolvers[1]('유효기간 2027.05.05까지'));
-    await act(async () => resolvers[0]('유효기간 2020.01.01까지'));
+    await act(async () => resolvers[1](ocrResult('유효기간 2027.05.05까지')));
+    await act(async () => resolvers[0](ocrResult('유효기간 2020.01.01까지')));
 
     expect(callbacks.onExpiryDetected).toHaveBeenCalledTimes(1);
     expect(callbacks.onExpiryDetected.mock.calls[0][0].getFullYear()).toBe(2027);
   });
 
   it('marking a field edited while its recognition is still in flight suppresses only that field', async () => {
-    const resolvers: ((v: string | null) => void)[] = [];
+    const resolvers: ((v: RecognizedText | null) => void)[] = [];
     mockedRecognizeText.mockImplementation(
-      () => new Promise<string | null>((r) => resolvers.push(r)),
+      () => new Promise<RecognizedText | null>((r) => resolvers.push(r)),
     );
     mockedLibrary.mockResolvedValue({ canceled: false, assets: [{ uri: 'file:///a.jpg' }] });
     const callbacks = setup();
@@ -154,7 +176,7 @@ describe('useGifticonImage', () => {
     });
     // The user edits the date field by hand before OCR resolves.
     await act(() => result.current.markDateManuallyEdited());
-    await act(async () => resolvers[0](GIFTICON_TEXT));
+    await act(async () => resolvers[0](ocrResult(GIFTICON_TEXT)));
 
     expect(callbacks.onExpiryDetected).not.toHaveBeenCalled();
     expect(result.current.dateAutoDetected).toBe(false);
@@ -164,9 +186,9 @@ describe('useGifticonImage', () => {
   });
 
   it('a manually-edited guard survives picking a different photo afterward', async () => {
-    const resolvers: ((v: string | null) => void)[] = [];
+    const resolvers: ((v: RecognizedText | null) => void)[] = [];
     mockedRecognizeText.mockImplementation(
-      () => new Promise<string | null>((r) => resolvers.push(r)),
+      () => new Promise<RecognizedText | null>((r) => resolvers.push(r)),
     );
     mockedLibrary.mockResolvedValue({ canceled: false, assets: [{ uri: 'file:///a.jpg' }] });
     const callbacks = setup();
@@ -176,7 +198,7 @@ describe('useGifticonImage', () => {
       await result.current.pickFromLibrary();
     });
     await act(() => result.current.markNameManuallyEdited());
-    await act(async () => resolvers[0](GIFTICON_TEXT));
+    await act(async () => resolvers[0](ocrResult(GIFTICON_TEXT)));
     expect(callbacks.onNameDetected).not.toHaveBeenCalled();
 
     // Picking a different photo afterward must not silently overwrite a name
@@ -186,12 +208,12 @@ describe('useGifticonImage', () => {
     await act(async () => {
       await result.current.pickFromLibrary();
     });
-    await act(async () => resolvers[1](GIFTICON_TEXT));
+    await act(async () => resolvers[1](ocrResult(GIFTICON_TEXT)));
     expect(callbacks.onNameDetected).not.toHaveBeenCalled();
   });
 
   it('markCategoryManuallyEdited/markAmountManuallyEdited guard those two fields the same way', async () => {
-    mockedRecognizeText.mockResolvedValue(GIFTICON_TEXT);
+    mockedRecognizeText.mockResolvedValue(ocrResult(GIFTICON_TEXT));
     mockedLibrary.mockResolvedValue({ canceled: false, assets: [{ uri: 'file:///a.jpg' }] });
     const callbacks = setup();
     const { result } = await renderHook(() => useGifticonImage(callbacks));
@@ -208,7 +230,7 @@ describe('useGifticonImage', () => {
   });
 
   it('a field never auto-filled yet still gets filled by a later photo', async () => {
-    mockedRecognizeText.mockResolvedValueOnce(null).mockResolvedValueOnce(GIFTICON_TEXT);
+    mockedRecognizeText.mockResolvedValueOnce(null).mockResolvedValueOnce(ocrResult(GIFTICON_TEXT));
     mockedLibrary.mockResolvedValue({ canceled: false, assets: [{ uri: 'file:///a.jpg' }] });
     const callbacks = setup();
     const { result } = await renderHook(() => useGifticonImage(callbacks));

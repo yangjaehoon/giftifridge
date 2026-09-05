@@ -16,6 +16,7 @@ import {
 import { uploadGifticonImage } from '../services/gifticonImage';
 import { cancelNotifications, scheduleExpiryNotifications } from '../services/notificationService';
 import { recognizeText } from '../services/ocrService';
+import type { RecognizedText } from '../services/ocrService';
 import { recognizeBarcodeFromImage } from '../services/barcodeRecognition';
 import { getCurrentLocation, searchAddress } from '../../../shared/utils/location';
 import { getNotificationOffsets } from '../../../shared/utils/notificationPrefs';
@@ -84,6 +85,10 @@ const mockedLibrary = ImagePicker.launchImageLibraryAsync as jest.Mock;
 
 function makeNavigation() {
   return { goBack: jest.fn(), navigate: jest.fn(), setOptions: jest.fn() };
+}
+
+function ocrResult(text: string) {
+  return { text, lines: text.split('\n').map((line) => ({ text: line, height: 0 })) };
 }
 
 async function renderScreen(
@@ -164,7 +169,7 @@ describe('AddGifticonScreen — create', () => {
   });
 
   it('picks an image, runs OCR, and clears the image field error', async () => {
-    mockedRecognizeText.mockResolvedValue('유효기간 2026.12.31까지');
+    mockedRecognizeText.mockResolvedValue(ocrResult('유효기간 2026.12.31까지'));
     const { getByText, queryByText } = await renderScreen(undefined);
 
     await pickImage(getByText);
@@ -178,7 +183,7 @@ describe('AddGifticonScreen — create', () => {
 
   it('auto-fills name/brand/barcode/category/amount from the photo and shows a hint for each', async () => {
     mockedRecognizeText.mockResolvedValue(
-      '스타벅스\n아메리카노 Tall\n금액 10,000원\n유효기간 2026.12.31까지',
+      ocrResult('스타벅스\n아메리카노 Tall\n금액 10,000원\n유효기간 2026.12.31까지'),
     );
     mockedRecognizeBarcode.mockResolvedValue('8801234567890');
     const { getByText, getByPlaceholderText, getByLabelText } = await renderScreen(undefined);
@@ -200,9 +205,9 @@ describe('AddGifticonScreen — create', () => {
   });
 
   it('does not let a name guessed from a later OCR overwrite what the user already typed', async () => {
-    const resolvers: ((v: string | null) => void)[] = [];
+    const resolvers: ((v: RecognizedText | null) => void)[] = [];
     mockedRecognizeText.mockImplementation(
-      () => new Promise<string | null>((resolve) => resolvers.push(resolve)),
+      () => new Promise<RecognizedText | null>((resolve) => resolvers.push(resolve)),
     );
     const { getByText, getByPlaceholderText, queryByText } = await renderScreen(undefined);
 
@@ -210,16 +215,18 @@ describe('AddGifticonScreen — create', () => {
     await act(async () => {
       fireEvent.changeText(getByPlaceholderText('아메리카노 Tall'), '내가 입력한 상품명');
     });
-    await act(async () => resolvers[0]('스타벅스\n아메리카노 Tall\n유효기간 2026.12.31까지'));
+    await act(async () =>
+      resolvers[0](ocrResult('스타벅스\n아메리카노 Tall\n유효기간 2026.12.31까지')),
+    );
 
     expect(getByPlaceholderText('아메리카노 Tall').props.value).toBe('내가 입력한 상품명');
     expect(queryByText('사진에서 상품명을 자동으로 인식했어요. 확인해주세요.')).toBeNull();
   });
 
   it('discards a stale OCR result when a newer image is picked before it resolves', async () => {
-    const resolvers: ((v: string | null) => void)[] = [];
+    const resolvers: ((v: RecognizedText | null) => void)[] = [];
     mockedRecognizeText.mockImplementation(
-      () => new Promise<string | null>((resolve) => resolvers.push(resolve)),
+      () => new Promise<RecognizedText | null>((resolve) => resolvers.push(resolve)),
     );
     const { getByText, getByTestId, queryByText } = await renderScreen(undefined);
 
@@ -230,8 +237,8 @@ describe('AddGifticonScreen — create', () => {
     await act(async () => fireEvent.press(getByTestId('image-picker')));
 
     // B's OCR resolves first with a date, then A's resolves late with a different one.
-    await act(async () => resolvers[1]('유효기간 2027.05.05까지'));
-    await act(async () => resolvers[0]('유효기간 2020.01.01까지'));
+    await act(async () => resolvers[1](ocrResult('유효기간 2027.05.05까지')));
+    await act(async () => resolvers[0](ocrResult('유효기간 2020.01.01까지')));
 
     expect(getByText('2027.05.05')).toBeTruthy();
     expect(queryByText('2020.01.01')).toBeNull();
@@ -379,7 +386,7 @@ describe('AddGifticonScreen — edit', () => {
     // A different brand (→ convenience, not the existing cafe) and a
     // different amount, so a wrongly-unprotected field would visibly change.
     mockedRecognizeText.mockResolvedValue(
-      'GS25\n아메리카노 Tall\n금액 10,000원\n유효기간 2030.01.01까지',
+      ocrResult('GS25\n아메리카노 Tall\n금액 10,000원\n유효기간 2030.01.01까지'),
     );
     const { getByDisplayValue, getByTestId, getByLabelText, queryByText } = await renderScreen({
       gifticonId: 'g1',
@@ -407,7 +414,7 @@ describe('AddGifticonScreen — edit', () => {
       gifticon: { ...existingGifticon, amount: 0 },
       loading: false,
     });
-    mockedRecognizeText.mockResolvedValue('스타벅스\n아메리카노 Tall\n금액 10,000원');
+    mockedRecognizeText.mockResolvedValue(ocrResult('스타벅스\n아메리카노 Tall\n금액 10,000원'));
     const { getByDisplayValue, getByTestId, queryByText } = await renderScreen({
       gifticonId: 'g1',
     });
