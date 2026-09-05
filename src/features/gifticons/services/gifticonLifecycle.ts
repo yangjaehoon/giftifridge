@@ -1,5 +1,6 @@
 import {
   addGifticonUsageRecord,
+  addGifticonUsageRecordAndClose,
   deleteGifticon,
   markGifticonUsed,
   removeGifticonUsageRecord,
@@ -12,6 +13,25 @@ import type { Gifticon, UsageRecord } from '../types';
 // The "use / un-use / delete a gifticon" policy — including which of those
 // steps may touch the owner's local reminders — so the detail screen is left
 // with just the button wiring and error toast.
+
+/**
+ * Cancels the owner's local reminders once a gifticon is closed out — shared
+ * by setGifticonUsed and recordGifticonUsage so "cancel only if used and only
+ * for the owner" lives in one place. See setGifticonUsed for why it's
+ * owner-only, and why a failure here is swallowed.
+ */
+async function cancelOwnerRemindersIfClosed(
+  gifticon: Pick<Gifticon, 'ownerId' | 'notificationIds'>,
+  closed: boolean,
+  actingUid: string | undefined,
+): Promise<void> {
+  if (!closed || gifticon.ownerId !== actingUid) return;
+  try {
+    await withTimeout(cancelNotifications(gifticon.notificationIds), WRITE_TIMEOUT_MS);
+  } catch {
+    // usage state already saved; a stuck notification cancel shouldn't block it
+  }
+}
 
 /**
  * Marks a gifticon used or unused. When it's being marked used *by its owner*,
@@ -27,14 +47,7 @@ export async function setGifticonUsed(
   actingUid: string | undefined,
 ): Promise<void> {
   await withTimeout(markGifticonUsed(gifticon.id, used), WRITE_TIMEOUT_MS);
-
-  if (used && gifticon.ownerId === actingUid) {
-    try {
-      await withTimeout(cancelNotifications(gifticon.notificationIds), WRITE_TIMEOUT_MS);
-    } catch {
-      // usage state already saved; a stuck notification cancel shouldn't block it
-    }
-  }
+  await cancelOwnerRemindersIfClosed(gifticon, used, actingUid);
 }
 
 /**
@@ -54,29 +67,47 @@ export async function removeGifticon(gifticon: Gifticon): Promise<void> {
 /**
  * Logs one partial spend against an amount-based (금액권) gifticon — a gift
  * card used over several visits instead of all at once. If this spend uses up
- * exactly what was left, the gifticon is also marked used (via setGifticonUsed,
- * so the owner-only reminder-cancel rule still applies) so it moves to the
- * 사용완료 tab without the caller having to flip both.
+ * exactly what was left, the usage record and isUsed:true are written in one
+ * updateDoc (addGifticonUsageRecordAndClose) rather than two separate writes,
+ * so a timeout between them can't leave the balance reading 0 while the
+ * gifticon still sits in the 사용가능 tab.
+ *
+ * `record` is built by the caller (see GifticonUsagePanel), with a client-side
+ * id pinned for the life of one add-record form session — the same reasoning
+ * as newGifticonId()/newSpaceId(): a write retried after a timeout reuses the
+ * same id, so arrayUnion recognises it as the same element instead of
+ * double-logging the spend.
+ *
+ * Known limitation: the `amount <= remaining` check below reads from the
+ * `gifticon` the caller already has, not a fresh server read. Two members of
+ * a shared space logging spends at nearly the same moment can each pass this
+ * check against a remaining balance the other's write has already reduced,
+ * so the logged total can end up exceeding `amount`. Firestore security rules
+ * can't express a running-sum constraint over a list, so closing this
+ * properly needs a transaction (Cloud Functions) rather than client writes —
+ * out of scope here, same as the shared-space reminder-cancel gap below.
  */
 export async function recordGifticonUsage(
   gifticon: Pick<
     Gifticon,
     'id' | 'ownerId' | 'amount' | 'isUsed' | 'usageHistory' | 'notificationIds'
   >,
-  amount: number,
+  record: UsageRecord,
   actingUid: string | undefined,
 ): Promise<void> {
   const remaining = remainingAmount(gifticon) ?? 0;
-  if (!(amount > 0) || amount > remaining) {
+  if (!(record.amount > 0) || record.amount > remaining) {
     throw new Error('recordGifticonUsage: amount must be between 0 and the remaining balance');
   }
 
-  const record: UsageRecord = { amount, usedAt: new Date().toISOString() };
-  await withTimeout(addGifticonUsageRecord(gifticon.id, record), WRITE_TIMEOUT_MS);
-
-  if (amount === remaining) {
-    await setGifticonUsed(gifticon, true, actingUid);
-  }
+  const closesOutBalance = record.amount === remaining;
+  await withTimeout(
+    closesOutBalance
+      ? addGifticonUsageRecordAndClose(gifticon.id, record)
+      : addGifticonUsageRecord(gifticon.id, record),
+    WRITE_TIMEOUT_MS,
+  );
+  await cancelOwnerRemindersIfClosed(gifticon, closesOutBalance, actingUid);
 }
 
 /**

@@ -1,4 +1,10 @@
-import { isAmountBased, remainingAmount, sortedUsageHistory, totalUsed } from './usage';
+import {
+  formatRemainingAmount,
+  isAmountBased,
+  remainingAmount,
+  sortedUsageHistory,
+  totalUsed,
+} from './usage';
 import type { UsageRecord } from './types';
 
 describe('totalUsed', () => {
@@ -6,8 +12,8 @@ describe('totalUsed', () => {
     expect(
       totalUsed({
         usageHistory: [
-          { amount: 1000, usedAt: 't1' },
-          { amount: 2500, usedAt: 't2' },
+          { id: 'a', amount: 1000, usedAt: 't1' },
+          { id: 'b', amount: 2500, usedAt: 't2' },
         ],
       }),
     ).toBe(3500);
@@ -41,7 +47,7 @@ describe('remainingAmount', () => {
       remainingAmount({
         amount: 10000,
         isUsed: false,
-        usageHistory: [{ amount: 3000, usedAt: 't1' }],
+        usageHistory: [{ id: 'a', amount: 3000, usedAt: 't1' }],
       }),
     ).toBe(7000);
   });
@@ -52,8 +58,8 @@ describe('remainingAmount', () => {
         amount: 5000,
         isUsed: false,
         usageHistory: [
-          { amount: 3000, usedAt: 't1' },
-          { amount: 4000, usedAt: 't2' },
+          { id: 'a', amount: 3000, usedAt: 't1' },
+          { id: 'b', amount: 4000, usedAt: 't2' },
         ],
       }),
     ).toBe(0);
@@ -64,18 +70,47 @@ describe('remainingAmount', () => {
       remainingAmount({
         amount: 10000,
         isUsed: true,
-        usageHistory: [{ amount: 1000, usedAt: 't1' }],
+        usageHistory: [{ id: 'a', amount: 1000, usedAt: 't1' }],
       }),
     ).toBe(0);
+  });
+
+  // Compile-time check as much as a runtime one: with `amount` statically
+  // known to be a number, the overload should hand back `number`, not
+  // `number | null` — this line would fail to typecheck otherwise.
+  it('is typed as non-null when amount is statically known', () => {
+    const gifticon = { amount: 10000, isUsed: false } as const;
+    const remaining: number = remainingAmount(gifticon);
+    expect(remaining).toBe(10000);
+  });
+});
+
+describe('formatRemainingAmount', () => {
+  it('shows the face value alone when nothing has been used', () => {
+    expect(formatRemainingAmount({ amount: 10000, isUsed: false })).toBe('10,000원');
+  });
+
+  it('shows "N원 남음" once partially used', () => {
+    expect(
+      formatRemainingAmount({
+        amount: 10000,
+        isUsed: false,
+        usageHistory: [{ id: 'a', amount: 3000, usedAt: 't1' }],
+      }),
+    ).toBe('7,000원 남음');
+  });
+
+  it('shows "0원 남음" once fully closed out', () => {
+    expect(formatRemainingAmount({ amount: 10000, isUsed: true })).toBe('0원 남음');
   });
 });
 
 describe('sortedUsageHistory', () => {
   it('orders most recent first without mutating the input', () => {
     const history: UsageRecord[] = [
-      { amount: 1000, usedAt: '2026-01-01T00:00:00.000Z' },
-      { amount: 2000, usedAt: '2026-03-01T00:00:00.000Z' },
-      { amount: 3000, usedAt: '2026-02-01T00:00:00.000Z' },
+      { id: 'a', amount: 1000, usedAt: '2026-01-01T00:00:00.000Z' },
+      { id: 'b', amount: 2000, usedAt: '2026-03-01T00:00:00.000Z' },
+      { id: 'c', amount: 3000, usedAt: '2026-02-01T00:00:00.000Z' },
     ];
     const original = [...history];
 

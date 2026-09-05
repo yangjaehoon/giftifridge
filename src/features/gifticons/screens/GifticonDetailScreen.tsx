@@ -13,9 +13,8 @@ import GifticonDetailSkeleton from '../components/GifticonDetailSkeleton';
 import GifticonBarcode from '../components/GifticonBarcode';
 import GifticonUsagePanel from '../components/GifticonUsagePanel';
 import { CATEGORY_LABELS } from '../types';
-import { isAmountBased, remainingAmount } from '../usage';
+import { formatRemainingAmount, isAmountBased } from '../usage';
 import { daysUntil, formatDate } from '../../../shared/utils/date';
-import { formatCurrency } from '../../../shared/utils/currency';
 import { haptics } from '../../../shared/utils/haptics';
 import type { RootStackParamList } from '../../../app/RootNavigator';
 import { getGifticonErrorMessage, getGifticonWriteErrorMessage } from '../errors';
@@ -133,7 +132,6 @@ export default function GifticonDetailScreen({ route, navigation }: Props) {
   const days = daysUntil(gifticon.expiresAt);
   const expired = days < 0;
   const soon = !expired && days <= 7;
-  const remaining = remainingAmount(gifticon);
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
@@ -148,12 +146,8 @@ export default function GifticonDetailScreen({ route, navigation }: Props) {
           {gifticon.brand} · {CATEGORY_LABELS[gifticon.category]}
         </Text>
         <Text style={styles.name}>{gifticon.name}</Text>
-        {gifticon.amount ? (
-          <Text style={styles.amount}>
-            {remaining !== null && remaining < gifticon.amount
-              ? `${formatCurrency(remaining)} 남음`
-              : formatCurrency(gifticon.amount)}
-          </Text>
+        {isAmountBased(gifticon) ? (
+          <Text style={styles.amount}>{formatRemainingAmount(gifticon)}</Text>
         ) : null}
 
         <View style={styles.expiryRow}>

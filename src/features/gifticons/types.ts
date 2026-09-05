@@ -8,8 +8,15 @@ export const CATEGORY_LABELS: Record<GifticonCategory, string> = {
   etc: '기타',
 };
 
-/** One partial spend logged against an amount-based (금액권) gifticon. */
+/**
+ * One partial spend logged against an amount-based (금액권) gifticon.
+ * `id` is a client-generated id pinned for the life of one add-record form
+ * session (see GifticonUsagePanel) — like newGifticonId()/newSpaceId(), it's
+ * what lets a retry after a timeout overwrite the same arrayUnion entry
+ * instead of double-logging the spend.
+ */
 export interface UsageRecord {
+  id: string;
   amount: number;
   /** Full ISO instant. */
   usedAt: string;

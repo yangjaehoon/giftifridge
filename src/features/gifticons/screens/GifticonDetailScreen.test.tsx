@@ -22,6 +22,12 @@ jest.mock('../services/gifticonLifecycle', () => ({
   recordGifticonUsage: jest.fn(),
   deleteGifticonUsageRecord: jest.fn(),
 }));
+// GifticonUsagePanel (not mocked here) pulls this in directly to pin a
+// record id per form session — stub it the same way AddGifticonScreen's test
+// stubs newGifticonId, so the panel doesn't reach for the real Firestore db.
+jest.mock('../services/gifticonService', () => ({
+  newUsageRecordId: jest.fn(() => 'usage-id-1'),
+}));
 jest.mock('expo-clipboard', () => ({ setStringAsync: jest.fn() }));
 jest.mock('../components/GifticonBarcode', () => ({ __esModule: true, default: () => null }));
 jest.mock('../../../shared/hooks/useMaxBrightnessWhileFocused', () => ({
@@ -248,7 +254,11 @@ describe('GifticonDetailScreen', () => {
         fireEvent.press(getByText('등록'));
       });
 
-      expect(mockedRecordUsage).toHaveBeenCalledWith(gifticon, 3000, 'owner');
+      expect(mockedRecordUsage).toHaveBeenCalledWith(
+        gifticon,
+        expect.objectContaining({ id: 'usage-id-1', amount: 3000 }),
+        'owner',
+      );
     });
 
     it('does not show the usage panel for an item voucher with no amount', async () => {

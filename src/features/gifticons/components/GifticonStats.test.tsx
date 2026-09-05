@@ -65,7 +65,7 @@ describe('GifticonStats', () => {
         id: '1',
         amount: 10000,
         expiresAt: daysFromNow(20),
-        usageHistory: [{ amount: 4000, usedAt: '2026-01-01T00:00:00.000Z' }],
+        usageHistory: [{ id: 'u1', amount: 4000, usedAt: '2026-01-01T00:00:00.000Z' }],
       }),
     ];
 

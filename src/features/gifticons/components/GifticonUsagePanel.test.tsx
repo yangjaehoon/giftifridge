@@ -2,11 +2,16 @@ import React from 'react';
 import { act, fireEvent, render } from '@testing-library/react-native';
 import GifticonUsagePanel from './GifticonUsagePanel';
 import { confirmAsync } from '../../../shared/utils/confirmAsync';
+import { newUsageRecordId } from '../services/gifticonService';
 import type { Gifticon } from '../types';
 
 jest.mock('../../../shared/utils/confirmAsync', () => ({ confirmAsync: jest.fn() }));
+jest.mock('../services/gifticonService', () => ({
+  newUsageRecordId: jest.fn(() => 'usage-id-1'),
+}));
 
 const mockedConfirm = confirmAsync as jest.Mock;
+const mockedNewUsageRecordId = newUsageRecordId as jest.Mock;
 
 function makeGifticon(overrides: Partial<Gifticon> = {}): Gifticon & { amount: number } {
   return {
@@ -26,6 +31,7 @@ function makeGifticon(overrides: Partial<Gifticon> = {}): Gifticon & { amount: n
 
 beforeEach(() => {
   jest.clearAllMocks();
+  mockedNewUsageRecordId.mockReturnValue('usage-id-1');
 });
 
 describe('GifticonUsagePanel', () => {
@@ -43,7 +49,7 @@ describe('GifticonUsagePanel', () => {
 
   it('shows remaining vs. total once partially used, and lists the history', async () => {
     const gifticon = makeGifticon({
-      usageHistory: [{ amount: 3000, usedAt: '2026-02-01T00:00:00.000Z' }],
+      usageHistory: [{ id: 'u1', amount: 3000, usedAt: '2026-02-01T00:00:00.000Z' }],
     });
     const { getByText } = await render(
       <GifticonUsagePanel
@@ -57,9 +63,9 @@ describe('GifticonUsagePanel', () => {
     expect(getByText('3,000원 사용')).toBeTruthy();
   });
 
-  it('hides the add-usage button once the balance is exhausted', async () => {
+  it('hides the add-usage button and shows a closed-out message once fully used', async () => {
     const gifticon = makeGifticon({ isUsed: true });
-    const { queryByText } = await render(
+    const { getByText, queryByText } = await render(
       <GifticonUsagePanel
         gifticon={gifticon}
         onRecordUsage={jest.fn()}
@@ -68,10 +74,11 @@ describe('GifticonUsagePanel', () => {
       />,
     );
     expect(queryByText('사용 금액 입력')).toBeNull();
+    expect(getByText('모두 사용했어요')).toBeTruthy();
   });
 
-  it('records a valid amount and closes the form', async () => {
-    const onRecordUsage = jest.fn().mockResolvedValue(undefined);
+  it('records a valid amount (with a pinned id/timestamp) and closes the form on success', async () => {
+    const onRecordUsage = jest.fn().mockResolvedValue(true);
     const { getByText, getByPlaceholderText, queryByPlaceholderText } = await render(
       <GifticonUsagePanel
         gifticon={makeGifticon()}
@@ -91,8 +98,43 @@ describe('GifticonUsagePanel', () => {
       fireEvent.press(getByText('등록'));
     });
 
-    expect(onRecordUsage).toHaveBeenCalledWith(3000);
+    expect(onRecordUsage).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'usage-id-1', amount: 3000 }),
+    );
     expect(queryByPlaceholderText('사용한 금액')).toBeNull();
+  });
+
+  it('keeps the form open and reuses the same record identity when recording fails, so retrying is just tapping 등록 again', async () => {
+    const onRecordUsage = jest.fn().mockResolvedValue(false);
+    const { getByText, getByPlaceholderText } = await render(
+      <GifticonUsagePanel
+        gifticon={makeGifticon()}
+        onRecordUsage={onRecordUsage}
+        onDeleteRecord={jest.fn()}
+        busy={false}
+      />,
+    );
+
+    await act(async () => {
+      fireEvent.press(getByText('사용 금액 입력'));
+    });
+    await act(async () => {
+      fireEvent.changeText(getByPlaceholderText('사용한 금액'), '3000');
+    });
+    await act(async () => {
+      fireEvent.press(getByText('등록'));
+    });
+    // Failed — the form must still be open for a retry, not silently closed.
+    expect(getByPlaceholderText('사용한 금액')).toBeTruthy();
+
+    await act(async () => {
+      fireEvent.press(getByText('등록'));
+    });
+
+    expect(onRecordUsage).toHaveBeenCalledTimes(2);
+    // Same id + usedAt on both attempts — only amount differs, but it's the
+    // same input value re-sent, so the two calls are fully identical.
+    expect(onRecordUsage.mock.calls[0][0]).toEqual(onRecordUsage.mock.calls[1][0]);
   });
 
   it('rejects an amount larger than the remaining balance without calling onRecordUsage', async () => {
@@ -167,10 +209,52 @@ describe('GifticonUsagePanel', () => {
     expect(queryByPlaceholderText('사용한 금액')).toBeNull();
   });
 
+  it('a fresh form open pins a new record identity, independent of any earlier attempt', async () => {
+    const onRecordUsage = jest.fn().mockResolvedValue(true);
+    const { getByText, getByPlaceholderText } = await render(
+      <GifticonUsagePanel
+        gifticon={makeGifticon()}
+        onRecordUsage={onRecordUsage}
+        onDeleteRecord={jest.fn()}
+        busy={false}
+      />,
+    );
+
+    await act(async () => {
+      fireEvent.press(getByText('사용 금액 입력'));
+    });
+    await act(async () => {
+      fireEvent.changeText(getByPlaceholderText('사용한 금액'), '1000');
+    });
+    await act(async () => {
+      fireEvent.press(getByText('등록'));
+    });
+
+    mockedNewUsageRecordId.mockReturnValue('usage-id-2');
+    await act(async () => {
+      fireEvent.press(getByText('사용 금액 입력'));
+    });
+    await act(async () => {
+      fireEvent.changeText(getByPlaceholderText('사용한 금액'), '2000');
+    });
+    await act(async () => {
+      fireEvent.press(getByText('등록'));
+    });
+
+    expect(onRecordUsage).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({ id: 'usage-id-1', amount: 1000 }),
+    );
+    expect(onRecordUsage).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({ id: 'usage-id-2', amount: 2000 }),
+    );
+  });
+
   it('deletes a record after the user confirms', async () => {
     mockedConfirm.mockResolvedValue(true);
     const onDeleteRecord = jest.fn().mockResolvedValue(undefined);
-    const record = { amount: 3000, usedAt: '2026-02-01T00:00:00.000Z' };
+    const record = { id: 'u1', amount: 3000, usedAt: '2026-02-01T00:00:00.000Z' };
     const gifticon = makeGifticon({ usageHistory: [record] });
 
     const { getByLabelText } = await render(
@@ -193,7 +277,7 @@ describe('GifticonUsagePanel', () => {
   it('does not delete when the user cancels the confirmation', async () => {
     mockedConfirm.mockResolvedValue(false);
     const onDeleteRecord = jest.fn();
-    const record = { amount: 3000, usedAt: '2026-02-01T00:00:00.000Z' };
+    const record = { id: 'u1', amount: 3000, usedAt: '2026-02-01T00:00:00.000Z' };
     const gifticon = makeGifticon({ usageHistory: [record] });
 
     const { getByLabelText } = await render(

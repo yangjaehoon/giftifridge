@@ -13,6 +13,7 @@ const mockedRecord = recordGifticonUsage as jest.Mock;
 const mockedDelete = deleteGifticonUsageRecord as jest.Mock;
 
 const gifticon = { id: 'g1', amount: 10000 } as Gifticon;
+const record = { id: 'u1', amount: 3000, usedAt: 't1' };
 
 beforeEach(() => {
   jest.clearAllMocks();
@@ -22,37 +23,43 @@ beforeEach(() => {
 });
 
 describe('useGifticonUsage', () => {
-  it('records a usage amount against the current gifticon and acting uid', async () => {
+  it('records a usage record against the current gifticon and acting uid, reporting success', async () => {
     const { result } = await renderHook(() => useGifticonUsage(gifticon, 'owner'));
 
+    let succeeded = false;
     await act(async () => {
-      await result.current.recordUsage(3000);
+      succeeded = await result.current.recordUsage(record);
     });
 
-    expect(mockedRecord).toHaveBeenCalledWith(gifticon, 3000, 'owner');
+    expect(mockedRecord).toHaveBeenCalledWith(gifticon, record, 'owner');
+    expect(succeeded).toBe(true);
     expect(Alert.alert).not.toHaveBeenCalled();
   });
 
   it('does nothing when there is no gifticon yet', async () => {
     const { result } = await renderHook(() => useGifticonUsage(null, 'owner'));
 
+    let succeeded = true;
     await act(async () => {
-      await result.current.recordUsage(3000);
-      await result.current.deleteRecord({ amount: 3000, usedAt: 't' });
+      succeeded = await result.current.recordUsage(record);
+      await result.current.deleteRecord(record);
     });
 
+    expect(succeeded).toBe(false);
     expect(mockedRecord).not.toHaveBeenCalled();
     expect(mockedDelete).not.toHaveBeenCalled();
   });
 
-  it('alerts with the mapped error message when recording fails', async () => {
+  it('alerts and reports failure when recording fails', async () => {
     mockedRecord.mockRejectedValue(new Error('boom'));
     const { result } = await renderHook(() => useGifticonUsage(gifticon, 'owner'));
 
+    let succeeded = true;
     await act(async () => {
-      await result.current.recordUsage(3000);
+      succeeded = await result.current.recordUsage(record);
     });
 
+    expect(succeeded).toBe(false);
     expect(Alert.alert).toHaveBeenCalledWith('오류', expect.any(String));
   });
 
@@ -60,10 +67,10 @@ describe('useGifticonUsage', () => {
     const { result } = await renderHook(() => useGifticonUsage(gifticon, 'owner'));
 
     await act(async () => {
-      await result.current.deleteRecord({ amount: 3000, usedAt: 't1' });
+      await result.current.deleteRecord(record);
     });
 
-    expect(mockedDelete).toHaveBeenCalledWith('g1', { amount: 3000, usedAt: 't1' });
+    expect(mockedDelete).toHaveBeenCalledWith('g1', record);
   });
 
   it('alerts when deleting a record fails', async () => {
@@ -71,7 +78,7 @@ describe('useGifticonUsage', () => {
     const { result } = await renderHook(() => useGifticonUsage(gifticon, 'owner'));
 
     await act(async () => {
-      await result.current.deleteRecord({ amount: 3000, usedAt: 't1' });
+      await result.current.deleteRecord(record);
     });
 
     expect(Alert.alert).toHaveBeenCalledWith('오류', expect.any(String));
@@ -81,7 +88,7 @@ describe('useGifticonUsage', () => {
     const { result } = await renderHook(() => useGifticonUsage(gifticon, 'owner'));
 
     await act(async () => {
-      await result.current.recordUsage(1000);
+      await result.current.recordUsage(record);
     });
 
     expect(result.current.busy).toBe(false);

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import type { Gifticon, UsageRecord } from '../types';
 import { remainingAmount, sortedUsageHistory } from '../usage';
+import { newUsageRecordId } from '../services/gifticonService';
 import { formatCurrency, groupDigits } from '../../../shared/utils/currency';
 import { formatDate } from '../../../shared/utils/date';
 import { confirmAsync } from '../../../shared/utils/confirmAsync';
@@ -20,25 +21,38 @@ export default function GifticonUsagePanel({
   busy,
 }: {
   gifticon: Gifticon & { amount: number };
-  onRecordUsage: (amount: number) => Promise<void>;
+  onRecordUsage: (record: UsageRecord) => Promise<boolean>;
   onDeleteRecord: (record: UsageRecord) => Promise<void>;
   busy: boolean;
 }) {
   const [adding, setAdding] = useState(false);
   const [input, setInput] = useState('');
   const [error, setError] = useState<string | null>(null);
+  // Pinned once per form session (like AddGifticonScreen's draftId), not
+  // regenerated per submit attempt: if the write times out and the user just
+  // taps 등록 again without closing the form, the retry carries the same
+  // id/usedAt, so arrayUnion recognises it as the same entry instead of
+  // logging the spend twice.
+  const [draft, setDraft] = useState<{ id: string; usedAt: string } | null>(null);
 
-  const remaining = remainingAmount(gifticon) ?? 0;
+  const remaining = remainingAmount(gifticon);
   const history = sortedUsageHistory(gifticon);
   const canAddMore = remaining > 0;
 
   const openForm = () => {
     setInput('');
     setError(null);
+    setDraft({ id: newUsageRecordId(), usedAt: new Date().toISOString() });
     setAdding(true);
   };
 
+  const closeForm = () => {
+    setAdding(false);
+    setDraft(null);
+  };
+
   const submit = async () => {
+    if (!draft) return;
     const amount = Number(input.replace(/[^0-9]/g, ''));
     if (!amount || amount <= 0) {
       setError('사용한 금액을 입력해주세요.');
@@ -49,9 +63,10 @@ export default function GifticonUsagePanel({
       return;
     }
     setError(null);
-    await onRecordUsage(amount);
-    setAdding(false);
-    setInput('');
+    const succeeded = await onRecordUsage({ ...draft, amount });
+    // Only close on success — on failure the form (and the pinned draft id)
+    // stays put so retrying is just tapping 등록 again.
+    if (succeeded) closeForm();
   };
 
   const handleDelete = async (record: UsageRecord) => {
@@ -68,16 +83,18 @@ export default function GifticonUsagePanel({
       <View style={styles.header}>
         <Text style={styles.title}>사용 내역</Text>
         <Text style={styles.balance}>
-          {remaining < gifticon.amount
-            ? `${formatCurrency(remaining)} 남음 / ${formatCurrency(gifticon.amount)}`
-            : `${formatCurrency(remaining)} 사용 가능`}
+          {remaining === 0
+            ? '모두 사용했어요'
+            : remaining < gifticon.amount
+              ? `${formatCurrency(remaining)} 남음 / ${formatCurrency(gifticon.amount)}`
+              : `${formatCurrency(remaining)} 사용 가능`}
         </Text>
       </View>
 
       {history.length > 0 && (
         <View style={styles.list}>
           {history.map((record) => (
-            <View key={`${record.usedAt}-${record.amount}`} style={styles.row}>
+            <View key={record.id} style={styles.row}>
               <Text style={styles.rowDate}>{formatDate(record.usedAt)}</Text>
               <Text style={styles.rowAmount}>{formatCurrency(record.amount)} 사용</Text>
               <TouchableOpacity
@@ -113,7 +130,8 @@ export default function GifticonUsagePanel({
               <Button
                 variant="secondary"
                 label="취소"
-                onPress={() => setAdding(false)}
+                onPress={closeForm}
+                disabled={busy}
                 style={styles.formButton}
               />
               <Button label="등록" onPress={submit} loading={busy} style={styles.formButton} />

@@ -10,10 +10,12 @@ import {
 import { deleteGifticonImage } from './gifticonImage';
 import {
   addGifticonUsageRecord,
+  addGifticonUsageRecordAndClose,
   createGifticon,
   deleteGifticon,
   markGifticonUsed,
   newGifticonId,
+  newUsageRecordId,
   removeGifticonUsageRecord,
   setGifticonNotificationIds,
   subscribeToGifticon,
@@ -81,6 +83,12 @@ beforeEach(() => {
 describe('newGifticonId', () => {
   it('returns a client-side id from an empty doc ref', () => {
     expect(newGifticonId()).toBe('generated-id');
+  });
+});
+
+describe('newUsageRecordId', () => {
+  it('returns a client-side id', () => {
+    expect(newUsageRecordId()).toBe('generated-id');
   });
 });
 
@@ -287,7 +295,7 @@ describe('setGifticonNotificationIds', () => {
 
 describe('addGifticonUsageRecord', () => {
   it('appends the record via arrayUnion', async () => {
-    const record = { amount: 3000, usedAt: '2026-01-01T00:00:00.000Z' };
+    const record = { id: 'u1', amount: 3000, usedAt: '2026-01-01T00:00:00.000Z' };
     await addGifticonUsageRecord('gift-1', record);
 
     expect(docRef).toHaveBeenCalledWith('gifticons', 'gift-1');
@@ -296,9 +304,24 @@ describe('addGifticonUsageRecord', () => {
   });
 });
 
+describe('addGifticonUsageRecordAndClose', () => {
+  it('appends the record and marks the gifticon used in one write', async () => {
+    const record = { id: 'u1', amount: 3000, usedAt: '2026-01-01T00:00:00.000Z' };
+    await addGifticonUsageRecordAndClose('gift-1', record);
+
+    expect(docRef).toHaveBeenCalledWith('gifticons', 'gift-1');
+    const [, update] = mockedUpdateDoc.mock.calls[0];
+    expect(update).toMatchObject({
+      usageHistory: `arrayUnion:${JSON.stringify(record)}`,
+      isUsed: true,
+    });
+    expect(typeof update.usedAt).toBe('string');
+  });
+});
+
 describe('removeGifticonUsageRecord', () => {
   it('removes the record via arrayRemove', async () => {
-    const record = { amount: 3000, usedAt: '2026-01-01T00:00:00.000Z' };
+    const record = { id: 'u1', amount: 3000, usedAt: '2026-01-01T00:00:00.000Z' };
     await removeGifticonUsageRecord('gift-1', record);
 
     expect(docRef).toHaveBeenCalledWith('gifticons', 'gift-1');

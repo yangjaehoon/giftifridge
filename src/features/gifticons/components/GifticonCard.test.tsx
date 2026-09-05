@@ -40,7 +40,7 @@ describe('GifticonCard', () => {
         gifticon={makeGifticon({
           id: '1',
           amount: 10000,
-          usageHistory: [{ amount: 3000, usedAt: '2026-01-01T00:00:00.000Z' }],
+          usageHistory: [{ id: 'u1', amount: 3000, usedAt: '2026-01-01T00:00:00.000Z' }],
         })}
         onPress={jest.fn()}
       />,

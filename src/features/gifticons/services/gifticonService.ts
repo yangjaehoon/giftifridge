@@ -25,6 +25,15 @@ export function newGifticonId(): string {
   return newId(COLLECTION);
 }
 
+// Same idea as newGifticonId, for one usage-history entry: a stable id so a
+// retried add-record write is recognised as the same arrayUnion element
+// instead of logging the spend twice. Not itself a doc anywhere, so the
+// collection name is nominal — newId just needs to hand back a random,
+// collision-safe string with no network call.
+export function newUsageRecordId(): string {
+  return newId('gifticonUsageRecords');
+}
+
 export async function createGifticon(
   id: string,
   ownerId: string,
@@ -127,11 +136,21 @@ export async function setGifticonNotificationIds(id: string, notificationIds: st
 }
 
 // arrayUnion/arrayRemove match array entries by deep equality, so a record is
-// removed by passing back the exact { amount, usedAt } it was added with —
-// there's no separate id to key on, and usedAt (millisecond precision) is
-// what keeps two records from ever colliding.
+// removed by passing back the exact { id, amount, usedAt } it was added with.
 export async function addGifticonUsageRecord(id: string, record: UsageRecord) {
   await updateDoc(docRef(COLLECTION, id), { usageHistory: arrayUnion(record) });
+}
+
+// Same write as addGifticonUsageRecord, plus closing the gifticon out, as one
+// atomic update — so a spend that exactly exhausts the balance can't land the
+// usage record but then fail (or time out) before isUsed also flips, which
+// would leave the balance reading 0 while the tab still shows it as active.
+export async function addGifticonUsageRecordAndClose(id: string, record: UsageRecord) {
+  await updateDoc(docRef(COLLECTION, id), {
+    usageHistory: arrayUnion(record),
+    isUsed: true,
+    usedAt: new Date().toISOString(),
+  });
 }
 
 export async function removeGifticonUsageRecord(id: string, record: UsageRecord) {
