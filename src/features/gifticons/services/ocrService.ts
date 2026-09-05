@@ -364,6 +364,29 @@ export interface GuessedGifticonFields {
 // as fine print rather than headline text.
 const MIN_HEADLINE_HEIGHT_RATIO = 0.5;
 
+// The fixed key/value block every gifticon card carries below its headline:
+// 교환처/사용처, 유효기간/유효기한/사용기한, 주문번호/교환수량, plus the
+// 바코드 label. The brand and product name are the lines just above it, so
+// once this block starts nothing below it (a page's result title, share
+// buttons, footer text OCR also picks up) is a name candidate.
+const CARD_FOOTER_LABELS = [
+  '교환처',
+  '사용처',
+  '유효기간',
+  '유효기한',
+  '사용기한',
+  '주문번호',
+  '교환수량',
+  '바코드',
+];
+
+function cardFooterIndex(lines: RecognizedLine[]): number {
+  const index = lines.findIndex((line) =>
+    CARD_FOOTER_LABELS.some((label) => line.text.includes(label)),
+  );
+  return index === -1 ? lines.length : index;
+}
+
 function keepHeadlineSizedLines(lines: RecognizedLine[]): RecognizedLine[] {
   const heights = lines.map((line) => line.height).filter((h) => h > 0);
   // No line in this whole recognition pass has height data — this platform/
@@ -386,9 +409,14 @@ function keepHeadlineSizedLines(lines: RecognizedLine[]): RecognizedLine[] {
  * category; otherwise, most gifticon layouts put the brand above the product
  * name, so the first two non-boilerplate, headline-sized lines are read as
  * (brand, name) in that order, with no category guess.
+ *
+ * Candidate lines are limited to those above the card's key/value footer block
+ * (see CARD_FOOTER_LABELS), which drops the page chrome OCR also captures when
+ * the photo is a screenshot of a web/app page rather than the gifticon itself.
  */
 export function guessGifticonFields(recognized: RecognizedText): GuessedGifticonFields {
-  const candidateLines = recognized.lines
+  const headlineCandidates = recognized.lines.slice(0, cardFooterIndex(recognized.lines));
+  const candidateLines = headlineCandidates
     .map((line) => ({ text: line.text.trim(), height: line.height }))
     .filter((line) => line.text.length > 0 && !isNoiseLine(line.text));
   const headlineLines = keepHeadlineSizedLines(candidateLines).map((line) => line.text);
@@ -401,17 +429,21 @@ export function guessGifticonFields(recognized: RecognizedText): GuessedGifticon
     // the brand name (e.g. 설빙's "인절미설빙"), and excluding by mere
     // substring would wrongly throw away the real product name there.
     const notJustBrand = (line: string) => compact(line) !== brandKey;
-    // On a real gifticon the product name sits directly under the brand. When
-    // the photo is a screenshot of a web/app page (a search result, a blog
-    // post), the site/app name up in the chrome can survive noise filtering
-    // and would otherwise be taken as the name — so anchor on the line that
-    // carries the brand and read the next headline after it, only falling back
-    // to "first non-brand headline" when the brand appears solely in fine
-    // print (e.g. an old "사용처 | 스타벅스" row with no standalone brand line).
+    // The product name sits right under the brand on a real gifticon, so anchor
+    // on the line carrying the brand and take the next headline after it. When
+    // the brand only appears in the footer table (an old "사용처 | 스타벅스"
+    // layout with no standalone brand line) there's nothing to anchor to — the
+    // name is then the *last* headline before that table, not the first, which
+    // on a web-page screenshot would be the site/app name.
     const brandLineIndex = headlineLines.findIndex((line) => compact(line).includes(brandKey));
-    const afterBrand = brandLineIndex === -1 ? [] : headlineLines.slice(brandLineIndex + 1);
-    const name = afterBrand.find(notJustBrand) ?? headlineLines.find(notJustBrand);
-    return { brand: known.name, name: name ?? null, category: known.category };
+    const afterBrand =
+      brandLineIndex === -1 ? [] : headlineLines.slice(brandLineIndex + 1).filter(notJustBrand);
+    const lastBeforeFooter = [...headlineLines].reverse().find(notJustBrand);
+    return {
+      brand: known.name,
+      name: afterBrand[0] ?? lastBeforeFooter ?? null,
+      category: known.category,
+    };
   }
 
   return { brand: headlineLines[0] ?? null, name: headlineLines[1] ?? null, category: null };

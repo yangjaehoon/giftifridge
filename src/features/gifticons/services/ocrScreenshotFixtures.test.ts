@@ -94,12 +94,11 @@ describe('OCR guess on web-search-result gifticon screenshots', () => {
     expect(parseExpiryDateFromText(recognized.text)).toBe('2024-08-08');
   });
 
-  it('IMG_0009 — old syrup-gifticon layout: brand + expiry still resolve', () => {
-    // The obsolete syrup layout prints the brand only in fine print ("사용처 |
-    // 스타벅스"), below the product name — there's no standalone brand line to
-    // anchor the name to, so the name guess ("아이스 카페 라떼 Tall") isn't
-    // reliably recovered here and the user is expected to fix it. Brand,
-    // category and the "~ 2016.09.11" expiry still come through.
+  it('IMG_0009 — old syrup-gifticon layout: brand only in the "사용처 |" footer row', () => {
+    // The obsolete syrup layout prints the brand only in fine print below the
+    // product name, so there's no standalone brand line to anchor to. The name
+    // is recovered as the last headline before the card's footer table
+    // (교환수량/사용기한/사용처), which skips the "파이낸셜신문" page chrome above.
     const recognized = ocr([
       '2:55',
       '파이낸셜신문',
@@ -118,12 +117,11 @@ describe('OCR guess on web-search-result gifticon screenshots', () => {
       '저장',
       '기프티콘 이미지',
     ]);
-    const fields = guessGifticonFields(recognized);
-    expect(fields.brand).toBe('스타벅스');
-    expect(fields.category).toBe('cafe');
-    // Not the site name at least — the "2:55" / chrome-name failure is gone.
-    expect(fields.name).not.toBe('파이낸셜신문');
-    expect(fields.name).not.toBe('2:55');
+    expect(guessGifticonFields(recognized)).toEqual({
+      brand: '스타벅스',
+      name: '아이스 카페 라떼 Tall',
+      category: 'cafe',
+    });
     expect(parseExpiryDateFromText(recognized.text)).toBe('2016-09-11');
   });
 
