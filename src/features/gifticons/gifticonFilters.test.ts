@@ -39,7 +39,7 @@ const criteria = (o: Partial<ListCriteria> = {}): ListCriteria => ({
 const items: Gifticon[] = [
   g({ id: 'a1', name: '아메리카노', brand: '스타벅스', expiresAt: daysFromNow(10) }),
   g({ id: 'e1', name: '녹차', brand: '오설록', expiresAt: daysFromNow(-3) }),
-  g({ id: 'u1', name: '라떼', brand: '이디야', isUsed: true }),
+  g({ id: 'u1', name: '라떼', brand: '이디야', isUsed: true, usedAt: '2026-01-05T00:00:00.000Z' }),
   g({
     id: 'a2',
     name: '기프트카드',
@@ -102,6 +102,15 @@ describe('filterAndSortGifticons', () => {
   it('sorts by name with Korean collation', () => {
     const out = filterAndSortGifticons(items, criteria({ tab: 'active', sortKey: 'name' }));
     expect(out.map((x) => x.name)).toEqual(['기프트카드', '아메리카노']);
+  });
+
+  it('sorts by usedAt, treating a missing value as earliest', () => {
+    const withTwoUsed = [
+      ...items,
+      g({ id: 'u2', name: '치킨', brand: 'BBQ', isUsed: true, usedAt: '2026-02-01T00:00:00.000Z' }),
+    ];
+    const out = filterAndSortGifticons(withTwoUsed, criteria({ tab: 'used', sortKey: 'usedAt' }));
+    expect(out.map((x) => x.id)).toEqual(['u1', 'u2']);
   });
 
   it('sortDir desc reverses the order', () => {

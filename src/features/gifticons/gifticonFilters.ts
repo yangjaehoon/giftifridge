@@ -4,7 +4,7 @@ import { daysUntil } from '../../shared/utils/date';
 
 export type FilterTab = 'active' | 'expired' | 'used';
 export type CategoryFilter = GifticonCategory | 'all';
-export type SortKey = 'name' | 'createdAt' | 'expiresAt';
+export type SortKey = 'name' | 'createdAt' | 'expiresAt' | 'usedAt';
 export type SortDir = 'asc' | 'desc';
 
 export interface ListCriteria {
@@ -19,6 +19,7 @@ export const SORT_LABELS: Record<SortKey, string> = {
   name: '이름',
   createdAt: '등록일',
   expiresAt: '만료일',
+  usedAt: '사용완료일',
 };
 export const SORT_KEYS = Object.keys(SORT_LABELS) as SortKey[];
 
@@ -65,6 +66,9 @@ const SORT_COMPARATORS: Record<SortKey, (a: Gifticon, b: Gifticon) => number> = 
   name: (a, b) => a.name.localeCompare(b.name, 'ko'),
   createdAt: byField((g) => g.createdAt),
   expiresAt: byField((g) => g.expiresAt),
+  // Unused items have no usedAt; sorting by it only makes sense within the
+  // 사용완료 tab anyway, where every item has one.
+  usedAt: byField((g) => g.usedAt ?? ''),
 };
 
 export function filterAndSortGifticons(items: Gifticon[], c: ListCriteria): Gifticon[] {
