@@ -1,9 +1,15 @@
 import { useRef, useState } from 'react';
 import * as ImagePicker from 'expo-image-picker';
-import { guessBrandAndName, parseExpiryDateFromText, recognizeText } from '../services/ocrService';
+import {
+  guessGifticonFields,
+  parseAmountFromText,
+  parseExpiryDateFromText,
+  recognizeText,
+} from '../services/ocrService';
 import { recognizeBarcodeFromImage } from '../services/barcodeRecognition';
 import { parseDate } from '../../../shared/utils/date';
 import { alertPermissionDenied } from '../../../shared/utils/permissionAlert';
+import type { GifticonCategory } from '../types';
 
 interface Options {
   /** Store the chosen local uri (form.setImage). */
@@ -16,15 +22,43 @@ interface Options {
   onBrandDetected: (brand: string) => void;
   /** Apply a barcode read from the photo itself (form.setBarcode). */
   onBarcodeDetected: (barcode: string) => void;
+  /** Apply a category inferred from a recognized known brand (form.setCategory). */
+  onCategoryDetected: (category: GifticonCategory) => void;
+  /** Apply an OCR-detected face value (form.setAmount). */
+  onAmountDetected: (amount: number) => void;
+}
+
+// One auto-fillable field's "was it just auto-filled" flag and "did the user
+// override it by hand" guard, reused for each of the six fields
+// recognizeFields can fill in — so adding another detected field later is one
+// line here instead of a hand-copied state/ref/setter trio.
+function useDetectedField<T>(apply: (value: T) => void) {
+  const [autoDetected, setAutoDetected] = useState(false);
+  const manuallyEditedRef = useRef(false);
+
+  const detect = (value: T) => {
+    if (manuallyEditedRef.current) return;
+    apply(value);
+    setAutoDetected(true);
+  };
+  const reset = () => setAutoDetected(false);
+  const markManuallyEdited = () => {
+    manuallyEditedRef.current = true;
+    setAutoDetected(false);
+  };
+
+  return { autoDetected, detect, reset, markManuallyEdited };
 }
 
 /**
  * Owns picking a gifticon photo (library or camera) and everything that gets
- * read from it afterward: expiry date, a best-effort brand/name guess (OCR),
- * and any barcode already visible in the photo. Each field has its own run
- * token guard (a slow recognition pass for an earlier image can't overwrite a
- * newer one) and "user edited this by hand" guard (an auto-fill never clobbers
- * something the user already typed/scanned/picked themselves).
+ * read from it afterward: expiry date, a best-effort brand/name/category
+ * guess (OCR), a face-value amount, and any barcode already visible in the
+ * photo. Each field has its own run token guard (a slow recognition pass for
+ * an earlier image can't overwrite a newer one) and "user edited this by
+ * hand" guard (an auto-fill never clobbers something the user already
+ * typed/scanned/picked themselves, and picking a different photo afterward
+ * can't silently undo that — see useDetectedField).
  */
 export function useGifticonImage({
   onImageChosen,
@@ -32,29 +66,29 @@ export function useGifticonImage({
   onNameDetected,
   onBrandDetected,
   onBarcodeDetected,
+  onCategoryDetected,
+  onAmountDetected,
 }: Options) {
   const [recognizing, setRecognizing] = useState(false);
-  const [dateAutoDetected, setDateAutoDetected] = useState(false);
-  const [nameAutoDetected, setNameAutoDetected] = useState(false);
-  const [brandAutoDetected, setBrandAutoDetected] = useState(false);
-  const [barcodeAutoDetected, setBarcodeAutoDetected] = useState(false);
-  // Refs, not state: the recognition pass reads them after an await and must
-  // see the current values, not the ones captured when the image was picked.
-  const dateManuallyEditedRef = useRef(false);
-  const nameManuallyEditedRef = useRef(false);
-  const brandManuallyEditedRef = useRef(false);
-  const barcodeManuallyEditedRef = useRef(false);
+  const date = useDetectedField(onExpiryDetected);
+  const name = useDetectedField(onNameDetected);
+  const brand = useDetectedField(onBrandDetected);
+  const barcode = useDetectedField(onBarcodeDetected);
+  const category = useDetectedField(onCategoryDetected);
+  const amount = useDetectedField(onAmountDetected);
   const runRef = useRef(0);
 
   const recognizeFields = async (uri: string) => {
     const run = ++runRef.current;
-    setDateAutoDetected(false);
-    setNameAutoDetected(false);
-    setBrandAutoDetected(false);
-    setBarcodeAutoDetected(false);
+    date.reset();
+    name.reset();
+    brand.reset();
+    barcode.reset();
+    category.reset();
+    amount.reset();
     setRecognizing(true);
     try {
-      const [text, barcode] = await Promise.all([
+      const [text, scannedBarcode] = await Promise.all([
         recognizeText(uri),
         recognizeBarcodeFromImage(uri),
       ]);
@@ -62,30 +96,23 @@ export function useGifticonImage({
 
       if (text != null) {
         const detectedDate = parseExpiryDateFromText(text);
-        if (detectedDate && !dateManuallyEditedRef.current) {
-          onExpiryDetected(parseDate(detectedDate));
-          setDateAutoDetected(true);
-        }
-        const { brand, name } = guessBrandAndName(text);
-        if (name && !nameManuallyEditedRef.current) {
-          onNameDetected(name);
-          setNameAutoDetected(true);
-        }
-        if (brand && !brandManuallyEditedRef.current) {
-          onBrandDetected(brand);
-          setBrandAutoDetected(true);
-        }
+        if (detectedDate) date.detect(parseDate(detectedDate));
+
+        const guessed = guessGifticonFields(text);
+        if (guessed.name) name.detect(guessed.name);
+        if (guessed.brand) brand.detect(guessed.brand);
+        if (guessed.category) category.detect(guessed.category);
+
+        const detectedAmount = parseAmountFromText(text);
+        if (detectedAmount != null) amount.detect(detectedAmount);
       }
-      if (barcode && !barcodeManuallyEditedRef.current) {
-        onBarcodeDetected(barcode);
-        setBarcodeAutoDetected(true);
-      }
+      if (scannedBarcode) barcode.detect(scannedBarcode);
     } finally {
       if (run === runRef.current) setRecognizing(false);
     }
   };
 
-  // Deliberately does NOT reset the manually-edited refs: once a field holds
+  // Deliberately does NOT reset the manually-edited guards: once a field holds
   // real content — typed by the user, hydrated from an existing gifticon (see
   // AddGifticonScreen's edit-mode effect), or a still-standing OCR guess from
   // an earlier photo the user chose to keep — picking a different photo must
@@ -117,34 +144,21 @@ export function useGifticonImage({
     }
   };
 
-  const markDateManuallyEdited = () => {
-    dateManuallyEditedRef.current = true;
-    setDateAutoDetected(false);
-  };
-  const markNameManuallyEdited = () => {
-    nameManuallyEditedRef.current = true;
-    setNameAutoDetected(false);
-  };
-  const markBrandManuallyEdited = () => {
-    brandManuallyEditedRef.current = true;
-    setBrandAutoDetected(false);
-  };
-  const markBarcodeManuallyEdited = () => {
-    barcodeManuallyEditedRef.current = true;
-    setBarcodeAutoDetected(false);
-  };
-
   return {
     recognizing,
-    dateAutoDetected,
-    nameAutoDetected,
-    brandAutoDetected,
-    barcodeAutoDetected,
+    dateAutoDetected: date.autoDetected,
+    nameAutoDetected: name.autoDetected,
+    brandAutoDetected: brand.autoDetected,
+    barcodeAutoDetected: barcode.autoDetected,
+    categoryAutoDetected: category.autoDetected,
+    amountAutoDetected: amount.autoDetected,
     pickFromLibrary,
     takePhoto,
-    markDateManuallyEdited,
-    markNameManuallyEdited,
-    markBrandManuallyEdited,
-    markBarcodeManuallyEdited,
+    markDateManuallyEdited: date.markManuallyEdited,
+    markNameManuallyEdited: name.markManuallyEdited,
+    markBrandManuallyEdited: brand.markManuallyEdited,
+    markBarcodeManuallyEdited: barcode.markManuallyEdited,
+    markCategoryManuallyEdited: category.markManuallyEdited,
+    markAmountManuallyEdited: amount.markManuallyEdited,
   };
 }

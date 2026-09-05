@@ -71,6 +71,8 @@ export default function AddGifticonScreen({ navigation, route }: Props) {
     onNameDetected: form.setName,
     onBrandDetected: form.setBrand,
     onBarcodeDetected: form.setBarcode,
+    onCategoryDetected: form.setCategory,
+    onAmountDetected: (amount) => form.setAmount(String(amount)),
   });
   const setName = (v: string) => {
     form.setName(v);
@@ -84,6 +86,14 @@ export default function AddGifticonScreen({ navigation, route }: Props) {
     form.setBarcode(v);
     image.markBarcodeManuallyEdited();
   };
+  const setCategory = (c: GifticonCategory) => {
+    form.setCategory(c);
+    image.markCategoryManuallyEdited();
+  };
+  const setAmount = (v: string) => {
+    form.setAmount(v);
+    image.markAmountManuallyEdited();
+  };
   const scanner = useBarcodeScanner(setBarcode);
   const locationSearch = useLocationSearch(form.setLocation);
   const [showDatePicker, setShowDatePicker] = useState(false);
@@ -96,17 +106,19 @@ export default function AddGifticonScreen({ navigation, route }: Props) {
     navigation.setOptions({ title: isEditing ? '기프티콘 수정' : '기프티콘 등록' });
   }, [navigation, isEditing]);
 
-  // An existing gifticon's saved name/brand/expiry are real data, not an OCR
-  // guess — protect them up front so attaching a new photo while editing
-  // can't silently overwrite them (barcode is optional, so it's only
-  // protected when the gifticon actually has one; an empty one is still fair
-  // game for auto-fill).
+  // An existing gifticon's saved name/brand/category/expiry are real data,
+  // not an OCR guess — protect them up front so attaching a new photo while
+  // editing can't silently overwrite them (barcode/amount are optional, so
+  // they're only protected when the gifticon actually has one; an empty one
+  // is still fair game for auto-fill).
   useEffect(() => {
     if (!existing) return;
     image.markNameManuallyEdited();
     image.markBrandManuallyEdited();
     image.markDateManuallyEdited();
+    image.markCategoryManuallyEdited();
     if (existing.barcode) image.markBarcodeManuallyEdited();
+    if (existing.amount) image.markAmountManuallyEdited();
     // mark* are recreated every render but always do the same thing; only
     // re-run this effect when a (different) existing gifticon loads.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -248,10 +260,13 @@ export default function AddGifticonScreen({ navigation, route }: Props) {
           ref={amountRef}
           style={styles.input}
           value={groupDigits(form.amount)}
-          onChangeText={(t) => form.setAmount(t.replace(/[^0-9]/g, ''))}
+          onChangeText={(t) => setAmount(t.replace(/[^0-9]/g, ''))}
           placeholder="10,000"
           keyboardType="number-pad"
         />
+        {image.amountAutoDetected && (
+          <Text style={styles.ocrHint}>사진에서 금액을 자동으로 인식했어요. 확인해주세요.</Text>
+        )}
 
         <Text style={styles.label}>카테고리</Text>
         <View style={styles.chipRow}>
@@ -260,10 +275,15 @@ export default function AddGifticonScreen({ navigation, route }: Props) {
               key={c}
               label={CATEGORY_LABELS[c]}
               active={form.category === c}
-              onPress={() => form.setCategory(c)}
+              onPress={() => setCategory(c)}
             />
           ))}
         </View>
+        {image.categoryAutoDetected && (
+          <Text style={styles.ocrHint}>
+            브랜드를 보고 카테고리를 자동으로 선택했어요. 확인해주세요.
+          </Text>
+        )}
 
         <Text style={styles.label}>바코드 번호 (선택)</Text>
         <View style={styles.barcodeRow}>

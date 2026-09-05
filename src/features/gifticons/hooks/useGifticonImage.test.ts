@@ -20,7 +20,7 @@ const mockedCamera = ImagePicker.launchCameraAsync as jest.Mock;
 const mockedRecognizeText = recognizeText as jest.Mock;
 const mockedRecognizeBarcode = recognizeBarcodeFromImage as jest.Mock;
 
-const GIFTICON_TEXT = '스타벅스\n아메리카노 Tall\n유효기간 2026.12.31까지';
+const GIFTICON_TEXT = '스타벅스\n아메리카노 Tall\n금액 10,000원\n유효기간 2026.12.31까지';
 
 function setup() {
   return {
@@ -29,6 +29,8 @@ function setup() {
     onNameDetected: jest.fn(),
     onBrandDetected: jest.fn(),
     onBarcodeDetected: jest.fn(),
+    onCategoryDetected: jest.fn(),
+    onAmountDetected: jest.fn(),
   };
 }
 
@@ -57,10 +59,14 @@ describe('useGifticonImage', () => {
     expect(callbacks.onNameDetected).toHaveBeenCalledWith('아메리카노 Tall');
     expect(callbacks.onBrandDetected).toHaveBeenCalledWith('스타벅스');
     expect(callbacks.onBarcodeDetected).toHaveBeenCalledWith('8801234567890');
+    expect(callbacks.onCategoryDetected).toHaveBeenCalledWith('cafe');
+    expect(callbacks.onAmountDetected).toHaveBeenCalledWith(10000);
     expect(result.current.dateAutoDetected).toBe(true);
     expect(result.current.nameAutoDetected).toBe(true);
     expect(result.current.brandAutoDetected).toBe(true);
     expect(result.current.barcodeAutoDetected).toBe(true);
+    expect(result.current.categoryAutoDetected).toBe(true);
+    expect(result.current.amountAutoDetected).toBe(true);
   });
 
   it('does the same for a camera photo', async () => {
@@ -182,6 +188,23 @@ describe('useGifticonImage', () => {
     });
     await act(async () => resolvers[1](GIFTICON_TEXT));
     expect(callbacks.onNameDetected).not.toHaveBeenCalled();
+  });
+
+  it('markCategoryManuallyEdited/markAmountManuallyEdited guard those two fields the same way', async () => {
+    mockedRecognizeText.mockResolvedValue(GIFTICON_TEXT);
+    mockedLibrary.mockResolvedValue({ canceled: false, assets: [{ uri: 'file:///a.jpg' }] });
+    const callbacks = setup();
+    const { result } = await renderHook(() => useGifticonImage(callbacks));
+
+    await act(() => result.current.markCategoryManuallyEdited());
+    await act(() => result.current.markAmountManuallyEdited());
+    await act(async () => {
+      await result.current.pickFromLibrary();
+    });
+
+    expect(callbacks.onCategoryDetected).not.toHaveBeenCalled();
+    expect(callbacks.onAmountDetected).not.toHaveBeenCalled();
+    expect(callbacks.onNameDetected).toHaveBeenCalledWith('아메리카노 Tall');
   });
 
   it('a field never auto-filled yet still gets filled by a later photo', async () => {

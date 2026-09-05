@@ -1,5 +1,10 @@
 import TextRecognition from '@react-native-ml-kit/text-recognition';
-import { guessBrandAndName, parseExpiryDateFromText, recognizeText } from './ocrService';
+import {
+  guessGifticonFields,
+  parseAmountFromText,
+  parseExpiryDateFromText,
+  recognizeText,
+} from './ocrService';
 
 jest.mock('@react-native-ml-kit/text-recognition', () => ({
   __esModule: true,
@@ -61,10 +66,14 @@ describe('parseExpiryDateFromText', () => {
   });
 });
 
-describe('guessBrandAndName', () => {
-  it('reads the first two clean lines as (brand, name)', () => {
+describe('guessGifticonFields', () => {
+  it('reads the first two clean lines as (brand, name) and includes its category', () => {
     const text = '스타벅스\n아메리카노 Tall\n유효기간 2026.12.31까지\n바코드 8801234567890';
-    expect(guessBrandAndName(text)).toEqual({ brand: '스타벅스', name: '아메리카노 Tall' });
+    expect(guessGifticonFields(text)).toEqual({
+      brand: '스타벅스',
+      name: '아메리카노 Tall',
+      category: 'cafe',
+    });
   });
 
   it('skips boilerplate, date, and barcode-like lines', () => {
@@ -75,63 +84,119 @@ describe('guessBrandAndName', () => {
       '아메리카노',
       '유효기간 2026.12.31까지',
     ].join('\n');
-    expect(guessBrandAndName(text)).toEqual({ brand: '이디야', name: '아메리카노' });
-  });
-
-  it('returns null name when only one usable line is found', () => {
-    expect(guessBrandAndName('스타벅스\n유효기간 2026.12.31까지')).toEqual({
-      brand: '스타벅스',
-      name: null,
+    expect(guessGifticonFields(text)).toEqual({
+      brand: '이디야',
+      name: '아메리카노',
+      category: 'cafe',
     });
   });
 
-  it('returns null brand and name when nothing usable is found', () => {
-    expect(guessBrandAndName('기프티콘\n유효기간 2026.12.31까지\n8801234567890')).toEqual({
+  it('returns null name when only one usable line is found', () => {
+    expect(guessGifticonFields('스타벅스\n유효기간 2026.12.31까지')).toEqual({
+      brand: '스타벅스',
+      name: null,
+      category: 'cafe',
+    });
+  });
+
+  it('returns null brand/name/category when nothing usable is found', () => {
+    expect(guessGifticonFields('기프티콘\n유효기간 2026.12.31까지\n8801234567890')).toEqual({
       brand: null,
       name: null,
+      category: null,
+    });
+  });
+
+  it('has no category for an unlisted brand — the position guess only covers brand/name', () => {
+    const text = 'CUP 사이즈 안내\n딸기 스무디\n유효기간 2026.12.31까지';
+    // "CU" must not match inside "CUP" — falls back to the position guess.
+    expect(guessGifticonFields(text)).toEqual({
+      brand: 'CUP 사이즈 안내',
+      name: '딸기 스무디',
+      category: null,
     });
   });
 
   it('keeps a short brand name that happens to contain a couple of digits', () => {
     const text = 'GS25\n연세우유 크림빵\n유효기간 2026.12.31까지';
-    expect(guessBrandAndName(text)).toEqual({ brand: 'GS25', name: '연세우유 크림빵' });
+    expect(guessGifticonFields(text)).toEqual({
+      brand: 'GS25',
+      name: '연세우유 크림빵',
+      category: 'convenience',
+    });
   });
 
   it('finds a known brand regardless of which line it appears on', () => {
     // Name first, brand second — the opposite of the usual layout assumption.
     const text = '아메리카노 Tall\n스타벅스\n유효기간 2026.12.31까지';
-    expect(guessBrandAndName(text)).toEqual({ brand: '스타벅스', name: '아메리카노 Tall' });
+    expect(guessGifticonFields(text)).toEqual({
+      brand: '스타벅스',
+      name: '아메리카노 Tall',
+      category: 'cafe',
+    });
   });
 
   it('finds a known brand even inside an otherwise-noisy line', () => {
     const text = '아메리카노 Tall\n전국 스타벅스 매장에서 교환 가능\n유효기간 2026.12.31까지';
-    expect(guessBrandAndName(text)).toEqual({ brand: '스타벅스', name: '아메리카노 Tall' });
+    expect(guessGifticonFields(text)).toEqual({
+      brand: '스타벅스',
+      name: '아메리카노 Tall',
+      category: 'cafe',
+    });
   });
 
   it('matches a known brand case- and spacing-insensitively', () => {
     const text = 'b h c\n순살치킨\n유효기간 2026.12.31까지';
-    expect(guessBrandAndName(text)).toEqual({ brand: 'bhc', name: '순살치킨' });
+    expect(guessGifticonFields(text)).toEqual({
+      brand: 'bhc',
+      name: '순살치킨',
+      category: 'restaurant',
+    });
   });
 
   it('recognizes brands from the newer categories (pizza, dessert, bookstore)', () => {
-    expect(guessBrandAndName('도미노피자\n페퍼로니 라지\n유효기간 2026.12.31까지')).toEqual({
+    expect(guessGifticonFields('도미노피자\n페퍼로니 라지\n유효기간 2026.12.31까지')).toEqual({
       brand: '도미노피자',
       name: '페퍼로니 라지',
+      category: 'restaurant',
     });
-    expect(guessBrandAndName('설빙\n인절미설빙\n유효기간 2026.12.31까지')).toEqual({
+    expect(guessGifticonFields('설빙\n인절미설빙\n유효기간 2026.12.31까지')).toEqual({
       brand: '설빙',
       name: '인절미설빙',
+      category: 'cafe',
     });
-    expect(guessBrandAndName('교보문고\n도서상품권\n유효기간 2026.12.31까지')).toEqual({
+    expect(guessGifticonFields('교보문고\n도서상품권\n유효기간 2026.12.31까지')).toEqual({
       brand: '교보문고',
       name: '도서상품권',
+      category: 'culture',
     });
   });
+});
 
-  it('does not mistake a short Latin brand token for a substring of unrelated text', () => {
-    const text = 'CUP 사이즈 안내\n딸기 스무디\n유효기간 2026.12.31까지';
-    // "CU" must not match inside "CUP" — falls back to the position guess.
-    expect(guessBrandAndName(text)).toEqual({ brand: 'CUP 사이즈 안내', name: '딸기 스무디' });
+describe('parseAmountFromText', () => {
+  it('parses a comma-grouped amount next to a keyword', () => {
+    expect(parseAmountFromText('금액 10,000원')).toBe(10000);
+  });
+
+  it('parses a plain (non-grouped) amount', () => {
+    expect(parseAmountFromText('정가 5000원')).toBe(5000);
+  });
+
+  it('falls back to the single amount found when no keyword is nearby', () => {
+    expect(parseAmountFromText('아메리카노 Tall\n4,500원\n유효기간 2026.12.31까지')).toBe(4500);
+  });
+
+  it('returns null when multiple amounts are ambiguous with no keyword hint', () => {
+    expect(parseAmountFromText('10,000원\n3,000원 할인')).toBeNull();
+  });
+
+  it('picks the keyword-adjacent amount when multiple are present', () => {
+    const text = '정가 10,000원\n이 상품은 매장에서 바로 교환 가능한 모바일 쿠폰입니다\n7,000원';
+    expect(parseAmountFromText(text)).toBe(10000);
+  });
+
+  it('returns null when no amount-like text is found', () => {
+    expect(parseAmountFromText('스타벅스 아메리카노 Tall')).toBeNull();
   });
 });
 

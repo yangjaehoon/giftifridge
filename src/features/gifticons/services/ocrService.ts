@@ -1,9 +1,30 @@
 import TextRecognition, { TextRecognitionScript } from '@react-native-ml-kit/text-recognition';
 import { toDateString } from '../../../shared/utils/date';
+import type { GifticonCategory } from '../types';
 
-const PREFIX_KEYWORDS = ['유효기간', '유효기한', '만료'];
-const SUFFIX_KEYWORDS = ['까지'];
 const KEYWORD_WINDOW = 15;
+
+// A prefix/suffix keyword nearby is what disambiguates which number in the
+// text is the one we want (an expiry date among an issue date, a face value
+// among a discounted one) — shared by parseExpiryDateFromText and
+// parseAmountFromText so the two don't drift on how "nearby" is decided.
+function hasNearbyKeyword(
+  text: string,
+  index: number,
+  length: number,
+  prefixKeywords: string[],
+  suffixKeywords: string[],
+): boolean {
+  const before = text.slice(Math.max(0, index - KEYWORD_WINDOW), index);
+  const after = text.slice(index + length, Math.min(text.length, index + length + KEYWORD_WINDOW));
+  return (
+    prefixKeywords.some((keyword) => before.includes(keyword)) ||
+    suffixKeywords.some((keyword) => after.includes(keyword))
+  );
+}
+
+const DATE_PREFIX_KEYWORDS = ['유효기간', '유효기한', '만료'];
+const DATE_SUFFIX_KEYWORDS = ['까지'];
 
 const DOT_DATE_RE = /(20\d{2})[.\-/](0[1-9]|1[0-2]|[1-9])[.\-/](0[1-9]|[12]\d|3[01]|[1-9])(?!\d)/g;
 const KOREAN_DATE_RE = /(20\d{2})\s*년\s*(0?[1-9]|1[0-2])\s*월\s*(0?[1-9]|[12]\d|3[01])\s*일/g;
@@ -27,7 +48,7 @@ function isRealCalendarDate(year: number, month: number, day: number): boolean {
   return d.getFullYear() === year && d.getMonth() === month - 1 && d.getDate() === day;
 }
 
-function collectMatches(text: string, re: RegExp): DateMatch[] {
+function collectDateMatches(text: string, re: RegExp): DateMatch[] {
   const matches: DateMatch[] = [];
   for (const m of text.matchAll(re)) {
     const year = Number(m[1]);
@@ -39,28 +60,18 @@ function collectMatches(text: string, re: RegExp): DateMatch[] {
   return matches;
 }
 
-function hasNearbyKeyword(text: string, match: DateMatch): boolean {
-  const before = text.slice(Math.max(0, match.index - KEYWORD_WINDOW), match.index);
-  const after = text.slice(
-    match.index + match.length,
-    Math.min(text.length, match.index + match.length + KEYWORD_WINDOW),
-  );
-  return (
-    PREFIX_KEYWORDS.some((keyword) => before.includes(keyword)) ||
-    SUFFIX_KEYWORDS.some((keyword) => after.includes(keyword))
-  );
-}
-
 /**
  * Finds a single, unambiguous expiry-date-looking substring in OCR text and
  * normalizes it to a "YYYY-MM-DD" string. Returns null whenever the result would
  * be a guess (no dates found, or multiple dates with no keyword to disambiguate).
  */
 export function parseExpiryDateFromText(text: string): string | null {
-  const matches = DATE_PATTERNS.flatMap((re) => collectMatches(text, re));
+  const matches = DATE_PATTERNS.flatMap((re) => collectDateMatches(text, re));
   if (matches.length === 0) return null;
 
-  const withKeyword = matches.filter((match) => hasNearbyKeyword(text, match));
+  const withKeyword = matches.filter((match) =>
+    hasNearbyKeyword(text, match.index, match.length, DATE_PREFIX_KEYWORDS, DATE_SUFFIX_KEYWORDS),
+  );
   const candidates = withKeyword.length > 0 ? withKeyword : matches;
   if (candidates.length !== 1) return null;
 
@@ -68,8 +79,50 @@ export function parseExpiryDateFromText(text: string): string | null {
   return toDateString(new Date(year, month - 1, day));
 }
 
+const AMOUNT_PREFIX_KEYWORDS = ['금액', '정가', '권면가액', '충전'];
+// A face value is always immediately followed by "원" ("₩" is rare in OCR
+// text), so that's the anchor — unlike a date, there's no separate suffix
+// keyword to lean on.
+const AMOUNT_RE = /(\d{1,3}(?:,\d{3})+|\d+)\s*원/g;
+
+interface AmountMatch {
+  index: number;
+  length: number;
+  amount: number;
+}
+
+function collectAmountMatches(text: string): AmountMatch[] {
+  const matches: AmountMatch[] = [];
+  for (const m of text.matchAll(AMOUNT_RE)) {
+    const amount = Number(m[1].replace(/,/g, ''));
+    if (amount <= 0) continue;
+    matches.push({ index: m.index ?? 0, length: m[0].length, amount });
+  }
+  return matches;
+}
+
+/**
+ * Finds a single, unambiguous face-value-looking amount ("10,000원") in OCR
+ * text. A gifticon showing more than one "N원" (e.g. an original price next
+ * to a discounted one) is exactly the case a keyword nearby resolves; with
+ * neither a single match nor a keyword to pick one, this returns null rather
+ * than guess.
+ */
+export function parseAmountFromText(text: string): number | null {
+  const matches = collectAmountMatches(text);
+  if (matches.length === 0) return null;
+
+  const withKeyword = matches.filter((match) =>
+    hasNearbyKeyword(text, match.index, match.length, AMOUNT_PREFIX_KEYWORDS, []),
+  );
+  const candidates = withKeyword.length > 0 ? withKeyword : matches;
+  if (candidates.length !== 1) return null;
+
+  return candidates[0].amount;
+}
+
 /** Raw OCR text, or null if recognition failed. Callers derive whatever they
- * need from it (parseExpiryDateFromText, guessBrandAndName) — kept as one
+ * need from it (parseExpiryDateFromText, guessGifticonFields) — kept as one
  * recognition pass since running OCR twice per photo would be wasteful. */
 export async function recognizeText(imageUri: string): Promise<string | null> {
   try {
@@ -113,84 +166,89 @@ function isNoiseLine(line: string): boolean {
   return NOISE_KEYWORDS.some((keyword) => line.includes(keyword));
 }
 
+interface KnownBrand {
+  name: string;
+  category: GifticonCategory;
+}
+
 // Common Korean gifticon brands, checked before falling back to the
-// position-based guess below — a known name pins the brand correctly
-// regardless of which line it lands on (and regardless of whether that line
-// would otherwise be filtered as noise, e.g. "전국 GS25 매장에서 사용 가능").
-// Not exhaustive: a brand missing from this list still works via the
-// position fallback, just less reliably.
-const KNOWN_BRANDS = [
-  // 카페
-  '스타벅스',
-  '이디야',
-  '투썸플레이스',
-  '메가커피',
-  '컴포즈커피',
-  '빽다방',
-  '폴바셋',
-  '커피빈',
-  '할리스',
-  '파스쿠찌',
-  '엔젤리너스',
-  '탐앤탐스',
-  '만랩커피',
-  '공차',
-  '매머드커피',
-  '더벤티',
-  '요거프레소',
-  '스무디킹',
-  '잠바주스',
+// position-based guess below — a known name pins the brand (and its
+// category) correctly regardless of which line it lands on (and regardless
+// of whether that line would otherwise be filtered as noise, e.g. "전국
+// GS25 매장에서 사용 가능"). Not exhaustive: a brand missing from this list
+// still gets a brand/name guess via the position fallback, just no category.
+const KNOWN_BRANDS: KnownBrand[] = [
+  // 카페/디저트음료
+  { name: '스타벅스', category: 'cafe' },
+  { name: '이디야', category: 'cafe' },
+  { name: '투썸플레이스', category: 'cafe' },
+  { name: '메가커피', category: 'cafe' },
+  { name: '컴포즈커피', category: 'cafe' },
+  { name: '빽다방', category: 'cafe' },
+  { name: '폴바셋', category: 'cafe' },
+  { name: '커피빈', category: 'cafe' },
+  { name: '할리스', category: 'cafe' },
+  { name: '파스쿠찌', category: 'cafe' },
+  { name: '엔젤리너스', category: 'cafe' },
+  { name: '탐앤탐스', category: 'cafe' },
+  { name: '만랩커피', category: 'cafe' },
+  { name: '공차', category: 'cafe' },
+  { name: '매머드커피', category: 'cafe' },
+  { name: '더벤티', category: 'cafe' },
+  { name: '요거프레소', category: 'cafe' },
+  { name: '스무디킹', category: 'cafe' },
+  { name: '잠바주스', category: 'cafe' },
   // 편의점
-  'GS25',
-  'CU',
-  '세븐일레븐',
-  '이마트24',
-  '미니스톱',
-  // 패스트푸드/치킨
-  '맥도날드',
-  '버거킹',
-  '롯데리아',
-  'KFC',
-  '맘스터치',
-  '서브웨이',
-  '노브랜드버거',
-  '쉐이크쉑',
-  '교촌치킨',
-  '굽네치킨',
-  'bhc',
-  'BBQ',
-  '네네치킨',
-  '처갓집양념치킨',
-  '페리카나',
-  '호식이두마리치킨',
-  '노랑통닭',
-  '푸라닭',
-  '자담치킨',
-  '또래오래',
-  // 피자
-  '도미노피자',
-  '피자헛',
-  '미스터피자',
-  '파파존스',
+  { name: 'GS25', category: 'convenience' },
+  { name: 'CU', category: 'convenience' },
+  { name: '세븐일레븐', category: 'convenience' },
+  { name: '이마트24', category: 'convenience' },
+  { name: '미니스톱', category: 'convenience' },
+  // 패스트푸드/치킨/피자
+  { name: '맥도날드', category: 'restaurant' },
+  { name: '버거킹', category: 'restaurant' },
+  { name: '롯데리아', category: 'restaurant' },
+  { name: 'KFC', category: 'restaurant' },
+  { name: '맘스터치', category: 'restaurant' },
+  { name: '서브웨이', category: 'restaurant' },
+  { name: '노브랜드버거', category: 'restaurant' },
+  { name: '쉐이크쉑', category: 'restaurant' },
+  { name: '교촌치킨', category: 'restaurant' },
+  { name: '굽네치킨', category: 'restaurant' },
+  { name: 'bhc', category: 'restaurant' },
+  { name: 'BBQ', category: 'restaurant' },
+  { name: '네네치킨', category: 'restaurant' },
+  { name: '처갓집양념치킨', category: 'restaurant' },
+  { name: '페리카나', category: 'restaurant' },
+  { name: '호식이두마리치킨', category: 'restaurant' },
+  { name: '노랑통닭', category: 'restaurant' },
+  { name: '푸라닭', category: 'restaurant' },
+  { name: '자담치킨', category: 'restaurant' },
+  { name: '또래오래', category: 'restaurant' },
+  { name: '도미노피자', category: 'restaurant' },
+  { name: '피자헛', category: 'restaurant' },
+  { name: '미스터피자', category: 'restaurant' },
+  { name: '파파존스', category: 'restaurant' },
   // 베이커리/디저트
-  '배스킨라빈스',
-  '던킨',
-  '파리바게뜨',
-  '뚜레쥬르',
-  '파리크라상',
-  '크리스피크림도넛',
-  '설빙',
-  '나뚜루',
-  '콜드스톤',
-  // 문화/기타
-  'CGV',
-  '롯데시네마',
-  '메가박스',
-  '올리브영',
-  '다이소',
-  '시코르',
-  '교보문고',
-  '영풍문고',
+  { name: '배스킨라빈스', category: 'cafe' },
+  { name: '던킨', category: 'cafe' },
+  { name: '파리바게뜨', category: 'cafe' },
+  { name: '뚜레쥬르', category: 'cafe' },
+  { name: '파리크라상', category: 'cafe' },
+  { name: '크리스피크림도넛', category: 'cafe' },
+  { name: '설빙', category: 'cafe' },
+  { name: '나뚜루', category: 'cafe' },
+  { name: '콜드스톤', category: 'cafe' },
+  // 문화
+  { name: 'CGV', category: 'culture' },
+  { name: '롯데시네마', category: 'culture' },
+  { name: '메가박스', category: 'culture' },
+  { name: '교보문고', category: 'culture' },
+  { name: '영풍문고', category: 'culture' },
+  // 기타
+  { name: '올리브영', category: 'etc' },
+  { name: '다이소', category: 'etc' },
+  { name: '시코르', category: 'etc' },
 ];
 
 function compact(value: string): string {
@@ -209,35 +267,44 @@ function containsBrandKey(haystack: string, brandKey: string): boolean {
   return new RegExp(`(?:^|[^a-z0-9])${brandKey}(?:[^a-z0-9]|$)`).test(haystack);
 }
 
-function findKnownBrand(text: string): string | null {
+function findKnownBrand(text: string): KnownBrand | null {
   const haystack = compact(text);
-  return KNOWN_BRANDS.find((brand) => containsBrandKey(haystack, compact(brand))) ?? null;
+  return KNOWN_BRANDS.find((brand) => containsBrandKey(haystack, compact(brand.name))) ?? null;
+}
+
+export interface GuessedGifticonFields {
+  brand: string | null;
+  name: string | null;
+  /** Only set when the brand matched KNOWN_BRANDS — there's no positional
+   * fallback for category the way there is for brand/name. */
+  category: GifticonCategory | null;
 }
 
 /**
- * Best-effort brand/product-name guess from OCR text — there's no format to
+ * Best-effort brand/name/category guess from OCR text — there's no format to
  * anchor on the way a date has one, so this is a heuristic the user is
  * expected to double-check, not a reliable parse. A known brand name (see
- * KNOWN_BRANDS) is matched first since it's unambiguous; otherwise, most
- * gifticon layouts put the brand above the product name, so the first two
- * non-boilerplate lines are read as (brand, name) in that order.
+ * KNOWN_BRANDS) is matched first since it's unambiguous and also gives a
+ * category; otherwise, most gifticon layouts put the brand above the product
+ * name, so the first two non-boilerplate lines are read as (brand, name) in
+ * that order, with no category guess.
  */
-export function guessBrandAndName(text: string): { brand: string | null; name: string | null } {
+export function guessGifticonFields(text: string): GuessedGifticonFields {
   const cleanLines = text
     .split('\n')
     .map((line) => line.trim())
     .filter((line) => line.length > 0 && !isNoiseLine(line));
 
-  const knownBrand = findKnownBrand(text);
-  if (knownBrand) {
-    const brandKey = compact(knownBrand);
+  const known = findKnownBrand(text);
+  if (known) {
+    const brandKey = compact(known.name);
     // A line that's nothing but the brand itself is excluded from being the
     // name too — but only an exact match: some brands' own menu items embed
     // the brand name (e.g. 설빙's "인절미설빙"), and excluding by mere
     // substring would wrongly throw away the real product name there.
     const name = cleanLines.find((line) => compact(line) !== brandKey);
-    return { brand: knownBrand, name: name ?? null };
+    return { brand: known.name, name: name ?? null, category: known.category };
   }
 
-  return { brand: cleanLines[0] ?? null, name: cleanLines[1] ?? null };
+  return { brand: cleanLines[0] ?? null, name: cleanLines[1] ?? null, category: null };
 }

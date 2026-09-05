@@ -3,7 +3,12 @@ import * as MediaLibrary from 'expo-media-library';
 import { newGifticonId } from './gifticonService';
 import { saveGifticon } from './saveGifticon';
 import { syncGifticonReminders } from './gifticonReminders';
-import { guessBrandAndName, parseExpiryDateFromText, recognizeText } from './ocrService';
+import {
+  guessGifticonFields,
+  parseAmountFromText,
+  parseExpiryDateFromText,
+  recognizeText,
+} from './ocrService';
 import { recognizeBarcodeFromImage } from './barcodeRecognition';
 import { defaultExpiryDate, toDateString } from '../../../shared/utils/date';
 import type { GifticonCategory } from '../types';
@@ -140,14 +145,15 @@ async function runScan(ownerId: string): Promise<number> {
       // Only worth the extra native call for photos already confirmed to
       // look like a gifticon — no point barcode-scanning everything else.
       const barcode = await recognizeBarcodeFromImage(uri);
-      const { brand, name } = guessBrandAndName(text);
+      const { brand, name, category } = guessGifticonFields(text);
       const draftId = newGifticonId();
       const fields = {
         name: name ?? FALLBACK_NAME,
         brand: brand ?? FALLBACK_BRAND,
-        category: FALLBACK_CATEGORY,
+        category: category ?? FALLBACK_CATEGORY,
         expiresAt: parseExpiryDateFromText(text) ?? toDateString(defaultExpiryDate()),
         barcode: barcode ?? undefined,
+        amount: parseAmountFromText(text) ?? undefined,
       };
       await saveGifticon({ draftId, ownerId, imageUri: uri, imageChanged: true, fields });
       // Only marked done once the create actually went through — if

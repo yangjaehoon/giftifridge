@@ -113,7 +113,7 @@ describe('scanGalleryForGifticons', () => {
         fields: expect.objectContaining({
           name: '아메리카노 Tall',
           brand: '스타벅스',
-          category: 'etc',
+          category: 'cafe',
           expiresAt: '2026-12-31',
         }),
       }),
@@ -123,7 +123,7 @@ describe('scanGalleryForGifticons', () => {
     );
   });
 
-  it('falls back to placeholder brand/name when nothing usable is guessed', async () => {
+  it('falls back to placeholder brand/name/category when nothing usable is guessed', async () => {
     mockedExe.mockResolvedValue([fakeAsset('a1', 1_000)]);
     mockedRecognizeText.mockResolvedValue('기프티콘\n유효기간 2026.12.31까지');
 
@@ -131,7 +131,26 @@ describe('scanGalleryForGifticons', () => {
 
     expect(mockedSaveGifticon).toHaveBeenCalledWith(
       expect.objectContaining({
-        fields: expect.objectContaining({ name: '새 기프티콘', brand: '미확인 브랜드' }),
+        fields: expect.objectContaining({
+          name: '새 기프티콘',
+          brand: '미확인 브랜드',
+          category: 'etc',
+        }),
+      }),
+    );
+  });
+
+  it('includes an amount found in the text', async () => {
+    mockedExe.mockResolvedValue([fakeAsset('a1', 1_000)]);
+    mockedRecognizeText.mockResolvedValue(
+      '스타벅스\n아메리카노 Tall\n금액 10,000원\n유효기간 2026.12.31까지',
+    );
+
+    await scanGalleryForGifticons('u1');
+
+    expect(mockedSaveGifticon).toHaveBeenCalledWith(
+      expect.objectContaining({
+        fields: expect.objectContaining({ amount: 10000 }),
       }),
     );
   });

@@ -168,10 +168,12 @@ describe('AddGifticonScreen — create', () => {
     expect(queryByText('기프티콘 사진을 등록해주세요.')).toBeNull();
   });
 
-  it('auto-fills name/brand/barcode from the photo and shows a hint for each', async () => {
-    mockedRecognizeText.mockResolvedValue('스타벅스\n아메리카노 Tall\n유효기간 2026.12.31까지');
+  it('auto-fills name/brand/barcode/category/amount from the photo and shows a hint for each', async () => {
+    mockedRecognizeText.mockResolvedValue(
+      '스타벅스\n아메리카노 Tall\n금액 10,000원\n유효기간 2026.12.31까지',
+    );
     mockedRecognizeBarcode.mockResolvedValue('8801234567890');
-    const { getByText, getByPlaceholderText } = await renderScreen(undefined);
+    const { getByText, getByPlaceholderText, getByLabelText } = await renderScreen(undefined);
 
     await pickImage(getByText);
 
@@ -180,9 +182,13 @@ describe('AddGifticonScreen — create', () => {
     );
     expect(getByPlaceholderText('스타벅스').props.value).toBe('스타벅스');
     expect(getByPlaceholderText('숫자 직접 입력 또는 스캔').props.value).toBe('8801234567890');
+    expect(getByPlaceholderText('10,000').props.value).toBe('10,000');
+    expect(getByLabelText('카페').props.accessibilityState.selected).toBe(true);
     expect(getByText('사진에서 상품명을 자동으로 인식했어요. 확인해주세요.')).toBeTruthy();
     expect(getByText('사진에서 브랜드를 자동으로 인식했어요. 확인해주세요.')).toBeTruthy();
     expect(getByText('사진에서 바코드를 자동으로 인식했어요. 확인해주세요.')).toBeTruthy();
+    expect(getByText('사진에서 금액을 자동으로 인식했어요. 확인해주세요.')).toBeTruthy();
+    expect(getByText('브랜드를 보고 카테고리를 자동으로 선택했어요. 확인해주세요.')).toBeTruthy();
   });
 
   it('does not let a name guessed from a later OCR overwrite what the user already typed', async () => {
@@ -360,10 +366,14 @@ describe('AddGifticonScreen — edit', () => {
     await waitFor(() => expect(navigation.goBack).toHaveBeenCalled());
   });
 
-  it('does not let re-attaching a photo overwrite the existing name/brand/expiry', async () => {
+  it('does not let re-attaching a photo overwrite the existing name/brand/category/amount/expiry', async () => {
     mockedUseGifticon.mockReturnValue({ gifticon: existingGifticon, loading: false });
-    mockedRecognizeText.mockResolvedValue('스타벅스\n아메리카노 Tall\n유효기간 2030.01.01까지');
-    const { getByDisplayValue, getByTestId, queryByText } = await renderScreen({
+    // A different brand (→ convenience, not the existing cafe) and a
+    // different amount, so a wrongly-unprotected field would visibly change.
+    mockedRecognizeText.mockResolvedValue(
+      'GS25\n아메리카노 Tall\n금액 10,000원\n유효기간 2030.01.01까지',
+    );
+    const { getByDisplayValue, getByTestId, getByLabelText, queryByText } = await renderScreen({
       gifticonId: 'g1',
     });
 
@@ -376,7 +386,11 @@ describe('AddGifticonScreen — edit', () => {
     await waitFor(() => expect(mockedRecognizeText).toHaveBeenCalled());
     expect(getByDisplayValue('기존아메리카노')).toBeTruthy();
     expect(getByDisplayValue('기존스타벅스')).toBeTruthy();
+    expect(getByDisplayValue('5,000')).toBeTruthy();
+    expect(getByLabelText('카페').props.accessibilityState.selected).toBe(true);
     expect(queryByText('2030.01.01')).toBeNull();
     expect(queryByText('사진에서 상품명을 자동으로 인식했어요. 확인해주세요.')).toBeNull();
+    expect(queryByText('사진에서 금액을 자동으로 인식했어요. 확인해주세요.')).toBeNull();
+    expect(queryByText('브랜드를 보고 카테고리를 자동으로 선택했어요. 확인해주세요.')).toBeNull();
   });
 });
