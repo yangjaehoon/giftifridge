@@ -24,6 +24,15 @@ jest.mock('expo-media-library', () => {
     limit() {
       return this;
     }
+    // A real (prototype) method here, not a field, so it's declared on the
+    // class the same way eq/gte/orderBy/limit are — letting the reassignment
+    // below type-check — while staying reassignable on the shared prototype
+    // (a field initializer would instead be a per-instance property, and
+    // `Query.prototype.exe` the tests read before any instance exists would
+    // be undefined).
+    exe(): Promise<unknown[]> {
+      return Promise.resolve([]);
+    }
   }
   Query.prototype.exe = jest.fn();
   return {
