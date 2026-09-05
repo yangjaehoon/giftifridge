@@ -169,6 +169,26 @@ describe('guessGifticonFields', () => {
     });
   });
 
+  it('ignores a screenshot status-bar clock/battery instead of taking it as the name', () => {
+    // A gifticon screenshot also captures the phone status bar; "2:55" and
+    // "85%" land above the real content but are never the product name.
+    const text = '2:55\n85%\nbhc\n뿌링클\n유효기간 2026.12.31까지';
+    expect(guessGifticonFields(ocrResult(text))).toEqual({
+      brand: 'bhc',
+      name: '뿌링클',
+      category: 'restaurant',
+    });
+  });
+
+  it('drops a no-letter line from the position-based brand/name guess too', () => {
+    const text = '9:41\n동네빵집\n소금빵 세트\n유효기간 2026.12.31까지';
+    expect(guessGifticonFields(ocrResult(text))).toEqual({
+      brand: '동네빵집',
+      name: '소금빵 세트',
+      category: null,
+    });
+  });
+
   it('recognizes brands from the newer categories (pizza, dessert, bookstore)', () => {
     expect(
       guessGifticonFields(ocrResult('도미노피자\n페퍼로니 라지\n유효기간 2026.12.31까지')),

@@ -225,8 +225,16 @@ const MAX_LINE_LENGTH = 30;
 const MIN_NOISE_DIGIT_COUNT = 4;
 const MAX_DIGIT_RATIO = 0.4;
 
+// A brand or product name always carries at least one letter (Hangul or
+// Latin). A line made only of digits, punctuation and symbols — a screenshot's
+// status-bar clock ("2:55"), a battery reading ("85%"), a phone number
+// ("1544-1650") — is never the name, and the digit-density check above misses
+// the short ones (too few digits to trip MIN_NOISE_DIGIT_COUNT).
+const LETTER_RE = /[a-zA-Z가-힣]/;
+
 function isNoiseLine(line: string): boolean {
   if (line.length < MIN_LINE_LENGTH || line.length > MAX_LINE_LENGTH) return true;
+  if (!LETTER_RE.test(line)) return true;
   if (parseExpiryDateFromText(line) != null) return true;
   const digitCount = (line.match(/\d/g) ?? []).length;
   if (digitCount >= MIN_NOISE_DIGIT_COUNT && digitCount / line.length > MAX_DIGIT_RATIO)
