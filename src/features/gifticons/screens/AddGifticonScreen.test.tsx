@@ -22,6 +22,14 @@ import { getNotificationOffsets } from '../../../shared/utils/notificationPrefs'
 import { TimeoutError } from '../../../shared/utils/withTimeout';
 import type { Gifticon } from '../types';
 
+// This screen mounts several hooks with on-mount effects (form hydration,
+// image auto-detection, location, camera permissions); the first test to
+// render it here also pays the cost of first-requiring this file's whole
+// module graph. That combination has been observed to exceed Jest's default
+// 5000ms on a slower/shared CI runner while staying comfortably under it
+// locally, so give every test in this file more headroom.
+jest.setTimeout(15000);
+
 jest.mock('../../auth/context/AuthContext', () => ({ useCurrentUser: jest.fn() }));
 jest.mock('../hooks/useGifticon', () => ({ useGifticon: jest.fn() }));
 jest.mock('../hooks/useGifticons', () => ({ useGifticons: jest.fn() }));
