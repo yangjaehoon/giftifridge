@@ -113,6 +113,21 @@ describe('guessBrandAndName', () => {
     expect(guessBrandAndName(text)).toEqual({ brand: 'bhc', name: '순살치킨' });
   });
 
+  it('recognizes brands from the newer categories (pizza, dessert, bookstore)', () => {
+    expect(guessBrandAndName('도미노피자\n페퍼로니 라지\n유효기간 2026.12.31까지')).toEqual({
+      brand: '도미노피자',
+      name: '페퍼로니 라지',
+    });
+    expect(guessBrandAndName('설빙\n인절미설빙\n유효기간 2026.12.31까지')).toEqual({
+      brand: '설빙',
+      name: '인절미설빙',
+    });
+    expect(guessBrandAndName('교보문고\n도서상품권\n유효기간 2026.12.31까지')).toEqual({
+      brand: '교보문고',
+      name: '도서상품권',
+    });
+  });
+
   it('does not mistake a short Latin brand token for a substring of unrelated text', () => {
     const text = 'CUP 사이즈 안내\n딸기 스무디\n유효기간 2026.12.31까지';
     // "CU" must not match inside "CUP" — falls back to the position guess.

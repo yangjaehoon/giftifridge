@@ -134,6 +134,12 @@ const KNOWN_BRANDS = [
   '엔젤리너스',
   '탐앤탐스',
   '만랩커피',
+  '공차',
+  '매머드커피',
+  '더벤티',
+  '요거프레소',
+  '스무디킹',
+  '잠바주스',
   // 편의점
   'GS25',
   'CU',
@@ -147,22 +153,44 @@ const KNOWN_BRANDS = [
   'KFC',
   '맘스터치',
   '서브웨이',
+  '노브랜드버거',
+  '쉐이크쉑',
   '교촌치킨',
   '굽네치킨',
   'bhc',
   'BBQ',
   '네네치킨',
+  '처갓집양념치킨',
+  '페리카나',
+  '호식이두마리치킨',
+  '노랑통닭',
+  '푸라닭',
+  '자담치킨',
+  '또래오래',
+  // 피자
+  '도미노피자',
+  '피자헛',
+  '미스터피자',
+  '파파존스',
   // 베이커리/디저트
   '배스킨라빈스',
   '던킨',
   '파리바게뜨',
   '뚜레쥬르',
   '파리크라상',
+  '크리스피크림도넛',
+  '설빙',
+  '나뚜루',
+  '콜드스톤',
   // 문화/기타
   'CGV',
   '롯데시네마',
   '메가박스',
   '올리브영',
+  '다이소',
+  '시코르',
+  '교보문고',
+  '영풍문고',
 ];
 
 function compact(value: string): string {
@@ -203,7 +231,11 @@ export function guessBrandAndName(text: string): { brand: string | null; name: s
   const knownBrand = findKnownBrand(text);
   if (knownBrand) {
     const brandKey = compact(knownBrand);
-    const name = cleanLines.find((line) => !containsBrandKey(compact(line), brandKey));
+    // A line that's nothing but the brand itself is excluded from being the
+    // name too — but only an exact match: some brands' own menu items embed
+    // the brand name (e.g. 설빙's "인절미설빙"), and excluding by mere
+    // substring would wrongly throw away the real product name there.
+    const name = cleanLines.find((line) => compact(line) !== brandKey);
     return { brand: knownBrand, name: name ?? null };
   }
 
