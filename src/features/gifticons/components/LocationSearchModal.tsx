@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import {
   ActivityIndicator,
   FlatList,
@@ -31,19 +31,26 @@ export default function LocationSearchModal({
   onSelect: (coordinates: Coordinates) => void;
   onClose: () => void;
 }) {
+  const inputRef = useRef<TextInput>(null);
+
   return (
-    <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
+    <Modal
+      visible={visible}
+      animationType="slide"
+      onRequestClose={onClose}
+      onShow={() => inputRef.current?.focus()}
+    >
       <View style={styles.container}>
         <Text style={styles.title}>매장 위치 검색</Text>
         <View style={styles.searchRow}>
           <TextInput
+            ref={inputRef}
             style={styles.input}
             value={query}
             onChangeText={onChangeQuery}
             placeholder="매장 이름 또는 주소"
             returnKeyType="search"
             onSubmitEditing={onSearch}
-            autoFocus
           />
           <TouchableOpacity
             style={styles.searchButton}

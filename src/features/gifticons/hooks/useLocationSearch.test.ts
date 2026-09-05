@@ -1,6 +1,7 @@
 import { act, renderHook } from '@testing-library/react-native';
 import { Alert } from 'react-native';
 import { searchAddress } from '../../../shared/utils/location';
+import type { AddressCandidate } from '../../../shared/utils/location';
 import { useLocationSearch } from './useLocationSearch';
 
 jest.mock('../../../shared/utils/location', () => ({ searchAddress: jest.fn() }));
@@ -71,6 +72,32 @@ describe('useLocationSearch', () => {
     await act(async () => result.current.search());
 
     expect(Alert.alert).toHaveBeenCalledWith('알림', '검색 결과가 없어요.');
+  });
+
+  it('discards a stale search result when a newer search starts before it resolves', async () => {
+    const resolvers: ((v: AddressCandidate[]) => void)[] = [];
+    mockedSearchAddress.mockImplementation(
+      () => new Promise<AddressCandidate[]>((resolve) => resolvers.push(resolve)),
+    );
+    const { result } = await renderHook(() => useLocationSearch(jest.fn()));
+
+    await act(() => result.current.setQuery('A'));
+    await act(async () => {
+      result.current.search(); // stays pending
+    });
+    await act(() => result.current.setQuery('B'));
+    await act(async () => {
+      result.current.search(); // starts before A's resolves
+    });
+
+    const candidatesB = [{ coordinates: { latitude: 1, longitude: 2 }, label: 'B' }];
+    const candidatesA = [{ coordinates: { latitude: 3, longitude: 4 }, label: 'A' }];
+
+    // B's search resolves first, then A's resolves late.
+    await act(async () => resolvers[1](candidatesB));
+    await act(async () => resolvers[0](candidatesA));
+
+    expect(result.current.results).toEqual(candidatesB);
   });
 
   it('alerts on a search failure', async () => {

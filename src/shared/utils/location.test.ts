@@ -176,4 +176,19 @@ describe('searchAddress', () => {
       },
     ]);
   });
+
+  it('falls back to the query text when the address has no usable fields', async () => {
+    Location.getForegroundPermissionsAsync.mockResolvedValue({
+      status: 'granted',
+      canAskAgain: false,
+    });
+    Location.geocodeAsync.mockResolvedValue([{ latitude: 37.5, longitude: 127 }]);
+    Location.reverseGeocodeAsync.mockResolvedValue([
+      { formattedAddress: null, name: null, street: null, city: null, region: null },
+    ]);
+
+    await expect(searchAddress('스타벅스 강남점')).resolves.toEqual([
+      { coordinates: { latitude: 37.5, longitude: 127 }, label: '스타벅스 강남점' },
+    ]);
+  });
 });

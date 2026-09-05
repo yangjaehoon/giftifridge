@@ -85,7 +85,8 @@ export async function searchAddress(query: string): Promise<AddressCandidate[] |
     matches.map(async (match) => {
       const coordinates = { latitude: match.latitude, longitude: match.longitude };
       const [address] = await Location.reverseGeocodeAsync(coordinates);
-      return { coordinates, label: address ? formatAddress(address) : trimmed };
+      const label = address ? formatAddress(address) : '';
+      return { coordinates, label: label || trimmed };
     }),
   );
 }
