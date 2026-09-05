@@ -14,6 +14,7 @@ jest.mock('@react-native-async-storage/async-storage', () =>
 );
 jest.mock('expo-media-library', () => ({ addListener: jest.fn() }));
 jest.mock('../services/galleryImport', () => ({
+  ENABLED_KEY: 'galleryImportEnabled',
   ensureGalleryImportPermission: jest.fn(),
   scanGalleryForGifticons: jest.fn(),
 }));
@@ -46,10 +47,17 @@ describe('useGalleryAutoImport', () => {
     expect(result.current.enabled).toBe(false);
   });
 
-  it('restores a previously-enabled state on mount', async () => {
+  it('restores a previously-enabled state on mount and re-registers the task', async () => {
     await AsyncStorage.setItem('galleryImportEnabled', 'true');
     const { result } = await renderHook(() => useGalleryAutoImport('u1'));
     await waitFor(() => expect(result.current.enabled).toBe(true));
+    await waitFor(() => expect(mockedRegisterTask).toHaveBeenCalledTimes(1));
+  });
+
+  it('does not register the task on mount when it was never enabled', async () => {
+    const { result } = await renderHook(() => useGalleryAutoImport('u1'));
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    expect(mockedRegisterTask).not.toHaveBeenCalled();
   });
 
   it('turning on requests permission, registers the task, and scans once immediately', async () => {
@@ -86,6 +94,37 @@ describe('useGalleryAutoImport', () => {
     expect(mockedUnregisterTask).toHaveBeenCalledTimes(1);
     expect(result.current.enabled).toBe(false);
     expect(await AsyncStorage.getItem('galleryImportEnabled')).toBe('false');
+  });
+
+  it('alerts and leaves state untouched when registering the task fails', async () => {
+    mockedRegisterTask.mockRejectedValue(new Error('native error'));
+    const { result } = await renderHook(() => useGalleryAutoImport('u1'));
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    await act(async () => result.current.toggle());
+
+    expect(Alert.alert).toHaveBeenCalledWith(
+      '오류',
+      '설정을 변경하지 못했어요. 다시 시도해주세요.',
+    );
+    expect(result.current.enabled).toBe(false);
+    expect(await AsyncStorage.getItem('galleryImportEnabled')).toBeNull();
+  });
+
+  it('alerts and leaves state untouched when unregistering the task fails', async () => {
+    await AsyncStorage.setItem('galleryImportEnabled', 'true');
+    mockedUnregisterTask.mockRejectedValue(new Error('native error'));
+    const { result } = await renderHook(() => useGalleryAutoImport('u1'));
+    await waitFor(() => expect(result.current.enabled).toBe(true));
+
+    await act(async () => result.current.toggle());
+
+    expect(Alert.alert).toHaveBeenCalledWith(
+      '오류',
+      '설정을 변경하지 못했어요. 다시 시도해주세요.',
+    );
+    expect(result.current.enabled).toBe(true);
+    expect(await AsyncStorage.getItem('galleryImportEnabled')).toBe('true');
   });
 
   it('scans on every library change while enabled', async () => {

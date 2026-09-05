@@ -20,6 +20,16 @@ export function todayDateString(): string {
 }
 
 /**
+ * ~1 month from today, for a gifticon's default expiry when none is known yet
+ * (a blank add-form, or gallery auto-import when OCR couldn't read one).
+ */
+export function defaultExpiryDate(): Date {
+  const d = new Date();
+  d.setMonth(d.getMonth() + 1);
+  return d;
+}
+
+/**
  * Local-midnight Date for a "YYYY-MM-DD" string. A legacy full ISO instant is
  * tolerated (collapsed to the local midnight of its local day).
  */

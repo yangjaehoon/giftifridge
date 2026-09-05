@@ -45,7 +45,7 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "기프티콘 사진을 등록하기 위해 사진첩 접근 권한이 필요해요.",
+          "photosPermission": "기프티콘 사진을 등록하거나, 새 사진에서 기프티콘을 자동으로 찾아 등록하기 위해 사진첩 접근 권한이 필요해요.",
           "cameraPermission": "기프티콘 사진을 촬영하기 위해 카메라 접근 권한이 필요해요."
         }
       ],
@@ -64,7 +64,7 @@
       [
         "expo-media-library",
         {
-          "photosPermission": "새 사진첩 사진에서 기프티콘을 자동으로 찾아 등록하기 위해 사진 접근 권한이 필요해요.",
+          "photosPermission": "기프티콘 사진을 등록하거나, 새 사진에서 기프티콘을 자동으로 찾아 등록하기 위해 사진첩 접근 권한이 필요해요.",
           "savePhotosPermission": false,
           "granularPermissions": ["photo"]
         }

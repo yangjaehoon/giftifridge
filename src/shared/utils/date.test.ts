@@ -1,4 +1,11 @@
-import { daysUntil, formatDate, parseDate, toDateString, todayDateString } from './date';
+import {
+  daysUntil,
+  defaultExpiryDate,
+  formatDate,
+  parseDate,
+  toDateString,
+  todayDateString,
+} from './date';
 
 describe('toDateString / todayDateString', () => {
   it('formats a Date as its local YYYY-MM-DD', () => {
@@ -49,6 +56,14 @@ describe('daysUntil', () => {
 
   it('still works on a legacy ISO instant', () => {
     expect(daysUntil(new Date().toISOString())).toBe(0);
+  });
+});
+
+describe('defaultExpiryDate', () => {
+  it('is about one month ahead of today', () => {
+    const expected = new Date();
+    expected.setMonth(expected.getMonth() + 1);
+    expect(toDateString(defaultExpiryDate())).toBe(toDateString(expected));
   });
 });
 

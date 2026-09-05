@@ -14,7 +14,7 @@ jest.mock('expo-media-library', () => {
     eq() {
       return this;
     }
-    gt() {
+    gte() {
       return this;
     }
     orderBy() {
@@ -171,5 +171,43 @@ describe('scanGalleryForGifticons', () => {
 
     const stored = Number(await AsyncStorage.getItem('galleryImportLastCheckedAt'));
     expect(stored).toBeGreaterThanOrEqual(before);
+  });
+
+  it('shares one in-flight scan instead of running two overlapping ones', async () => {
+    let resolveExe: (assets: unknown[]) => void = () => {};
+    mockedExe.mockReturnValue(new Promise((resolve) => (resolveExe = resolve)));
+
+    const first = scanGalleryForGifticons('u1');
+    const second = scanGalleryForGifticons('u1');
+    resolveExe([]);
+
+    await Promise.all([first, second]);
+    expect(mockedExe).toHaveBeenCalledTimes(1);
+  });
+
+  it('runs a fresh scan after the previous one has finished', async () => {
+    mockedExe.mockResolvedValue([]);
+
+    await scanGalleryForGifticons('u1');
+    await scanGalleryForGifticons('u1');
+
+    expect(mockedExe).toHaveBeenCalledTimes(2);
+  });
+
+  it('persists progress made before a later asset in the batch fails to save', async () => {
+    await AsyncStorage.setItem('galleryImportLastCheckedAt', '500');
+    mockedExe.mockResolvedValue([fakeAsset('a1', 1_000), fakeAsset('a2', 2_000)]);
+    mockedRecognizeText.mockResolvedValue('기프티콘 도착!');
+    mockedSaveGifticon.mockResolvedValueOnce('draft-1').mockRejectedValueOnce(new Error('timeout'));
+
+    await expect(scanGalleryForGifticons('u1')).rejects.toThrow('timeout');
+
+    // a1 succeeded before a2 threw — its id and the advanced cursor must
+    // still be persisted, or the next scan re-creates a duplicate for a1.
+    // a2's create never completed, so it's deliberately left off the dedupe
+    // set — the next scan should retry it, not silently drop the photo.
+    const storedIds = JSON.parse((await AsyncStorage.getItem('galleryImportImportedIds')) ?? '[]');
+    expect(storedIds).toEqual(['a1']);
+    expect(await AsyncStorage.getItem('galleryImportLastCheckedAt')).toBe('2000');
   });
 });

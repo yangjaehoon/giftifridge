@@ -1,7 +1,8 @@
 import * as TaskManager from 'expo-task-manager';
 import * as BackgroundTask from 'expo-background-task';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { waitForAuthUser } from '../../../lib/firebase/auth';
-import { scanGalleryForGifticons } from './galleryImport';
+import { ENABLED_KEY, scanGalleryForGifticons } from './galleryImport';
 
 // TaskManager requires defineTask to run in the JS bundle's global scope (not
 // inside a component), so this module must be imported once at the top of
@@ -18,6 +19,12 @@ const MINIMUM_INTERVAL_MINUTES = 15;
 
 TaskManager.defineTask(GALLERY_IMPORT_TASK_NAME, async () => {
   try {
+    // Belt-and-suspenders alongside register/unregister: if those ever failed
+    // to keep the native registration in sync with the Settings toggle, the
+    // OS could still invoke this task while the user believes it's off.
+    const enabled = await AsyncStorage.getItem(ENABLED_KEY);
+    if (enabled !== 'true') return BackgroundTask.BackgroundTaskResult.Success;
+
     const user = await waitForAuthUser();
     if (!user) return BackgroundTask.BackgroundTaskResult.Failed;
     await scanGalleryForGifticons(user.uid);

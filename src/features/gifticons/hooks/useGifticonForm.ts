@@ -1,15 +1,9 @@
 import { useEffect, useState } from 'react';
 import type { Gifticon, GifticonCategory, NewGifticon } from '../types';
-import { parseDate, toDateString } from '../../../shared/utils/date';
+import { defaultExpiryDate, parseDate, toDateString } from '../../../shared/utils/date';
 
 type Coordinates = { latitude: number; longitude: number };
 type FieldError = { image?: string; name?: string; brand?: string };
-
-const defaultExpiry = (): Date => {
-  const d = new Date();
-  d.setMonth(d.getMonth() + 1);
-  return d;
-};
 
 /**
  * Owns every editable field of the add/edit form, hydration from an existing
@@ -25,7 +19,7 @@ export function useGifticonForm(existing: Gifticon | null | undefined, isEditing
   const [amount, setAmount] = useState('');
   const [category, setCategory] = useState<GifticonCategory>('cafe');
   const [barcode, setBarcode] = useState('');
-  const [expiresAt, setExpiresAt] = useState<Date>(defaultExpiry());
+  const [expiresAt, setExpiresAt] = useState<Date>(defaultExpiryDate());
   const [location, setLocation] = useState<Coordinates | null>(null);
   const [fieldErrors, setFieldErrors] = useState<FieldError>({});
 
