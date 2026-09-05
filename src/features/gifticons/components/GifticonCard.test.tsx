@@ -34,6 +34,22 @@ describe('GifticonCard', () => {
     expect(getByText('4,500원')).toBeTruthy();
   });
 
+  it('shows the remaining balance, not the face value, once partially used', async () => {
+    const { getByText, queryByText } = await render(
+      <GifticonCard
+        gifticon={makeGifticon({
+          id: '1',
+          amount: 10000,
+          usageHistory: [{ amount: 3000, usedAt: '2026-01-01T00:00:00.000Z' }],
+        })}
+        onPress={jest.fn()}
+      />,
+    );
+
+    expect(getByText('7,000원 남음')).toBeTruthy();
+    expect(queryByText('10,000원')).toBeNull();
+  });
+
   it('omits the amount line when there is no amount', async () => {
     const { queryByText } = await render(
       <GifticonCard gifticon={makeGifticon({ id: '1' })} onPress={jest.fn()} />,

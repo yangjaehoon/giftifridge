@@ -1,4 +1,6 @@
 import {
+  arrayRemove,
+  arrayUnion,
   collection,
   collectionGroup,
   doc,
@@ -42,5 +44,17 @@ export function writeBatch() {
   return fsWriteBatch(db);
 }
 
-export { getDoc, getDocs, onSnapshot, orderBy, query, setDoc, updateDoc, deleteDoc, where };
+export {
+  arrayRemove,
+  arrayUnion,
+  getDoc,
+  getDocs,
+  onSnapshot,
+  orderBy,
+  query,
+  setDoc,
+  updateDoc,
+  deleteDoc,
+  where,
+};
 export type { DocumentData, Unsubscribe };

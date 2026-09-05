@@ -5,7 +5,12 @@ import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
 import GifticonDetailScreen from './GifticonDetailScreen';
 import { useCurrentUser } from '../../auth/context/AuthContext';
 import { useGifticon } from '../hooks/useGifticon';
-import { removeGifticon, setGifticonUsed } from '../services/gifticonLifecycle';
+import {
+  deleteGifticonUsageRecord,
+  recordGifticonUsage,
+  removeGifticon,
+  setGifticonUsed,
+} from '../services/gifticonLifecycle';
 import { TimeoutError } from '../../../shared/utils/withTimeout';
 import type { Gifticon } from '../types';
 
@@ -14,6 +19,8 @@ jest.mock('../hooks/useGifticon', () => ({ useGifticon: jest.fn() }));
 jest.mock('../services/gifticonLifecycle', () => ({
   removeGifticon: jest.fn(),
   setGifticonUsed: jest.fn(),
+  recordGifticonUsage: jest.fn(),
+  deleteGifticonUsageRecord: jest.fn(),
 }));
 jest.mock('expo-clipboard', () => ({ setStringAsync: jest.fn() }));
 jest.mock('../components/GifticonBarcode', () => ({ __esModule: true, default: () => null }));
@@ -24,6 +31,8 @@ jest.mock('../../../shared/hooks/useMaxBrightnessWhileFocused', () => ({
 const mockedUseGifticon = useGifticon as jest.Mock;
 const mockedSetUsed = setGifticonUsed as jest.Mock;
 const mockedRemove = removeGifticon as jest.Mock;
+const mockedRecordUsage = recordGifticonUsage as jest.Mock;
+const mockedDeleteUsageRecord = deleteGifticonUsageRecord as jest.Mock;
 const mockedClipboard = Clipboard.setStringAsync as jest.Mock;
 const mockedUseAuth = useCurrentUser as jest.Mock;
 
@@ -84,6 +93,8 @@ beforeEach(() => {
   mockedUseAuth.mockReturnValue({ user: { uid: 'owner' } });
   mockedSetUsed.mockResolvedValue(undefined);
   mockedRemove.mockResolvedValue(undefined);
+  mockedRecordUsage.mockResolvedValue(undefined);
+  mockedDeleteUsageRecord.mockResolvedValue(undefined);
   mockedClipboard.mockResolvedValue(undefined);
   setHook();
 });
@@ -217,5 +228,34 @@ describe('GifticonDetailScreen', () => {
     fireEvent.press(getByLabelText('기프티콘 수정'));
 
     expect(navigation.navigate).toHaveBeenCalledWith('AddGifticon', { gifticonId: 'g1' });
+  });
+
+  describe('amount-based usage panel', () => {
+    it('shows the usage panel and records a partial spend as the acting uid', async () => {
+      const gifticon = makeGifticon({ amount: 10000 });
+      setHook({ gifticon });
+      const { getByText, getByPlaceholderText } = await renderScreen();
+
+      expect(getByText('10,000원 사용 가능')).toBeTruthy();
+
+      await act(async () => {
+        fireEvent.press(getByText('사용 금액 입력'));
+      });
+      await act(async () => {
+        fireEvent.changeText(getByPlaceholderText('사용한 금액'), '3000');
+      });
+      await act(async () => {
+        fireEvent.press(getByText('등록'));
+      });
+
+      expect(mockedRecordUsage).toHaveBeenCalledWith(gifticon, 3000, 'owner');
+    });
+
+    it('does not show the usage panel for an item voucher with no amount', async () => {
+      setHook({ gifticon: makeGifticon() });
+      const { queryByText } = await renderScreen();
+
+      expect(queryByText('사용 내역')).toBeNull();
+    });
   });
 });

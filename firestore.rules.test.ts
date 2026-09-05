@@ -132,6 +132,31 @@ describe('gifticon creation', () => {
   });
 });
 
+describe('gifticon usage history', () => {
+  it('lets the owner append a usage record', async () => {
+    await seedGifticon('g12', validGifticon({ ownerId: 'alice', amount: 10000 }));
+    const alice = testEnv.authenticatedContext('alice').firestore();
+    await assertSucceeds(
+      updateDoc(doc(alice, 'gifticons', 'g12'), {
+        usageHistory: [{ amount: 3000, usedAt: '2026-01-01T00:00:00.000Z' }],
+      }),
+    );
+  });
+
+  it('denies a usageHistory that is not a list', async () => {
+    await seedGifticon('g13', validGifticon({ ownerId: 'alice', amount: 10000 }));
+    const alice = testEnv.authenticatedContext('alice').firestore();
+    await assertFails(updateDoc(doc(alice, 'gifticons', 'g13'), { usageHistory: 'not-a-list' }));
+  });
+
+  it('denies a usageHistory log past the size cap', async () => {
+    await seedGifticon('g14', validGifticon({ ownerId: 'alice', amount: 10000 }));
+    const alice = testEnv.authenticatedContext('alice').firestore();
+    const tooMany = Array.from({ length: 501 }, (_, i) => ({ amount: 1, usedAt: `t${i}` }));
+    await assertFails(updateDoc(doc(alice, 'gifticons', 'g14'), { usageHistory: tooMany }));
+  });
+});
+
 describe('gifticons in a space', () => {
   it('denies a non-member from reading a space gifticon', async () => {
     await seedSpaceWithOwner('space1', 'alice');

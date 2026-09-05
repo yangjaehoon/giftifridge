@@ -26,7 +26,7 @@ service cloud.firestore {
     function isValidGifticon(data) {
       return data.keys().hasOnly(['ownerId', 'name', 'brand', 'category', 'imageUrl',
           'expiresAt', 'isUsed', 'createdAt', 'barcode', 'amount', 'usedAt',
-          'notificationIds', 'location', 'spaceId'])
+          'usageHistory', 'notificationIds', 'location', 'spaceId'])
         && data.ownerId is string
         && data.name is string && data.name.size() > 0 && data.name.size() <= 200
         && data.brand is string && data.brand.size() > 0 && data.brand.size() <= 200
@@ -39,6 +39,10 @@ service cloud.firestore {
             || (data.barcode is string && data.barcode.size() <= 200))
         && (!('amount' in data) || data.amount == null || data.amount is number)
         && (!('usedAt' in data) || data.usedAt == null || data.usedAt is string)
+        // Firestore rules can't validate each list entry's shape (no per-element
+        // loop), so this only bounds how large the log can grow; amount/usedAt
+        // of each record is an app-level concern, same as notificationIds below.
+        && (!('usageHistory' in data) || (data.usageHistory is list && data.usageHistory.size() <= 500))
         && (!('notificationIds' in data) || data.notificationIds is list)
         && (!('location' in data) || data.location == null
             || (data.location.keys().hasOnly(['latitude', 'longitude'])

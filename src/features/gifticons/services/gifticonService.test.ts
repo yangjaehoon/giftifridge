@@ -9,10 +9,12 @@ import {
 } from '../../../lib/firebase/firestore';
 import { deleteGifticonImage } from './gifticonImage';
 import {
+  addGifticonUsageRecord,
   createGifticon,
   deleteGifticon,
   markGifticonUsed,
   newGifticonId,
+  removeGifticonUsageRecord,
   setGifticonNotificationIds,
   subscribeToGifticon,
   subscribeToGifticons,
@@ -22,6 +24,8 @@ import {
 import type { Gifticon, NewGifticon } from '../types';
 
 jest.mock('../../../lib/firebase/firestore', () => ({
+  arrayRemove: jest.fn((record) => `arrayRemove:${JSON.stringify(record)}`),
+  arrayUnion: jest.fn((record) => `arrayUnion:${JSON.stringify(record)}`),
   collectionRef: jest.fn((...path: string[]) => `collection:${path.join('/')}`),
   deleteDoc: jest.fn(),
   docRef: jest.fn((...path: string[]) => `doc:${path.join('/')}`),
@@ -278,6 +282,28 @@ describe('setGifticonNotificationIds', () => {
 
     const [, update] = mockedUpdateDoc.mock.calls[0];
     expect(update).toEqual({ notificationIds: ['n1', 'n2'] });
+  });
+});
+
+describe('addGifticonUsageRecord', () => {
+  it('appends the record via arrayUnion', async () => {
+    const record = { amount: 3000, usedAt: '2026-01-01T00:00:00.000Z' };
+    await addGifticonUsageRecord('gift-1', record);
+
+    expect(docRef).toHaveBeenCalledWith('gifticons', 'gift-1');
+    const [, update] = mockedUpdateDoc.mock.calls[0];
+    expect(update).toEqual({ usageHistory: `arrayUnion:${JSON.stringify(record)}` });
+  });
+});
+
+describe('removeGifticonUsageRecord', () => {
+  it('removes the record via arrayRemove', async () => {
+    const record = { amount: 3000, usedAt: '2026-01-01T00:00:00.000Z' };
+    await removeGifticonUsageRecord('gift-1', record);
+
+    expect(docRef).toHaveBeenCalledWith('gifticons', 'gift-1');
+    const [, update] = mockedUpdateDoc.mock.calls[0];
+    expect(update).toEqual({ usageHistory: `arrayRemove:${JSON.stringify(record)}` });
   });
 });
 

@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import type { Gifticon } from '../types';
+import { remainingAmount } from '../usage';
 import { daysUntil } from '../../../shared/utils/date';
 import { formatCurrency } from '../../../shared/utils/currency';
 import { colors } from '../../../shared/theme/colors';
@@ -13,8 +14,10 @@ export default function GifticonStats({ items }: { items: Gifticon[] }) {
     let expiringSoonCount = 0;
     for (const item of items) {
       const days = daysUntil(item.expiresAt);
-      // An expired gifticon can't be spent, so it doesn't count toward "보유 금액".
-      if (item.amount && days >= 0) totalAmount += item.amount;
+      // An expired gifticon can't be spent, so it doesn't count toward "보유
+      // 금액" — and what's left to spend is the remaining balance, not the
+      // original face value, once part of it has been used.
+      if (days >= 0) totalAmount += remainingAmount(item) ?? 0;
       if (days >= 0 && days <= EXPIRING_SOON_WITHIN_DAYS) expiringSoonCount += 1;
     }
     return { totalAmount, expiringSoonCount, totalCount: items.length };

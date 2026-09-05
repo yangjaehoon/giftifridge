@@ -1,4 +1,6 @@
 import {
+  arrayRemove,
+  arrayUnion,
   collectionRef,
   deleteDoc,
   docRef,
@@ -12,7 +14,7 @@ import {
 } from '../../../lib/firebase/firestore';
 import { deleteGifticonImage } from './gifticonImage';
 import { omitUndefined, toGifticon } from './gifticonMapper';
-import type { Gifticon, NewGifticon } from '../types';
+import type { Gifticon, NewGifticon, UsageRecord } from '../types';
 
 const COLLECTION = 'gifticons';
 
@@ -122,6 +124,18 @@ export async function markGifticonUsed(id: string, isUsed: boolean) {
 
 export async function setGifticonNotificationIds(id: string, notificationIds: string[]) {
   await updateDoc(docRef(COLLECTION, id), { notificationIds });
+}
+
+// arrayUnion/arrayRemove match array entries by deep equality, so a record is
+// removed by passing back the exact { amount, usedAt } it was added with —
+// there's no separate id to key on, and usedAt (millisecond precision) is
+// what keeps two records from ever colliding.
+export async function addGifticonUsageRecord(id: string, record: UsageRecord) {
+  await updateDoc(docRef(COLLECTION, id), { usageHistory: arrayUnion(record) });
+}
+
+export async function removeGifticonUsageRecord(id: string, record: UsageRecord) {
+  await updateDoc(docRef(COLLECTION, id), { usageHistory: arrayRemove(record) });
 }
 
 export async function deleteGifticon(gifticon: Gifticon) {

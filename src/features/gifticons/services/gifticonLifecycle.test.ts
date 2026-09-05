@@ -1,17 +1,31 @@
-import { deleteGifticon, markGifticonUsed } from './gifticonService';
+import {
+  addGifticonUsageRecord,
+  deleteGifticon,
+  markGifticonUsed,
+  removeGifticonUsageRecord,
+} from './gifticonService';
 import { cancelNotifications } from './notificationService';
-import { removeGifticon, setGifticonUsed } from './gifticonLifecycle';
+import {
+  deleteGifticonUsageRecord,
+  recordGifticonUsage,
+  removeGifticon,
+  setGifticonUsed,
+} from './gifticonLifecycle';
 import type { Gifticon } from '../types';
 
 jest.mock('./gifticonService', () => ({
+  addGifticonUsageRecord: jest.fn(),
   deleteGifticon: jest.fn(),
   markGifticonUsed: jest.fn(),
+  removeGifticonUsageRecord: jest.fn(),
 }));
 jest.mock('./notificationService', () => ({ cancelNotifications: jest.fn() }));
 
 const mockedMarkUsed = markGifticonUsed as jest.Mock;
 const mockedDelete = deleteGifticon as jest.Mock;
 const mockedCancel = cancelNotifications as jest.Mock;
+const mockedAddUsage = addGifticonUsageRecord as jest.Mock;
+const mockedRemoveUsage = removeGifticonUsageRecord as jest.Mock;
 
 const gifticon = {
   id: 'g1',
@@ -24,6 +38,8 @@ beforeEach(() => {
   mockedMarkUsed.mockResolvedValue(undefined);
   mockedDelete.mockResolvedValue(undefined);
   mockedCancel.mockResolvedValue(undefined);
+  mockedAddUsage.mockResolvedValue(undefined);
+  mockedRemoveUsage.mockResolvedValue(undefined);
 });
 
 describe('setGifticonUsed', () => {
@@ -86,5 +102,63 @@ describe('removeGifticon', () => {
     mockedDelete.mockRejectedValue(new Error('delete failed'));
 
     await expect(removeGifticon(gifticon)).rejects.toThrow('delete failed');
+  });
+});
+
+describe('recordGifticonUsage', () => {
+  const cardGifticon = { ...gifticon, amount: 10000, isUsed: false, usageHistory: [] };
+
+  it('logs a partial spend without closing the gifticon out', async () => {
+    await recordGifticonUsage(cardGifticon, 3000, 'owner');
+
+    expect(mockedAddUsage).toHaveBeenCalledWith('g1', expect.objectContaining({ amount: 3000 }));
+    expect(mockedMarkUsed).not.toHaveBeenCalled();
+  });
+
+  it('marks the gifticon used once the spend exhausts the remaining balance', async () => {
+    const almostSpent = { ...cardGifticon, usageHistory: [{ amount: 7000, usedAt: 't1' }] };
+
+    await recordGifticonUsage(almostSpent, 3000, 'owner');
+
+    expect(mockedAddUsage).toHaveBeenCalledWith('g1', expect.objectContaining({ amount: 3000 }));
+    expect(mockedMarkUsed).toHaveBeenCalledWith('g1', true);
+  });
+
+  it('rejects a non-positive amount without writing anything', async () => {
+    await expect(recordGifticonUsage(cardGifticon, 0, 'owner')).rejects.toThrow(
+      'remaining balance',
+    );
+    expect(mockedAddUsage).not.toHaveBeenCalled();
+  });
+
+  it('rejects an amount larger than what remains', async () => {
+    await expect(recordGifticonUsage(cardGifticon, 10001, 'owner')).rejects.toThrow(
+      'remaining balance',
+    );
+    expect(mockedAddUsage).not.toHaveBeenCalled();
+  });
+
+  it('rejects any amount once the gifticon is already fully used', async () => {
+    const used = { ...cardGifticon, isUsed: true };
+
+    await expect(recordGifticonUsage(used, 1, 'owner')).rejects.toThrow('remaining balance');
+    expect(mockedAddUsage).not.toHaveBeenCalled();
+  });
+});
+
+describe('deleteGifticonUsageRecord', () => {
+  it('removes the record and leaves isUsed untouched', async () => {
+    await deleteGifticonUsageRecord('g1', { amount: 3000, usedAt: 't1' });
+
+    expect(mockedRemoveUsage).toHaveBeenCalledWith('g1', { amount: 3000, usedAt: 't1' });
+    expect(mockedMarkUsed).not.toHaveBeenCalled();
+  });
+
+  it('propagates a failure of the removal itself', async () => {
+    mockedRemoveUsage.mockRejectedValue(new Error('remove failed'));
+
+    await expect(deleteGifticonUsageRecord('g1', { amount: 3000, usedAt: 't1' })).rejects.toThrow(
+      'remove failed',
+    );
   });
 });

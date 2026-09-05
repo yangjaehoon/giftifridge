@@ -59,6 +59,21 @@ describe('GifticonStats', () => {
     expect(getByText('10,000원')).toBeTruthy();
   });
 
+  it('counts the remaining balance, not the face value, for a partially used gift card', async () => {
+    const items: Gifticon[] = [
+      makeGifticon({
+        id: '1',
+        amount: 10000,
+        expiresAt: daysFromNow(20),
+        usageHistory: [{ amount: 4000, usedAt: '2026-01-01T00:00:00.000Z' }],
+      }),
+    ];
+
+    const { getByText } = await render(<GifticonStats items={items} />);
+
+    expect(getByText('6,000원')).toBeTruthy();
+  });
+
   it('shows zero values for an empty list', async () => {
     const { getByText, getAllByText } = await render(<GifticonStats items={[]} />);
 

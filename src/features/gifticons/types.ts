@@ -8,6 +8,13 @@ export const CATEGORY_LABELS: Record<GifticonCategory, string> = {
   etc: '기타',
 };
 
+/** One partial spend logged against an amount-based (금액권) gifticon. */
+export interface UsageRecord {
+  amount: number;
+  /** Full ISO instant. */
+  usedAt: string;
+}
+
 export interface Gifticon {
   id: string;
   ownerId: string;
@@ -22,6 +29,12 @@ export interface Gifticon {
   isUsed: boolean;
   /** Full ISO instant. */
   usedAt?: string;
+  /**
+   * Partial spends against `amount`, most useful for a gift-card-style voucher
+   * that gets used over several visits instead of all at once. See
+   * ../usage.ts for how this and `isUsed` combine into a remaining balance.
+   */
+  usageHistory?: UsageRecord[];
   notificationIds?: string[];
   location?: { latitude: number; longitude: number };
   spaceId?: string;
@@ -30,5 +43,5 @@ export interface Gifticon {
 
 export type NewGifticon = Omit<
   Gifticon,
-  'id' | 'ownerId' | 'createdAt' | 'isUsed' | 'usedAt' | 'notificationIds'
+  'id' | 'ownerId' | 'createdAt' | 'isUsed' | 'usedAt' | 'notificationIds' | 'usageHistory'
 >;

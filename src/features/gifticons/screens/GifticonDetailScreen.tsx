@@ -5,12 +5,15 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useCurrentUser } from '../../auth/context/AuthContext';
 import { removeGifticon, setGifticonUsed } from '../services/gifticonLifecycle';
 import { useGifticon } from '../hooks/useGifticon';
+import { useGifticonUsage } from '../hooks/useGifticonUsage';
 import Button from '../../../shared/components/Button';
 import { useToast } from '../../../shared/components/ToastProvider';
 import { useMaxBrightnessWhileFocused } from '../../../shared/hooks/useMaxBrightnessWhileFocused';
 import GifticonDetailSkeleton from '../components/GifticonDetailSkeleton';
 import GifticonBarcode from '../components/GifticonBarcode';
+import GifticonUsagePanel from '../components/GifticonUsagePanel';
 import { CATEGORY_LABELS } from '../types';
+import { isAmountBased, remainingAmount } from '../usage';
 import { daysUntil, formatDate } from '../../../shared/utils/date';
 import { formatCurrency } from '../../../shared/utils/currency';
 import { haptics } from '../../../shared/utils/haptics';
@@ -26,6 +29,7 @@ export default function GifticonDetailScreen({ route, navigation }: Props) {
   const showToast = useToast();
   const { gifticon, loading, error, refresh } = useGifticon(gifticonId);
   useMaxBrightnessWhileFocused(Boolean(gifticon?.barcode));
+  const usage = useGifticonUsage(gifticon, user?.uid);
   const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState(false);
   const copyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -129,6 +133,7 @@ export default function GifticonDetailScreen({ route, navigation }: Props) {
   const days = daysUntil(gifticon.expiresAt);
   const expired = days < 0;
   const soon = !expired && days <= 7;
+  const remaining = remainingAmount(gifticon);
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
@@ -144,7 +149,11 @@ export default function GifticonDetailScreen({ route, navigation }: Props) {
         </Text>
         <Text style={styles.name}>{gifticon.name}</Text>
         {gifticon.amount ? (
-          <Text style={styles.amount}>{formatCurrency(gifticon.amount)}</Text>
+          <Text style={styles.amount}>
+            {remaining !== null && remaining < gifticon.amount
+              ? `${formatCurrency(remaining)} 남음`
+              : formatCurrency(gifticon.amount)}
+          </Text>
         ) : null}
 
         <View style={styles.expiryRow}>
@@ -166,6 +175,15 @@ export default function GifticonDetailScreen({ route, navigation }: Props) {
           <Text style={styles.meta}>사용일 {formatDate(gifticon.usedAt)}</Text>
         ) : null}
       </View>
+
+      {isAmountBased(gifticon) && (
+        <GifticonUsagePanel
+          gifticon={gifticon}
+          onRecordUsage={usage.recordUsage}
+          onDeleteRecord={usage.deleteRecord}
+          busy={usage.busy}
+        />
+      )}
 
       {gifticon.barcode ? (
         <View style={styles.barcodeCard}>

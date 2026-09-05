@@ -1,7 +1,13 @@
-import { deleteGifticon, markGifticonUsed } from './gifticonService';
+import {
+  addGifticonUsageRecord,
+  deleteGifticon,
+  markGifticonUsed,
+  removeGifticonUsageRecord,
+} from './gifticonService';
 import { cancelNotifications } from './notificationService';
 import { withTimeout, WRITE_TIMEOUT_MS } from '../../../shared/utils/withTimeout';
-import type { Gifticon } from '../types';
+import { remainingAmount } from '../usage';
+import type { Gifticon, UsageRecord } from '../types';
 
 // The "use / un-use / delete a gifticon" policy — including which of those
 // steps may touch the owner's local reminders — so the detail screen is left
@@ -43,4 +49,46 @@ export async function removeGifticon(gifticon: Gifticon): Promise<void> {
     // best-effort cleanup; proceed with the delete regardless
   }
   await withTimeout(deleteGifticon(gifticon), WRITE_TIMEOUT_MS);
+}
+
+/**
+ * Logs one partial spend against an amount-based (금액권) gifticon — a gift
+ * card used over several visits instead of all at once. If this spend uses up
+ * exactly what was left, the gifticon is also marked used (via setGifticonUsed,
+ * so the owner-only reminder-cancel rule still applies) so it moves to the
+ * 사용완료 tab without the caller having to flip both.
+ */
+export async function recordGifticonUsage(
+  gifticon: Pick<
+    Gifticon,
+    'id' | 'ownerId' | 'amount' | 'isUsed' | 'usageHistory' | 'notificationIds'
+  >,
+  amount: number,
+  actingUid: string | undefined,
+): Promise<void> {
+  const remaining = remainingAmount(gifticon) ?? 0;
+  if (!(amount > 0) || amount > remaining) {
+    throw new Error('recordGifticonUsage: amount must be between 0 and the remaining balance');
+  }
+
+  const record: UsageRecord = { amount, usedAt: new Date().toISOString() };
+  await withTimeout(addGifticonUsageRecord(gifticon.id, record), WRITE_TIMEOUT_MS);
+
+  if (amount === remaining) {
+    await setGifticonUsed(gifticon, true, actingUid);
+  }
+}
+
+/**
+ * Removes one logged spend. Deliberately leaves isUsed alone — a gifticon
+ * closed out via the used/unused toggle (by hand, or because a usage record
+ * had already brought the balance to 0) stays closed until the user reopens
+ * it explicitly, so correcting an old record can't silently reopen something
+ * they meant to leave done.
+ */
+export async function deleteGifticonUsageRecord(
+  gifticonId: string,
+  record: UsageRecord,
+): Promise<void> {
+  await withTimeout(removeGifticonUsageRecord(gifticonId, record), WRITE_TIMEOUT_MS);
 }

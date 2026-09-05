@@ -2,6 +2,7 @@ import React from 'react';
 import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import type { Gifticon } from '../types';
 import { CATEGORY_LABELS } from '../types';
+import { remainingAmount } from '../usage';
 import { daysUntil, formatDate } from '../../../shared/utils/date';
 import { formatCurrency } from '../../../shared/utils/currency';
 import { colors } from '../../../shared/theme/colors';
@@ -20,7 +21,16 @@ function GifticonCard({
   const soon = !expired && days <= 3;
 
   const status = gifticon.isUsed ? '사용완료' : expired ? '기한만료' : `${days}일 남음`;
-  const priceLabel = gifticon.amount ? `, ${formatCurrency(gifticon.amount)}` : '';
+  const remaining = remainingAmount(gifticon);
+  // Once partially spent, the face value on the card is no longer what's left —
+  // show the balance instead so this doesn't read as more valuable than it is.
+  const priceText =
+    remaining !== null && gifticon.amount !== undefined
+      ? remaining < gifticon.amount
+        ? `${formatCurrency(remaining)} 남음`
+        : formatCurrency(gifticon.amount)
+      : null;
+  const priceLabel = priceText ? `, ${priceText}` : '';
 
   return (
     <TouchableOpacity
@@ -43,9 +53,7 @@ function GifticonCard({
         <Text style={styles.name} numberOfLines={1}>
           {gifticon.name}
         </Text>
-        {gifticon.amount ? (
-          <Text style={styles.amount}>{formatCurrency(gifticon.amount)}</Text>
-        ) : null}
+        {priceText ? <Text style={styles.amount}>{priceText}</Text> : null}
         <Text style={styles.expiry}>~{formatDate(gifticon.expiresAt)}</Text>
       </View>
       <View style={styles.badgeArea}>
