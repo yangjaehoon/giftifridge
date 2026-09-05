@@ -31,7 +31,7 @@ export function useGifticonForm(existing: Gifticon | null | undefined, isEditing
       setOriginalImageUrl(existing.imageUrl);
       setNameRaw(existing.name);
       setBrandRaw(existing.brand);
-      setAmount(existing.amount ? String(existing.amount) : '');
+      setAmount(existing.amount != null ? String(existing.amount) : '');
       setCategory(existing.category);
       setBarcode(existing.barcode ?? '');
       setExpiresAt(parseDate(existing.expiresAt));

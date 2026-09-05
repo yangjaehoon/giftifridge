@@ -393,4 +393,24 @@ describe('AddGifticonScreen — edit', () => {
     expect(queryByText('사진에서 금액을 자동으로 인식했어요. 확인해주세요.')).toBeNull();
     expect(queryByText('브랜드를 보고 카테고리를 자동으로 선택했어요. 확인해주세요.')).toBeNull();
   });
+
+  it('protects a real saved amount of 0, not just a truthy one', async () => {
+    mockedUseGifticon.mockReturnValue({
+      gifticon: { ...existingGifticon, amount: 0 },
+      loading: false,
+    });
+    mockedRecognizeText.mockResolvedValue('스타벅스\n아메리카노 Tall\n금액 10,000원');
+    const { getByDisplayValue, getByTestId, queryByText } = await renderScreen({
+      gifticonId: 'g1',
+    });
+
+    await waitFor(() => expect(getByDisplayValue('기존아메리카노')).toBeTruthy());
+
+    mockedLibrary.mockResolvedValue({ canceled: false, assets: [{ uri: 'file:///new.jpg' }] });
+    await act(async () => fireEvent.press(getByTestId('image-picker')));
+
+    await waitFor(() => expect(mockedRecognizeText).toHaveBeenCalled());
+    expect(getByDisplayValue('0')).toBeTruthy();
+    expect(queryByText('사진에서 금액을 자동으로 인식했어요. 확인해주세요.')).toBeNull();
+  });
 });

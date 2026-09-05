@@ -41,6 +41,13 @@ describe('useGifticonForm', () => {
     expect(result.current.location).toEqual({ latitude: 1, longitude: 2 });
   });
 
+  it('hydrates a real saved amount of 0, not as blank', async () => {
+    const { result } = await renderHook(() => useGifticonForm({ ...existing, amount: 0 }, true));
+
+    await waitFor(() => expect(result.current.hydrated).toBe(true));
+    expect(result.current.amount).toBe('0');
+  });
+
   it('validate() flags missing image/name/brand and returns false', async () => {
     const { result } = await renderHook(() => useGifticonForm(undefined, false));
 

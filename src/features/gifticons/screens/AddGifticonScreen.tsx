@@ -118,7 +118,9 @@ export default function AddGifticonScreen({ navigation, route }: Props) {
     image.markDateManuallyEdited();
     image.markCategoryManuallyEdited();
     if (existing.barcode) image.markBarcodeManuallyEdited();
-    if (existing.amount) image.markAmountManuallyEdited();
+    // != null (not truthy): unlike an empty barcode string, a saved amount of
+    // 0 is a real value distinct from "no amount" and must stay protected.
+    if (existing.amount != null) image.markAmountManuallyEdited();
     // mark* are recreated every render but always do the same thing; only
     // re-run this effect when a (different) existing gifticon loads.
     // eslint-disable-next-line react-hooks/exhaustive-deps
