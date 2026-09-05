@@ -96,6 +96,22 @@ export default function AddGifticonScreen({ navigation, route }: Props) {
     navigation.setOptions({ title: isEditing ? '기프티콘 수정' : '기프티콘 등록' });
   }, [navigation, isEditing]);
 
+  // An existing gifticon's saved name/brand/expiry are real data, not an OCR
+  // guess — protect them up front so attaching a new photo while editing
+  // can't silently overwrite them (barcode is optional, so it's only
+  // protected when the gifticon actually has one; an empty one is still fair
+  // game for auto-fill).
+  useEffect(() => {
+    if (!existing) return;
+    image.markNameManuallyEdited();
+    image.markBrandManuallyEdited();
+    image.markDateManuallyEdited();
+    if (existing.barcode) image.markBarcodeManuallyEdited();
+    // mark* are recreated every render but always do the same thing; only
+    // re-run this effect when a (different) existing gifticon loads.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [existing]);
+
   const saveCurrentLocation = async () => {
     setLocationSaving(true);
     try {

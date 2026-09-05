@@ -85,12 +85,14 @@ export function useGifticonImage({
     }
   };
 
+  // Deliberately does NOT reset the manually-edited refs: once a field holds
+  // real content — typed by the user, hydrated from an existing gifticon (see
+  // AddGifticonScreen's edit-mode effect), or a still-standing OCR guess from
+  // an earlier photo the user chose to keep — picking a different photo must
+  // not silently clobber it. A field only becomes overwritable again by the
+  // user clearing/editing it (which flips its guard) or if it was never set.
   const handlePicked = (uri: string) => {
     onImageChosen(uri);
-    dateManuallyEditedRef.current = false;
-    nameManuallyEditedRef.current = false;
-    brandManuallyEditedRef.current = false;
-    barcodeManuallyEditedRef.current = false;
     recognizeFields(uri);
   };
 

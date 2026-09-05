@@ -68,9 +68,9 @@ export function parseExpiryDateFromText(text: string): string | null {
   return toDateString(new Date(year, month - 1, day));
 }
 
-/** Raw OCR text, or null if recognition failed. Shared by recognizeExpiryDate
- * and the gallery auto-import scan, which also needs it to spot gifticon
- * keywords. */
+/** Raw OCR text, or null if recognition failed. Callers derive whatever they
+ * need from it (parseExpiryDateFromText, guessBrandAndName) — kept as one
+ * recognition pass since running OCR twice per photo would be wasteful. */
 export async function recognizeText(imageUri: string): Promise<string | null> {
   try {
     const result = await TextRecognition.recognize(imageUri, TextRecognitionScript.KOREAN);
@@ -78,11 +78,6 @@ export async function recognizeText(imageUri: string): Promise<string | null> {
   } catch {
     return null;
   }
-}
-
-export async function recognizeExpiryDate(imageUri: string): Promise<string | null> {
-  const text = await recognizeText(imageUri);
-  return text == null ? null : parseExpiryDateFromText(text);
 }
 
 // Boilerplate that shows up on gifticons but is never the brand/product name
@@ -102,14 +97,19 @@ const NOISE_KEYWORDS = [
 ];
 const MIN_LINE_LENGTH = 2;
 const MAX_LINE_LENGTH = 30;
-// A line more digit-dense than this reads as a barcode number or price, not text.
+// A line this digit-dense reads as a barcode number or price, not text — but
+// require a minimum digit count too, or short real brand names that happen to
+// contain a couple of digits (e.g. "GS25", "seven eleven"-style codes) get
+// misread as noise merely for being short.
+const MIN_NOISE_DIGIT_COUNT = 4;
 const MAX_DIGIT_RATIO = 0.4;
 
 function isNoiseLine(line: string): boolean {
   if (line.length < MIN_LINE_LENGTH || line.length > MAX_LINE_LENGTH) return true;
   if (parseExpiryDateFromText(line) != null) return true;
   const digitCount = (line.match(/\d/g) ?? []).length;
-  if (digitCount / line.length > MAX_DIGIT_RATIO) return true;
+  if (digitCount >= MIN_NOISE_DIGIT_COUNT && digitCount / line.length > MAX_DIGIT_RATIO)
+    return true;
   return NOISE_KEYWORDS.some((keyword) => line.includes(keyword));
 }
 

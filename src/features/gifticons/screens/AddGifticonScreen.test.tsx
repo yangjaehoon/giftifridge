@@ -359,4 +359,24 @@ describe('AddGifticonScreen — edit', () => {
     expect(mockedUpload).not.toHaveBeenCalled();
     await waitFor(() => expect(navigation.goBack).toHaveBeenCalled());
   });
+
+  it('does not let re-attaching a photo overwrite the existing name/brand/expiry', async () => {
+    mockedUseGifticon.mockReturnValue({ gifticon: existingGifticon, loading: false });
+    mockedRecognizeText.mockResolvedValue('스타벅스\n아메리카노 Tall\n유효기간 2030.01.01까지');
+    const { getByDisplayValue, getByTestId, queryByText } = await renderScreen({
+      gifticonId: 'g1',
+    });
+
+    await waitFor(() => expect(getByDisplayValue('기존아메리카노')).toBeTruthy());
+
+    mockedLibrary.mockResolvedValue({ canceled: false, assets: [{ uri: 'file:///new.jpg' }] });
+    await act(async () => fireEvent.press(getByTestId('image-picker')));
+
+    // Give the OCR pass a chance to resolve; the existing values must stand.
+    await waitFor(() => expect(mockedRecognizeText).toHaveBeenCalled());
+    expect(getByDisplayValue('기존아메리카노')).toBeTruthy();
+    expect(getByDisplayValue('기존스타벅스')).toBeTruthy();
+    expect(queryByText('2030.01.01')).toBeNull();
+    expect(queryByText('사진에서 상품명을 자동으로 인식했어요. 확인해주세요.')).toBeNull();
+  });
 });

@@ -157,7 +157,7 @@ describe('useGifticonImage', () => {
     expect(callbacks.onBrandDetected).toHaveBeenCalledWith('스타벅스');
   });
 
-  it('picking a new photo resets every manually-edited guard from the previous one', async () => {
+  it('a manually-edited guard survives picking a different photo afterward', async () => {
     const resolvers: ((v: string | null) => void)[] = [];
     mockedRecognizeText.mockImplementation(
       () => new Promise<string | null>((r) => resolvers.push(r)),
@@ -173,12 +173,31 @@ describe('useGifticonImage', () => {
     await act(async () => resolvers[0](GIFTICON_TEXT));
     expect(callbacks.onNameDetected).not.toHaveBeenCalled();
 
-    // A newly picked photo is a fresh start — the guard from the previous
-    // photo shouldn't carry over and suppress this one's own guess.
+    // Picking a different photo afterward must not silently overwrite a name
+    // the user has already committed to (typed, or protected by the screen
+    // because it came from an existing gifticon) — see AddGifticonScreen's
+    // edit-mode effect, which relies on exactly this to hold.
     await act(async () => {
       await result.current.pickFromLibrary();
     });
     await act(async () => resolvers[1](GIFTICON_TEXT));
+    expect(callbacks.onNameDetected).not.toHaveBeenCalled();
+  });
+
+  it('a field never auto-filled yet still gets filled by a later photo', async () => {
+    mockedRecognizeText.mockResolvedValueOnce(null).mockResolvedValueOnce(GIFTICON_TEXT);
+    mockedLibrary.mockResolvedValue({ canceled: false, assets: [{ uri: 'file:///a.jpg' }] });
+    const callbacks = setup();
+    const { result } = await renderHook(() => useGifticonImage(callbacks));
+
+    await act(async () => {
+      await result.current.pickFromLibrary();
+    });
+    expect(callbacks.onNameDetected).not.toHaveBeenCalled();
+
+    await act(async () => {
+      await result.current.pickFromLibrary();
+    });
     expect(callbacks.onNameDetected).toHaveBeenCalledWith('아메리카노 Tall');
   });
 });
