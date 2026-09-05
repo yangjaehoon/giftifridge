@@ -10,6 +10,11 @@ describe('classifyWriteError', () => {
     expect(classifyWriteError({ code: 'permission-denied' })).toBe('permission');
   });
 
+  it('classifies a Firebase Storage error as "upload"', () => {
+    expect(classifyWriteError({ code: 'storage/unauthorized' })).toBe('upload');
+    expect(classifyWriteError({ code: 'storage/retry-limit-exceeded' })).toBe('upload');
+  });
+
   it('classifies anything else as "other"', () => {
     expect(classifyWriteError(new Error('boom'))).toBe('other');
     expect(classifyWriteError({ code: 'unavailable' })).toBe('other');

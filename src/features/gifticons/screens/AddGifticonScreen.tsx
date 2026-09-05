@@ -168,6 +168,9 @@ export default function AddGifticonScreen({ navigation, route }: Props) {
         navigation.goBack();
       }
     } catch (err) {
+      if (__DEV__) {
+        console.warn('[AddGifticon] save failed', (err as { code?: unknown })?.code ?? err);
+      }
       Alert.alert('오류', getGifticonWriteErrorMessage(err, 'save'));
     } finally {
       setSaving(false);
