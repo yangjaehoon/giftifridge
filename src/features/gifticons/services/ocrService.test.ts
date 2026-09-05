@@ -224,6 +224,25 @@ describe('guessGifticonFields', () => {
       category: 'cafe',
     });
   });
+
+  it('drops a line missing just its own frame when its siblings do have real heights', () => {
+    // Unlike the "no frame data available" case above, most of this photo's
+    // lines DO have real heights — this one line's own missing frame reads
+    // as "unverified", not "trust it regardless of size".
+    const recognized: RecognizedText = {
+      text: '스타벅스\n안내문구\n아메리카노 Tall',
+      lines: [
+        { text: '스타벅스', height: 40 },
+        { text: '안내문구', height: 0 },
+        { text: '아메리카노 Tall', height: 38 },
+      ],
+    };
+    expect(guessGifticonFields(recognized)).toEqual({
+      brand: '스타벅스',
+      name: '아메리카노 Tall',
+      category: 'cafe',
+    });
+  });
 });
 
 describe('parseAmountFromText', () => {
@@ -299,6 +318,15 @@ describe('recognizeText', () => {
 
     await expect(recognizeText('file:///gifticon.jpg')).resolves.toBeNull();
   });
+
+  it('still returns the raw text if a build ever reports text with no matching blocks', async () => {
+    mockedRecognize.mockResolvedValue({ text: '유효기간 2026.03.15', blocks: undefined });
+
+    await expect(recognizeText('file:///gifticon.jpg')).resolves.toEqual({
+      text: '유효기간 2026.03.15',
+      lines: [],
+    });
+  });
 });
 
 describe('parseBarcodeFromText', () => {
@@ -316,6 +344,10 @@ describe('parseBarcodeFromText', () => {
 
   it('does not mistake a dash-separated phone number for a barcode', () => {
     expect(parseBarcodeFromText('고객센터 1544-1650')).toBeNull();
+  });
+
+  it('does not mistake an undashed Korean mobile number for a barcode', () => {
+    expect(parseBarcodeFromText('연락처 01012345678')).toBeNull();
   });
 
   it('returns null when multiple long digit runs are ambiguous with no keyword hint', () => {

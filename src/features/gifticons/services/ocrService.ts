@@ -23,6 +23,25 @@ function hasNearbyKeyword(
   );
 }
 
+// Shared by every "find the one match in this text that isn't ambiguous"
+// parser below (date/amount/barcode): a keyword nearby resolves which match
+// is the one we want (an expiry date among an issue date, a face value among
+// a discounted one); with neither a single match nor a keyword to pick one,
+// null is returned rather than guessing.
+function pickUnambiguousMatch<T extends { index: number; length: number }>(
+  text: string,
+  matches: T[],
+  prefixKeywords: string[],
+  suffixKeywords: string[],
+): T | null {
+  if (matches.length === 0) return null;
+  const withKeyword = matches.filter((match) =>
+    hasNearbyKeyword(text, match.index, match.length, prefixKeywords, suffixKeywords),
+  );
+  const candidates = withKeyword.length > 0 ? withKeyword : matches;
+  return candidates.length === 1 ? candidates[0] : null;
+}
+
 const DATE_PREFIX_KEYWORDS = ['유효기간', '유효기한', '만료'];
 const DATE_SUFFIX_KEYWORDS = ['까지'];
 
@@ -67,16 +86,10 @@ function collectDateMatches(text: string, re: RegExp): DateMatch[] {
  */
 export function parseExpiryDateFromText(text: string): string | null {
   const matches = DATE_PATTERNS.flatMap((re) => collectDateMatches(text, re));
-  if (matches.length === 0) return null;
+  const match = pickUnambiguousMatch(text, matches, DATE_PREFIX_KEYWORDS, DATE_SUFFIX_KEYWORDS);
+  if (!match) return null;
 
-  const withKeyword = matches.filter((match) =>
-    hasNearbyKeyword(text, match.index, match.length, DATE_PREFIX_KEYWORDS, DATE_SUFFIX_KEYWORDS),
-  );
-  const candidates = withKeyword.length > 0 ? withKeyword : matches;
-  if (candidates.length !== 1) return null;
-
-  const { year, month, day } = candidates[0];
-  return toDateString(new Date(year, month - 1, day));
+  return toDateString(new Date(match.year, match.month - 1, match.day));
 }
 
 const AMOUNT_PREFIX_KEYWORDS = ['금액', '정가', '권면가액', '충전'];
@@ -110,15 +123,8 @@ function collectAmountMatches(text: string): AmountMatch[] {
  */
 export function parseAmountFromText(text: string): number | null {
   const matches = collectAmountMatches(text);
-  if (matches.length === 0) return null;
-
-  const withKeyword = matches.filter((match) =>
-    hasNearbyKeyword(text, match.index, match.length, AMOUNT_PREFIX_KEYWORDS, []),
-  );
-  const candidates = withKeyword.length > 0 ? withKeyword : matches;
-  if (candidates.length !== 1) return null;
-
-  return candidates[0].amount;
+  const match = pickUnambiguousMatch(text, matches, AMOUNT_PREFIX_KEYWORDS, []);
+  return match?.amount ?? null;
 }
 
 export interface RecognizedLine {
@@ -141,7 +147,11 @@ export interface RecognizedText {
 export async function recognizeText(imageUri: string): Promise<RecognizedText | null> {
   try {
     const result = await TextRecognition.recognize(imageUri, TextRecognitionScript.KOREAN);
-    const lines = result.blocks.flatMap((block) =>
+    // Degrade to an empty line list (not a thrown/null result) if a native
+    // build ever returns text without a matching blocks structure — the raw
+    // text and its date/amount parsing are still worth having even without
+    // per-line heights.
+    const lines = (result.blocks ?? []).flatMap((block) =>
       block.lines.map((line) => ({ text: line.text, height: line.frame?.height ?? 0 })),
     );
     return { text: result.text, lines };
@@ -154,11 +164,13 @@ const BARCODE_PREFIX_KEYWORDS = ['바코드'];
 // A barcode number is printed as one unbroken run of digits — unlike a
 // comma-grouped amount ("10,000") or a dash-separated phone number
 // ("1544-1650"), both of which break into shorter runs once split on any
-// non-digit character. A phone/order number that happens to be this long
-// either needs a nearby "바코드" label to be picked, or, lacking one, is left
-// unresolved rather than guessed at (same ambiguity rule as the date/amount
-// parsers above).
-const MIN_BARCODE_DIGITS = 8;
+// non-digit character. The minimum is set above a Korean mobile number
+// written without dashes (10-11 digits) since gifticon barcodes are
+// realistically EAN-13 or longer; a run in range that isn't actually a
+// barcode either needs a nearby "바코드" label to be picked, or, lacking
+// one, is left unresolved rather than guessed at (same ambiguity rule as
+// the date/amount parsers above).
+const MIN_BARCODE_DIGITS = 12;
 const MAX_BARCODE_DIGITS = 20;
 
 interface BarcodeTextMatch {
@@ -185,15 +197,8 @@ function collectBarcodeMatches(text: string): BarcodeTextMatch[] {
  */
 export function parseBarcodeFromText(text: string): string | null {
   const matches = collectBarcodeMatches(text);
-  if (matches.length === 0) return null;
-
-  const withKeyword = matches.filter((match) =>
-    hasNearbyKeyword(text, match.index, match.length, BARCODE_PREFIX_KEYWORDS, []),
-  );
-  const candidates = withKeyword.length > 0 ? withKeyword : matches;
-  if (candidates.length !== 1) return null;
-
-  return candidates[0].digits;
+  const match = pickUnambiguousMatch(text, matches, BARCODE_PREFIX_KEYWORDS, []);
+  return match?.digits ?? null;
 }
 
 // Boilerplate that shows up on gifticons but is never the brand/product name
@@ -353,11 +358,16 @@ const MIN_HEADLINE_HEIGHT_RATIO = 0.5;
 
 function keepHeadlineSizedLines(lines: RecognizedLine[]): RecognizedLine[] {
   const heights = lines.map((line) => line.height).filter((h) => h > 0);
-  if (heights.length === 0) return lines; // no frame data available on this platform/build
+  // No line in this whole recognition pass has height data — this platform/
+  // build never reports a frame, so there's nothing to compare against and
+  // every line is kept as before this feature existed. A single OTHER line
+  // missing just its own frame while its siblings have real heights is
+  // deliberately not given the same pass here — height=0 there just means
+  // "unverified", and this feature's whole point is not to trust unverified
+  // lines as headline text.
+  if (heights.length === 0) return lines;
   const maxHeight = Math.max(...heights);
-  return lines.filter(
-    (line) => line.height === 0 || line.height >= maxHeight * MIN_HEADLINE_HEIGHT_RATIO,
-  );
+  return lines.filter((line) => line.height >= maxHeight * MIN_HEADLINE_HEIGHT_RATIO);
 }
 
 /**
