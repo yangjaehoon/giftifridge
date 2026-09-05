@@ -400,7 +400,17 @@ export function guessGifticonFields(recognized: RecognizedText): GuessedGifticon
     // name too — but only an exact match: some brands' own menu items embed
     // the brand name (e.g. 설빙's "인절미설빙"), and excluding by mere
     // substring would wrongly throw away the real product name there.
-    const name = headlineLines.find((line) => compact(line) !== brandKey);
+    const notJustBrand = (line: string) => compact(line) !== brandKey;
+    // On a real gifticon the product name sits directly under the brand. When
+    // the photo is a screenshot of a web/app page (a search result, a blog
+    // post), the site/app name up in the chrome can survive noise filtering
+    // and would otherwise be taken as the name — so anchor on the line that
+    // carries the brand and read the next headline after it, only falling back
+    // to "first non-brand headline" when the brand appears solely in fine
+    // print (e.g. an old "사용처 | 스타벅스" row with no standalone brand line).
+    const brandLineIndex = headlineLines.findIndex((line) => compact(line).includes(brandKey));
+    const afterBrand = brandLineIndex === -1 ? [] : headlineLines.slice(brandLineIndex + 1);
+    const name = afterBrand.find(notJustBrand) ?? headlineLines.find(notJustBrand);
     return { brand: known.name, name: name ?? null, category: known.category };
   }
 
