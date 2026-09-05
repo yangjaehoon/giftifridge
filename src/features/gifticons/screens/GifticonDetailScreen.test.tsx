@@ -136,6 +136,25 @@ describe('GifticonDetailScreen', () => {
     expect(getByText(/D-10/)).toBeTruthy();
   });
 
+  it('does not stamp a status label across the image while still active', async () => {
+    const { queryByText } = await renderScreen();
+    expect(queryByText('기한만료', { includeHiddenElements: true })).toBeNull();
+    expect(queryByText('사용완료', { includeHiddenElements: true })).toBeNull();
+  });
+
+  it('stamps 기한만료 across the image once expired', async () => {
+    setHook({ gifticon: makeGifticon({ expiresAt: daysFromNow(-1) }) });
+    const { getAllByText } = await renderScreen();
+    // One from the existing D-day pill, one from the new hidden image overlay.
+    expect(getAllByText('기한만료', { includeHiddenElements: true })).toHaveLength(2);
+  });
+
+  it('stamps 사용완료 across the image once used', async () => {
+    setHook({ gifticon: makeGifticon({ isUsed: true, usedAt: daysFromNow(0) }) });
+    const { getByText } = await renderScreen();
+    expect(getByText('사용완료', { includeHiddenElements: true })).toBeTruthy();
+  });
+
   it('marks the gifticon used with the acting uid and stays on the screen', async () => {
     setHook({ gifticon: makeGifticon({ notificationIds: ['n1'] }) });
     const { getByText, navigation } = await renderScreen();

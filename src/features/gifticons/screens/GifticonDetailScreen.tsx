@@ -12,6 +12,7 @@ import { useMaxBrightnessWhileFocused } from '../../../shared/hooks/useMaxBright
 import GifticonDetailSkeleton from '../components/GifticonDetailSkeleton';
 import GifticonBarcode from '../components/GifticonBarcode';
 import GifticonUsagePanel from '../components/GifticonUsagePanel';
+import GifticonStatusOverlay from '../components/GifticonStatusOverlay';
 import { CATEGORY_LABELS } from '../types';
 import { formatRemainingAmount, isAmountBased } from '../usage';
 import { daysUntil, formatDate } from '../../../shared/utils/date';
@@ -132,14 +133,18 @@ export default function GifticonDetailScreen({ route, navigation }: Props) {
   const days = daysUntil(gifticon.expiresAt);
   const expired = days < 0;
   const soon = !expired && days <= 7;
+  const overlayLabel = gifticon.isUsed ? '사용완료' : expired ? '기한만료' : null;
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
-      <Image
-        source={{ uri: gifticon.imageUrl }}
-        style={styles.image}
-        accessibilityLabel="기프티콘 이미지"
-      />
+      <View style={styles.imageWrap}>
+        <Image
+          source={{ uri: gifticon.imageUrl }}
+          style={styles.image}
+          accessibilityLabel="기프티콘 이미지"
+        />
+        <GifticonStatusOverlay label={overlayLabel} textStyle={styles.overlayText} />
+      </View>
 
       <View style={styles.section}>
         <Text style={styles.brand}>
@@ -220,12 +225,15 @@ const styles = StyleSheet.create({
   },
   retryButtonText: { color: colors.gray700, fontWeight: '700', fontSize: 14 },
   editLink: { color: colors.primary, fontSize: 13, marginRight: 4, fontWeight: '600' },
-  image: {
+  imageWrap: {
     width: '100%',
     aspectRatio: 3 / 4,
     borderRadius: 12,
+    overflow: 'hidden',
     backgroundColor: colors.surfaceSubtle,
   },
+  image: { width: '100%', height: '100%' },
+  overlayText: { fontSize: 28 },
   section: { marginTop: 20, gap: 4 },
   brand: { fontSize: 13, color: colors.gray500 },
   name: { fontSize: 20, fontWeight: '700', color: colors.gray900 },

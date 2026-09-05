@@ -77,25 +77,27 @@ describe('GifticonCard', () => {
     expect(getByText('D-2')).toBeTruthy();
   });
 
-  it('shows the expired badge for a past expiry date', async () => {
+  it('stamps the expired label across the image for a past expiry date', async () => {
     const { getByText } = await render(
       <GifticonCard
         gifticon={makeGifticon({ id: '1', expiresAt: daysFromNow(-1) })}
         onPress={jest.fn()}
       />,
     );
-    expect(getByText('기한만료')).toBeTruthy();
+    // Hidden from screen readers on purpose — the card's own accessibilityLabel
+    // already speaks the status — so this query must opt back in to find it.
+    expect(getByText('기한만료', { includeHiddenElements: true })).toBeTruthy();
   });
 
-  it('shows the used badge (taking priority over expiry) when marked used', async () => {
+  it('stamps the used label (taking priority over expiry) when marked used', async () => {
     const { getByText, queryByText } = await render(
       <GifticonCard
         gifticon={makeGifticon({ id: '1', isUsed: true, expiresAt: daysFromNow(-5) })}
         onPress={jest.fn()}
       />,
     );
-    expect(getByText('사용완료')).toBeTruthy();
-    expect(queryByText('기한만료')).toBeNull();
+    expect(getByText('사용완료', { includeHiddenElements: true })).toBeTruthy();
+    expect(queryByText('기한만료', { includeHiddenElements: true })).toBeNull();
   });
 
   it('calls onPress when the card is tapped', async () => {
