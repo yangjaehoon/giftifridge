@@ -244,6 +244,23 @@ describe('GifticonDetailScreen', () => {
     expect(mockedClipboard).toHaveBeenCalledWith('8801234567');
   });
 
+  it('opens and closes the barcode zoom view on tap', async () => {
+    setHook({ gifticon: makeGifticon({ barcode: '8801234567' }) });
+    const { getByLabelText, queryByLabelText } = await renderScreen();
+
+    expect(queryByLabelText('바코드 확대 화면 닫기')).toBeNull();
+
+    await act(async () => {
+      fireEvent.press(getByLabelText('바코드 크게 보기'));
+    });
+    expect(getByLabelText('바코드 확대 화면 닫기')).toBeTruthy();
+
+    await act(async () => {
+      fireEvent.press(getByLabelText('바코드 확대 화면 닫기'));
+    });
+    expect(queryByLabelText('바코드 확대 화면 닫기')).toBeNull();
+  });
+
   it('registers a header edit action that navigates to the edit screen', async () => {
     const { navigation } = await renderScreen();
 

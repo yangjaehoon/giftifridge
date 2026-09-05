@@ -10,7 +10,16 @@ import { colors } from '../../../shared/theme/colors';
  * register looks the product up by those. If the value can't be encoded at all
  * we render nothing and let the caller's number text stand on its own.
  */
-export default function GifticonBarcode({ value }: { value: string }) {
+export default function GifticonBarcode({
+  value,
+  height = 72,
+  maxWidth = 280,
+}: {
+  value: string;
+  /** Bar height and the drawn width cap — bigger for the tap-to-zoom view. */
+  height?: number;
+  maxWidth?: number;
+}) {
   const [failed, setFailed] = useState(false);
   if (failed || value.trim() === '') return null;
 
@@ -23,8 +32,8 @@ export default function GifticonBarcode({ value }: { value: string }) {
       <Barcode
         value={value}
         format="CODE128"
-        height={72}
-        maxWidth={280}
+        height={height}
+        maxWidth={maxWidth}
         lineColor={colors.gray900}
         background={colors.surface}
         onError={() => setFailed(true)}

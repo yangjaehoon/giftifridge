@@ -11,6 +11,7 @@ import { useToast } from '../../../shared/components/ToastProvider';
 import { useMaxBrightnessWhileFocused } from '../../../shared/hooks/useMaxBrightnessWhileFocused';
 import GifticonDetailSkeleton from '../components/GifticonDetailSkeleton';
 import GifticonBarcode from '../components/GifticonBarcode';
+import BarcodeZoomModal from '../components/BarcodeZoomModal';
 import GifticonUsagePanel from '../components/GifticonUsagePanel';
 import GifticonStatusOverlay from '../components/GifticonStatusOverlay';
 import { CATEGORY_LABELS } from '../types';
@@ -32,6 +33,7 @@ export default function GifticonDetailScreen({ route, navigation }: Props) {
   const usage = useGifticonUsage(gifticon, user?.uid);
   const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [barcodeZoomed, setBarcodeZoomed] = useState(false);
   const copyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -186,10 +188,17 @@ export default function GifticonDetailScreen({ route, navigation }: Props) {
 
       {gifticon.barcode ? (
         <View style={styles.barcodeCard}>
-          <GifticonBarcode value={gifticon.barcode} />
+          <TouchableOpacity
+            onPress={() => setBarcodeZoomed(true)}
+            accessibilityRole="button"
+            accessibilityLabel="바코드 크게 보기"
+          >
+            <GifticonBarcode value={gifticon.barcode} />
+          </TouchableOpacity>
           <Text style={styles.barcodeNumber} selectable accessibilityLabel={gifticon.barcode}>
             {gifticon.barcode.replace(/(.{4})/g, '$1 ').trim()}
           </Text>
+          <Text style={styles.barcodeHint}>탭하면 크게 볼 수 있어요</Text>
           <TouchableOpacity
             style={styles.copyButton}
             onPress={copyBarcode}
@@ -200,6 +209,14 @@ export default function GifticonDetailScreen({ route, navigation }: Props) {
             <Text style={styles.copyButtonText}>{copied ? '복사됨 ✓' : '번호 복사'}</Text>
           </TouchableOpacity>
         </View>
+      ) : null}
+
+      {gifticon.barcode ? (
+        <BarcodeZoomModal
+          visible={barcodeZoomed}
+          value={gifticon.barcode}
+          onClose={() => setBarcodeZoomed(false)}
+        />
       ) : null}
 
       <Button
@@ -263,6 +280,7 @@ const styles = StyleSheet.create({
     letterSpacing: 2,
     fontVariant: ['tabular-nums'],
   },
+  barcodeHint: { fontSize: 12, color: colors.gray500, marginTop: -6 },
   copyButton: {
     paddingHorizontal: 16,
     paddingVertical: 10,

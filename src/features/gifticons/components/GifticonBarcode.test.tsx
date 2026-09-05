@@ -25,6 +25,16 @@ describe('GifticonBarcode', () => {
     );
   });
 
+  it('defaults to the card size when no height/maxWidth is given', async () => {
+    await render(<GifticonBarcode value="8801234567890" />);
+    expect(barcodeProps.current).toEqual(expect.objectContaining({ height: 72, maxWidth: 280 }));
+  });
+
+  it('passes a custom height/maxWidth through, for the zoomed view', async () => {
+    await render(<GifticonBarcode value="8801234567890" height={160} maxWidth={300} />);
+    expect(barcodeProps.current).toEqual(expect.objectContaining({ height: 160, maxWidth: 300 }));
+  });
+
   it('renders nothing for an empty value', async () => {
     const { toJSON } = await render(<GifticonBarcode value="   " />);
     expect(toJSON()).toBeNull();
