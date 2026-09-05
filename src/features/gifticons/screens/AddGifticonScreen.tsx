@@ -36,6 +36,7 @@ import { formatDate, toDateString } from '../../../shared/utils/date';
 import { groupDigits } from '../../../shared/utils/currency';
 import { getCurrentLocation } from '../../../shared/utils/location';
 import { haptics } from '../../../shared/utils/haptics';
+import { alertPermissionDenied } from '../../../shared/utils/permissionAlert';
 import type { RootStackParamList } from '../../../app/RootNavigator';
 import { getGifticonErrorMessage, getGifticonWriteErrorMessage } from '../errors';
 import { colors } from '../../../shared/theme/colors';
@@ -85,7 +86,7 @@ export default function AddGifticonScreen({ navigation, route }: Props) {
     try {
       const coords = await getCurrentLocation();
       if (!coords) {
-        Alert.alert('알림', '위치 접근 권한이 필요해요.');
+        alertPermissionDenied('알림', '위치 접근 권한이 필요해요.');
         return;
       }
       form.setLocation(coords);

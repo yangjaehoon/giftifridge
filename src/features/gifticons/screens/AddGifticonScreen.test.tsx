@@ -262,7 +262,11 @@ describe('AddGifticonScreen — create', () => {
       fireEvent.press(getByText('지금 여기를 매장 위치로 저장'));
     });
 
-    expect(Alert.alert).toHaveBeenCalledWith('알림', '위치 접근 권한이 필요해요.');
+    expect(Alert.alert).toHaveBeenCalledWith(
+      '알림',
+      '위치 접근 권한이 필요해요.',
+      expect.any(Array),
+    );
   });
 
   it('stores coordinates when the location lookup succeeds', async () => {

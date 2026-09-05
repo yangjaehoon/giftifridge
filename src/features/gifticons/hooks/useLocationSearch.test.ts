@@ -61,7 +61,11 @@ describe('useLocationSearch', () => {
     await act(() => result.current.setQuery('강남'));
     await act(async () => result.current.search());
 
-    expect(Alert.alert).toHaveBeenCalledWith('알림', '위치 접근 권한이 필요해요.');
+    expect(Alert.alert).toHaveBeenCalledWith(
+      '알림',
+      '위치 접근 권한이 필요해요.',
+      expect.any(Array),
+    );
   });
 
   it('alerts when no address matches', async () => {

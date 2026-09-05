@@ -1,8 +1,8 @@
 import { useRef, useState } from 'react';
-import { Alert } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { recognizeExpiryDate } from '../services/ocrService';
 import { parseDate } from '../../../shared/utils/date';
+import { alertPermissionDenied } from '../../../shared/utils/permissionAlert';
 
 interface Options {
   /** Store the chosen local uri (form.setImage). */
@@ -54,7 +54,7 @@ export function useGifticonImage({ onImageChosen, onExpiryDetected }: Options) {
       });
       if (!result.canceled) handlePicked(result.assets[0].uri);
     } catch {
-      Alert.alert('오류', '사진첩에 접근하지 못했어요. 권한을 확인해주세요.');
+      alertPermissionDenied('오류', '사진첩에 접근하지 못했어요. 권한을 확인해주세요.');
     }
   };
 
@@ -63,7 +63,7 @@ export function useGifticonImage({ onImageChosen, onExpiryDetected }: Options) {
       const result = await ImagePicker.launchCameraAsync({ quality: 0.8 });
       if (!result.canceled) handlePicked(result.assets[0].uri);
     } catch {
-      Alert.alert('오류', '카메라를 사용하지 못했어요. 권한을 확인해주세요.');
+      alertPermissionDenied('오류', '카메라를 사용하지 못했어요. 권한을 확인해주세요.');
     }
   };
 

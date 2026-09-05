@@ -48,7 +48,11 @@ describe('useBarcodeScanner', () => {
       await result.current.open();
     });
 
-    expect(Alert.alert).toHaveBeenCalledWith('알림', '바코드 스캔을 위해 카메라 권한이 필요해요.');
+    expect(Alert.alert).toHaveBeenCalledWith(
+      '알림',
+      '바코드 스캔을 위해 카메라 권한이 필요해요.',
+      expect.any(Array),
+    );
     expect(result.current.visible).toBe(false);
   });
 

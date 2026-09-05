@@ -11,6 +11,7 @@ import {
   registerGalleryImportTask,
   unregisterGalleryImportTask,
 } from '../services/galleryImportTask';
+import { alertPermissionDenied } from '../../../shared/utils/permissionAlert';
 
 /**
  * Settings-screen toggle for gallery auto-import: persists on/off across
@@ -57,7 +58,7 @@ export function useGalleryAutoImport(ownerId: string | undefined) {
 
       const granted = await ensureGalleryImportPermission();
       if (!granted) {
-        Alert.alert('알림', '사진 접근 권한이 필요해요.');
+        alertPermissionDenied('알림', '사진 접근 권한이 필요해요.');
         return;
       }
       await registerGalleryImportTask();

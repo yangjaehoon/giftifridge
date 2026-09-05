@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { Alert } from 'react-native';
 import { useCameraPermissions } from 'expo-camera';
 import { haptics } from '../../../shared/utils/haptics';
+import { alertPermissionDenied } from '../../../shared/utils/permissionAlert';
 
 /**
  * Camera-permission gate + visibility for the barcode scanner modal. The modal
@@ -15,7 +15,7 @@ export function useBarcodeScanner(onScanned: (code: string) => void) {
     if (!permission?.granted) {
       const res = await requestPermission();
       if (!res.granted) {
-        Alert.alert('알림', '바코드 스캔을 위해 카메라 권한이 필요해요.');
+        alertPermissionDenied('알림', '바코드 스캔을 위해 카메라 권한이 필요해요.');
         return;
       }
     }

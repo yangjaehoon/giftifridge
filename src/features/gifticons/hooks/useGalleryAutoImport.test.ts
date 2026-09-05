@@ -79,7 +79,11 @@ describe('useGalleryAutoImport', () => {
 
     await act(async () => result.current.toggle());
 
-    expect(Alert.alert).toHaveBeenCalledWith('알림', '사진 접근 권한이 필요해요.');
+    expect(Alert.alert).toHaveBeenCalledWith(
+      '알림',
+      '사진 접근 권한이 필요해요.',
+      expect.any(Array),
+    );
     expect(mockedRegisterTask).not.toHaveBeenCalled();
     expect(result.current.enabled).toBe(false);
   });

@@ -1,4 +1,5 @@
 import { act, renderHook, waitFor } from '@testing-library/react-native';
+import { Alert } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { recognizeExpiryDate } from '../services/ocrService';
 import { useGifticonImage } from './useGifticonImage';
@@ -21,6 +22,7 @@ function setup() {
 
 beforeEach(() => {
   jest.clearAllMocks();
+  jest.spyOn(Alert, 'alert').mockImplementation(() => {});
   mockedRecognize.mockResolvedValue(null);
 });
 
@@ -54,6 +56,44 @@ describe('useGifticonImage', () => {
     });
 
     expect(onImageChosen).toHaveBeenCalledWith('file:///cam.jpg');
+  });
+
+  it('offers a way to Settings when the photo library throws', async () => {
+    mockedLibrary.mockRejectedValue(new Error('permission denied'));
+    const { onImageChosen, onExpiryDetected } = setup();
+    const { result } = await renderHook(() =>
+      useGifticonImage({ onImageChosen, onExpiryDetected }),
+    );
+
+    await act(async () => {
+      await result.current.pickFromLibrary();
+    });
+
+    expect(Alert.alert).toHaveBeenCalledWith(
+      '오류',
+      '사진첩에 접근하지 못했어요. 권한을 확인해주세요.',
+      expect.any(Array),
+    );
+    expect(onImageChosen).not.toHaveBeenCalled();
+  });
+
+  it('offers a way to Settings when the camera throws', async () => {
+    mockedCamera.mockRejectedValue(new Error('permission denied'));
+    const { onImageChosen, onExpiryDetected } = setup();
+    const { result } = await renderHook(() =>
+      useGifticonImage({ onImageChosen, onExpiryDetected }),
+    );
+
+    await act(async () => {
+      await result.current.takePhoto();
+    });
+
+    expect(Alert.alert).toHaveBeenCalledWith(
+      '오류',
+      '카메라를 사용하지 못했어요. 권한을 확인해주세요.',
+      expect.any(Array),
+    );
+    expect(onImageChosen).not.toHaveBeenCalled();
   });
 
   it('ignores a stale OCR result when a newer image was picked', async () => {

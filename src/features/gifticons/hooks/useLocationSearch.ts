@@ -2,6 +2,7 @@ import { useRef, useState } from 'react';
 import { Alert } from 'react-native';
 import { searchAddress } from '../../../shared/utils/location';
 import type { AddressCandidate, Coordinates } from '../../../shared/utils/location';
+import { alertPermissionDenied } from '../../../shared/utils/permissionAlert';
 
 /**
  * Visibility + address-search orchestration for the location-search modal.
@@ -33,7 +34,7 @@ export function useLocationSearch(onSelect: (coords: Coordinates) => void) {
       const matches = await searchAddress(query);
       if (run !== searchRunRef.current) return; // a newer search started meanwhile
       if (matches == null) {
-        Alert.alert('알림', '위치 접근 권한이 필요해요.');
+        alertPermissionDenied('알림', '위치 접근 권한이 필요해요.');
         return;
       }
       if (matches.length === 0) {
