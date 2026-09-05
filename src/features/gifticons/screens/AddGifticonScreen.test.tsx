@@ -15,7 +15,8 @@ import {
 } from '../services/gifticonService';
 import { uploadGifticonImage } from '../services/gifticonImage';
 import { cancelNotifications, scheduleExpiryNotifications } from '../services/notificationService';
-import { recognizeExpiryDate } from '../services/ocrService';
+import { recognizeText } from '../services/ocrService';
+import { recognizeBarcodeFromImage } from '../services/barcodeRecognition';
 import { getCurrentLocation, searchAddress } from '../../../shared/utils/location';
 import { getNotificationOffsets } from '../../../shared/utils/notificationPrefs';
 import { TimeoutError } from '../../../shared/utils/withTimeout';
@@ -36,7 +37,11 @@ jest.mock('../services/notificationService', () => ({
   cancelNotifications: jest.fn(),
   scheduleExpiryNotifications: jest.fn(),
 }));
-jest.mock('../services/ocrService', () => ({ recognizeExpiryDate: jest.fn() }));
+jest.mock('../services/ocrService', () => ({
+  ...jest.requireActual('../services/ocrService'),
+  recognizeText: jest.fn(),
+}));
+jest.mock('../services/barcodeRecognition', () => ({ recognizeBarcodeFromImage: jest.fn() }));
 jest.mock('../../../shared/utils/location', () => ({
   getCurrentLocation: jest.fn(),
   searchAddress: jest.fn(),
@@ -62,7 +67,8 @@ const mockedUpload = uploadGifticonImage as jest.Mock;
 const mockedSetNotifIds = setGifticonNotificationIds as jest.Mock;
 const mockedCancelNotifs = cancelNotifications as jest.Mock;
 const mockedSchedule = scheduleExpiryNotifications as jest.Mock;
-const mockedRecognize = recognizeExpiryDate as jest.Mock;
+const mockedRecognizeText = recognizeText as jest.Mock;
+const mockedRecognizeBarcode = recognizeBarcodeFromImage as jest.Mock;
 const mockedGetLocation = getCurrentLocation as jest.Mock;
 const mockedSearchAddress = searchAddress as jest.Mock;
 const mockedGetOffsets = getNotificationOffsets as jest.Mock;
@@ -112,7 +118,8 @@ beforeEach(() => {
   mockedSetNotifIds.mockResolvedValue(undefined);
   mockedCancelNotifs.mockResolvedValue(undefined);
   mockedSchedule.mockResolvedValue(['notif-1']);
-  mockedRecognize.mockResolvedValue(null);
+  mockedRecognizeText.mockResolvedValue(null);
+  mockedRecognizeBarcode.mockResolvedValue(null);
   mockedGetLocation.mockResolvedValue(null);
   mockedSearchAddress.mockResolvedValue([]);
   mockedGetOffsets.mockResolvedValue([7, 3]);
@@ -149,21 +156,55 @@ describe('AddGifticonScreen — create', () => {
   });
 
   it('picks an image, runs OCR, and clears the image field error', async () => {
-    mockedRecognize.mockResolvedValue('2026-12-31');
+    mockedRecognizeText.mockResolvedValue('유효기간 2026.12.31까지');
     const { getByText, queryByText } = await renderScreen(undefined);
 
     await pickImage(getByText);
 
-    expect(mockedRecognize).toHaveBeenCalledWith('file:///photo.jpg');
+    expect(mockedRecognizeText).toHaveBeenCalledWith('file:///photo.jpg');
     await waitFor(() =>
       expect(getByText('사진에서 유효기한을 자동으로 인식했어요. 확인해주세요.')).toBeTruthy(),
     );
     expect(queryByText('기프티콘 사진을 등록해주세요.')).toBeNull();
   });
 
+  it('auto-fills name/brand/barcode from the photo and shows a hint for each', async () => {
+    mockedRecognizeText.mockResolvedValue('스타벅스\n아메리카노 Tall\n유효기간 2026.12.31까지');
+    mockedRecognizeBarcode.mockResolvedValue('8801234567890');
+    const { getByText, getByPlaceholderText } = await renderScreen(undefined);
+
+    await pickImage(getByText);
+
+    await waitFor(() =>
+      expect(getByPlaceholderText('아메리카노 Tall').props.value).toBe('아메리카노 Tall'),
+    );
+    expect(getByPlaceholderText('스타벅스').props.value).toBe('스타벅스');
+    expect(getByPlaceholderText('숫자 직접 입력 또는 스캔').props.value).toBe('8801234567890');
+    expect(getByText('사진에서 상품명을 자동으로 인식했어요. 확인해주세요.')).toBeTruthy();
+    expect(getByText('사진에서 브랜드를 자동으로 인식했어요. 확인해주세요.')).toBeTruthy();
+    expect(getByText('사진에서 바코드를 자동으로 인식했어요. 확인해주세요.')).toBeTruthy();
+  });
+
+  it('does not let a name guessed from a later OCR overwrite what the user already typed', async () => {
+    const resolvers: ((v: string | null) => void)[] = [];
+    mockedRecognizeText.mockImplementation(
+      () => new Promise<string | null>((resolve) => resolvers.push(resolve)),
+    );
+    const { getByText, getByPlaceholderText, queryByText } = await renderScreen(undefined);
+
+    await pickImage(getByText);
+    await act(async () => {
+      fireEvent.changeText(getByPlaceholderText('아메리카노 Tall'), '내가 입력한 상품명');
+    });
+    await act(async () => resolvers[0]('스타벅스\n아메리카노 Tall\n유효기간 2026.12.31까지'));
+
+    expect(getByPlaceholderText('아메리카노 Tall').props.value).toBe('내가 입력한 상품명');
+    expect(queryByText('사진에서 상품명을 자동으로 인식했어요. 확인해주세요.')).toBeNull();
+  });
+
   it('discards a stale OCR result when a newer image is picked before it resolves', async () => {
     const resolvers: ((v: string | null) => void)[] = [];
-    mockedRecognize.mockImplementation(
+    mockedRecognizeText.mockImplementation(
       () => new Promise<string | null>((resolve) => resolvers.push(resolve)),
     );
     const { getByText, getByTestId, queryByText } = await renderScreen(undefined);
@@ -175,8 +216,8 @@ describe('AddGifticonScreen — create', () => {
     await act(async () => fireEvent.press(getByTestId('image-picker')));
 
     // B's OCR resolves first with a date, then A's resolves late with a different one.
-    await act(async () => resolvers[1]('2027-05-05'));
-    await act(async () => resolvers[0]('2020-01-01'));
+    await act(async () => resolvers[1]('유효기간 2027.05.05까지'));
+    await act(async () => resolvers[0]('유효기간 2020.01.01까지'));
 
     expect(getByText('2027.05.05')).toBeTruthy();
     expect(queryByText('2020.01.01')).toBeNull();

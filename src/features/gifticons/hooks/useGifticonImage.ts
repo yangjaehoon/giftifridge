@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 import * as ImagePicker from 'expo-image-picker';
-import { recognizeExpiryDate } from '../services/ocrService';
+import { guessBrandAndName, parseExpiryDateFromText, recognizeText } from '../services/ocrService';
+import { recognizeBarcodeFromImage } from '../services/barcodeRecognition';
 import { parseDate } from '../../../shared/utils/date';
 import { alertPermissionDenied } from '../../../shared/utils/permissionAlert';
 
@@ -9,41 +10,88 @@ interface Options {
   onImageChosen: (uri: string) => void;
   /** Apply an OCR-detected expiry date (form.setExpiresAt). */
   onExpiryDetected: (date: Date) => void;
+  /** Apply an OCR-guessed product name (form.setName). */
+  onNameDetected: (name: string) => void;
+  /** Apply an OCR-guessed brand (form.setBrand). */
+  onBrandDetected: (brand: string) => void;
+  /** Apply a barcode read from the photo itself (form.setBarcode). */
+  onBarcodeDetected: (barcode: string) => void;
 }
 
 /**
- * Owns picking a gifticon photo (library or camera) and the expiry-date OCR that
- * follows it, including the run token that stops a slow OCR for an earlier image
- * from overwriting a newer one, and the "user edited the date by hand" guard.
+ * Owns picking a gifticon photo (library or camera) and everything that gets
+ * read from it afterward: expiry date, a best-effort brand/name guess (OCR),
+ * and any barcode already visible in the photo. Each field has its own run
+ * token guard (a slow recognition pass for an earlier image can't overwrite a
+ * newer one) and "user edited this by hand" guard (an auto-fill never clobbers
+ * something the user already typed/scanned/picked themselves).
  */
-export function useGifticonImage({ onImageChosen, onExpiryDetected }: Options) {
-  const [recognizingDate, setRecognizingDate] = useState(false);
+export function useGifticonImage({
+  onImageChosen,
+  onExpiryDetected,
+  onNameDetected,
+  onBrandDetected,
+  onBarcodeDetected,
+}: Options) {
+  const [recognizing, setRecognizing] = useState(false);
   const [dateAutoDetected, setDateAutoDetected] = useState(false);
-  // Refs, not state: detectExpiryDate reads them after an await and must see the
-  // current values, not the ones captured when the image was picked.
+  const [nameAutoDetected, setNameAutoDetected] = useState(false);
+  const [brandAutoDetected, setBrandAutoDetected] = useState(false);
+  const [barcodeAutoDetected, setBarcodeAutoDetected] = useState(false);
+  // Refs, not state: the recognition pass reads them after an await and must
+  // see the current values, not the ones captured when the image was picked.
   const dateManuallyEditedRef = useRef(false);
-  const ocrRunRef = useRef(0);
+  const nameManuallyEditedRef = useRef(false);
+  const brandManuallyEditedRef = useRef(false);
+  const barcodeManuallyEditedRef = useRef(false);
+  const runRef = useRef(0);
 
-  const detectExpiryDate = async (uri: string) => {
-    const run = ++ocrRunRef.current;
+  const recognizeFields = async (uri: string) => {
+    const run = ++runRef.current;
     setDateAutoDetected(false);
-    setRecognizingDate(true);
+    setNameAutoDetected(false);
+    setBrandAutoDetected(false);
+    setBarcodeAutoDetected(false);
+    setRecognizing(true);
     try {
-      const detected = await recognizeExpiryDate(uri);
-      if (run !== ocrRunRef.current) return; // a newer image was picked meanwhile
-      if (detected && !dateManuallyEditedRef.current) {
-        onExpiryDetected(parseDate(detected));
-        setDateAutoDetected(true);
+      const [text, barcode] = await Promise.all([
+        recognizeText(uri),
+        recognizeBarcodeFromImage(uri),
+      ]);
+      if (run !== runRef.current) return; // a newer image was picked meanwhile
+
+      if (text != null) {
+        const detectedDate = parseExpiryDateFromText(text);
+        if (detectedDate && !dateManuallyEditedRef.current) {
+          onExpiryDetected(parseDate(detectedDate));
+          setDateAutoDetected(true);
+        }
+        const { brand, name } = guessBrandAndName(text);
+        if (name && !nameManuallyEditedRef.current) {
+          onNameDetected(name);
+          setNameAutoDetected(true);
+        }
+        if (brand && !brandManuallyEditedRef.current) {
+          onBrandDetected(brand);
+          setBrandAutoDetected(true);
+        }
+      }
+      if (barcode && !barcodeManuallyEditedRef.current) {
+        onBarcodeDetected(barcode);
+        setBarcodeAutoDetected(true);
       }
     } finally {
-      if (run === ocrRunRef.current) setRecognizingDate(false);
+      if (run === runRef.current) setRecognizing(false);
     }
   };
 
   const handlePicked = (uri: string) => {
     onImageChosen(uri);
     dateManuallyEditedRef.current = false;
-    detectExpiryDate(uri);
+    nameManuallyEditedRef.current = false;
+    brandManuallyEditedRef.current = false;
+    barcodeManuallyEditedRef.current = false;
+    recognizeFields(uri);
   };
 
   const pickFromLibrary = async () => {
@@ -71,6 +119,30 @@ export function useGifticonImage({ onImageChosen, onExpiryDetected }: Options) {
     dateManuallyEditedRef.current = true;
     setDateAutoDetected(false);
   };
+  const markNameManuallyEdited = () => {
+    nameManuallyEditedRef.current = true;
+    setNameAutoDetected(false);
+  };
+  const markBrandManuallyEdited = () => {
+    brandManuallyEditedRef.current = true;
+    setBrandAutoDetected(false);
+  };
+  const markBarcodeManuallyEdited = () => {
+    barcodeManuallyEditedRef.current = true;
+    setBarcodeAutoDetected(false);
+  };
 
-  return { recognizingDate, dateAutoDetected, pickFromLibrary, takePhoto, markDateManuallyEdited };
+  return {
+    recognizing,
+    dateAutoDetected,
+    nameAutoDetected,
+    brandAutoDetected,
+    barcodeAutoDetected,
+    pickFromLibrary,
+    takePhoto,
+    markDateManuallyEdited,
+    markNameManuallyEdited,
+    markBrandManuallyEdited,
+    markBarcodeManuallyEdited,
+  };
 }

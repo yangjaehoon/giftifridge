@@ -68,8 +68,23 @@ export default function AddGifticonScreen({ navigation, route }: Props) {
   const image = useGifticonImage({
     onImageChosen: form.setImage,
     onExpiryDetected: form.setExpiresAt,
+    onNameDetected: form.setName,
+    onBrandDetected: form.setBrand,
+    onBarcodeDetected: form.setBarcode,
   });
-  const scanner = useBarcodeScanner(form.setBarcode);
+  const setName = (v: string) => {
+    form.setName(v);
+    image.markNameManuallyEdited();
+  };
+  const setBrand = (v: string) => {
+    form.setBrand(v);
+    image.markBrandManuallyEdited();
+  };
+  const setBarcode = (v: string) => {
+    form.setBarcode(v);
+    image.markBarcodeManuallyEdited();
+  };
+  const scanner = useBarcodeScanner(setBarcode);
   const locationSearch = useLocationSearch(form.setLocation);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -176,29 +191,41 @@ export default function AddGifticonScreen({ navigation, route }: Props) {
           <Text style={styles.cameraLinkText}>카메라로 촬영</Text>
         </TouchableOpacity>
         {form.fieldErrors.image && <Text style={styles.errorText}>{form.fieldErrors.image}</Text>}
+        {image.recognizing && (
+          <View style={styles.recognizingRow}>
+            <ActivityIndicator size="small" color={colors.primary} />
+            <Text style={styles.recognizingText}>사진에서 정보를 인식하는 중...</Text>
+          </View>
+        )}
 
         <Text style={styles.label}>상품명</Text>
         <TextInput
           style={[styles.input, form.fieldErrors.name && styles.inputError]}
           value={form.name}
-          onChangeText={form.setName}
+          onChangeText={setName}
           placeholder="아메리카노 Tall"
           returnKeyType="next"
           onSubmitEditing={() => brandRef.current?.focus()}
         />
         {form.fieldErrors.name && <Text style={styles.errorText}>{form.fieldErrors.name}</Text>}
+        {image.nameAutoDetected && (
+          <Text style={styles.ocrHint}>사진에서 상품명을 자동으로 인식했어요. 확인해주세요.</Text>
+        )}
 
         <Text style={styles.label}>브랜드</Text>
         <TextInput
           ref={brandRef}
           style={[styles.input, form.fieldErrors.brand && styles.inputError]}
           value={form.brand}
-          onChangeText={form.setBrand}
+          onChangeText={setBrand}
           placeholder="스타벅스"
           returnKeyType="next"
           onSubmitEditing={() => amountRef.current?.focus()}
         />
         {form.fieldErrors.brand && <Text style={styles.errorText}>{form.fieldErrors.brand}</Text>}
+        {image.brandAutoDetected && (
+          <Text style={styles.ocrHint}>사진에서 브랜드를 자동으로 인식했어요. 확인해주세요.</Text>
+        )}
 
         <Text style={styles.label}>금액 (선택)</Text>
         <TextInput
@@ -227,7 +254,7 @@ export default function AddGifticonScreen({ navigation, route }: Props) {
           <TextInput
             style={[styles.input, styles.barcodeInput]}
             value={form.barcode}
-            onChangeText={form.setBarcode}
+            onChangeText={setBarcode}
             placeholder="숫자 직접 입력 또는 스캔"
             keyboardType="number-pad"
           />
@@ -235,6 +262,9 @@ export default function AddGifticonScreen({ navigation, route }: Props) {
             <Text style={styles.scanButtonText}>스캔</Text>
           </TouchableOpacity>
         </View>
+        {image.barcodeAutoDetected && (
+          <Text style={styles.ocrHint}>사진에서 바코드를 자동으로 인식했어요. 확인해주세요.</Text>
+        )}
 
         <Text style={styles.label}>매장 위치 (선택)</Text>
         <TouchableOpacity
@@ -257,10 +287,7 @@ export default function AddGifticonScreen({ navigation, route }: Props) {
           <Text style={styles.ocrHint}>근처에 다시 왔을 때 이 기프티콘을 알려드려요.</Text>
         )}
 
-        <View style={styles.dateLabelRow}>
-          <Text style={styles.label}>유효기한</Text>
-          {image.recognizingDate && <ActivityIndicator size="small" color={colors.primary} />}
-        </View>
+        <Text style={styles.label}>유효기한</Text>
         <TouchableOpacity style={styles.input} onPress={() => setShowDatePicker(true)}>
           <Text>{formatDate(toDateString(form.expiresAt))}</Text>
         </TouchableOpacity>
@@ -335,7 +362,8 @@ const styles = StyleSheet.create({
   image: { width: '100%', height: '100%' },
   imagePlaceholder: { color: colors.gray500, textAlign: 'center', fontSize: 13, lineHeight: 20 },
   label: { fontSize: 13, fontWeight: '600', color: colors.gray700, marginBottom: 6, marginTop: 14 },
-  dateLabelRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  recognizingRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 10 },
+  recognizingText: { fontSize: 12, color: colors.gray500 },
   ocrHint: { fontSize: 12, color: colors.primary, marginTop: 6 },
   errorText: { fontSize: 12, color: colors.danger, marginTop: 6 },
   notFound: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 20 },

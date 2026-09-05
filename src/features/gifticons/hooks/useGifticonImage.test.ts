@@ -1,69 +1,84 @@
 import { act, renderHook, waitFor } from '@testing-library/react-native';
 import { Alert } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
-import { recognizeExpiryDate } from '../services/ocrService';
+import { recognizeText } from '../services/ocrService';
+import { recognizeBarcodeFromImage } from '../services/barcodeRecognition';
 import { useGifticonImage } from './useGifticonImage';
 
 jest.mock('expo-image-picker', () => ({
   launchImageLibraryAsync: jest.fn(),
   launchCameraAsync: jest.fn(),
 }));
-jest.mock('../services/ocrService', () => ({ recognizeExpiryDate: jest.fn() }));
+jest.mock('../services/ocrService', () => ({
+  ...jest.requireActual('../services/ocrService'),
+  recognizeText: jest.fn(),
+}));
+jest.mock('../services/barcodeRecognition', () => ({ recognizeBarcodeFromImage: jest.fn() }));
 
 const mockedLibrary = ImagePicker.launchImageLibraryAsync as jest.Mock;
 const mockedCamera = ImagePicker.launchCameraAsync as jest.Mock;
-const mockedRecognize = recognizeExpiryDate as jest.Mock;
+const mockedRecognizeText = recognizeText as jest.Mock;
+const mockedRecognizeBarcode = recognizeBarcodeFromImage as jest.Mock;
+
+const GIFTICON_TEXT = '스타벅스\n아메리카노 Tall\n유효기간 2026.12.31까지';
 
 function setup() {
-  const onImageChosen = jest.fn();
-  const onExpiryDetected = jest.fn();
-  return { onImageChosen, onExpiryDetected };
+  return {
+    onImageChosen: jest.fn(),
+    onExpiryDetected: jest.fn(),
+    onNameDetected: jest.fn(),
+    onBrandDetected: jest.fn(),
+    onBarcodeDetected: jest.fn(),
+  };
 }
 
 beforeEach(() => {
   jest.clearAllMocks();
   jest.spyOn(Alert, 'alert').mockImplementation(() => {});
-  mockedRecognize.mockResolvedValue(null);
+  mockedRecognizeText.mockResolvedValue(null);
+  mockedRecognizeBarcode.mockResolvedValue(null);
 });
 
 describe('useGifticonImage', () => {
-  it('reports the chosen library image and runs OCR against it', async () => {
+  it('reports the chosen library image and auto-fills every field it can read', async () => {
     mockedLibrary.mockResolvedValue({ canceled: false, assets: [{ uri: 'file:///a.jpg' }] });
-    mockedRecognize.mockResolvedValue('2026-12-31');
-    const { onImageChosen, onExpiryDetected } = setup();
-    const { result } = await renderHook(() =>
-      useGifticonImage({ onImageChosen, onExpiryDetected }),
-    );
+    mockedRecognizeText.mockResolvedValue(GIFTICON_TEXT);
+    mockedRecognizeBarcode.mockResolvedValue('8801234567890');
+    const callbacks = setup();
+    const { result } = await renderHook(() => useGifticonImage(callbacks));
 
     await act(async () => {
       await result.current.pickFromLibrary();
     });
 
-    expect(onImageChosen).toHaveBeenCalledWith('file:///a.jpg');
-    await waitFor(() => expect(onExpiryDetected).toHaveBeenCalledWith(expect.any(Date)));
+    expect(callbacks.onImageChosen).toHaveBeenCalledWith('file:///a.jpg');
+    await waitFor(() => expect(callbacks.onExpiryDetected).toHaveBeenCalledWith(expect.any(Date)));
+    expect(callbacks.onExpiryDetected.mock.calls[0][0].getFullYear()).toBe(2026);
+    expect(callbacks.onNameDetected).toHaveBeenCalledWith('아메리카노 Tall');
+    expect(callbacks.onBrandDetected).toHaveBeenCalledWith('스타벅스');
+    expect(callbacks.onBarcodeDetected).toHaveBeenCalledWith('8801234567890');
     expect(result.current.dateAutoDetected).toBe(true);
+    expect(result.current.nameAutoDetected).toBe(true);
+    expect(result.current.brandAutoDetected).toBe(true);
+    expect(result.current.barcodeAutoDetected).toBe(true);
   });
 
   it('does the same for a camera photo', async () => {
     mockedCamera.mockResolvedValue({ canceled: false, assets: [{ uri: 'file:///cam.jpg' }] });
-    const { onImageChosen, onExpiryDetected } = setup();
-    const { result } = await renderHook(() =>
-      useGifticonImage({ onImageChosen, onExpiryDetected }),
-    );
+    const callbacks = setup();
+    const { result } = await renderHook(() => useGifticonImage(callbacks));
 
     await act(async () => {
       await result.current.takePhoto();
     });
 
-    expect(onImageChosen).toHaveBeenCalledWith('file:///cam.jpg');
+    expect(callbacks.onImageChosen).toHaveBeenCalledWith('file:///cam.jpg');
   });
 
   it('offers a way to Settings when the photo library throws', async () => {
     mockedLibrary.mockRejectedValue(new Error('permission denied'));
-    const { onImageChosen, onExpiryDetected } = setup();
-    const { result } = await renderHook(() =>
-      useGifticonImage({ onImageChosen, onExpiryDetected }),
-    );
+    const callbacks = setup();
+    const { result } = await renderHook(() => useGifticonImage(callbacks));
 
     await act(async () => {
       await result.current.pickFromLibrary();
@@ -74,15 +89,13 @@ describe('useGifticonImage', () => {
       '사진첩에 접근하지 못했어요. 권한을 확인해주세요.',
       expect.any(Array),
     );
-    expect(onImageChosen).not.toHaveBeenCalled();
+    expect(callbacks.onImageChosen).not.toHaveBeenCalled();
   });
 
   it('offers a way to Settings when the camera throws', async () => {
     mockedCamera.mockRejectedValue(new Error('permission denied'));
-    const { onImageChosen, onExpiryDetected } = setup();
-    const { result } = await renderHook(() =>
-      useGifticonImage({ onImageChosen, onExpiryDetected }),
-    );
+    const callbacks = setup();
+    const { result } = await renderHook(() => useGifticonImage(callbacks));
 
     await act(async () => {
       await result.current.takePhoto();
@@ -93,19 +106,19 @@ describe('useGifticonImage', () => {
       '카메라를 사용하지 못했어요. 권한을 확인해주세요.',
       expect.any(Array),
     );
-    expect(onImageChosen).not.toHaveBeenCalled();
+    expect(callbacks.onImageChosen).not.toHaveBeenCalled();
   });
 
-  it('ignores a stale OCR result when a newer image was picked', async () => {
+  it('ignores a stale recognition result when a newer image was picked', async () => {
     const resolvers: ((v: string | null) => void)[] = [];
-    mockedRecognize.mockImplementation(() => new Promise<string | null>((r) => resolvers.push(r)));
+    mockedRecognizeText.mockImplementation(
+      () => new Promise<string | null>((r) => resolvers.push(r)),
+    );
     mockedLibrary
       .mockResolvedValueOnce({ canceled: false, assets: [{ uri: 'file:///a.jpg' }] })
       .mockResolvedValueOnce({ canceled: false, assets: [{ uri: 'file:///b.jpg' }] });
-    const { onImageChosen, onExpiryDetected } = setup();
-    const { result } = await renderHook(() =>
-      useGifticonImage({ onImageChosen, onExpiryDetected }),
-    );
+    const callbacks = setup();
+    const { result } = await renderHook(() => useGifticonImage(callbacks));
 
     await act(async () => {
       await result.current.pickFromLibrary();
@@ -114,29 +127,58 @@ describe('useGifticonImage', () => {
       await result.current.pickFromLibrary();
     });
 
-    await act(async () => resolvers[1]('2027-05-05'));
-    await act(async () => resolvers[0]('2020-01-01'));
+    await act(async () => resolvers[1]('유효기간 2027.05.05까지'));
+    await act(async () => resolvers[0]('유효기간 2020.01.01까지'));
 
-    expect(onExpiryDetected).toHaveBeenCalledTimes(1);
-    expect(onExpiryDetected.mock.calls[0][0].getFullYear()).toBe(2027);
+    expect(callbacks.onExpiryDetected).toHaveBeenCalledTimes(1);
+    expect(callbacks.onExpiryDetected.mock.calls[0][0].getFullYear()).toBe(2027);
   });
 
-  it('markDateManuallyEdited() suppresses a later OCR result', async () => {
+  it('marking a field edited while its recognition is still in flight suppresses only that field', async () => {
     const resolvers: ((v: string | null) => void)[] = [];
-    mockedRecognize.mockImplementation(() => new Promise<string | null>((r) => resolvers.push(r)));
-    mockedLibrary.mockResolvedValue({ canceled: false, assets: [{ uri: 'file:///a.jpg' }] });
-    const { onImageChosen, onExpiryDetected } = setup();
-    const { result } = await renderHook(() =>
-      useGifticonImage({ onImageChosen, onExpiryDetected }),
+    mockedRecognizeText.mockImplementation(
+      () => new Promise<string | null>((r) => resolvers.push(r)),
     );
+    mockedLibrary.mockResolvedValue({ canceled: false, assets: [{ uri: 'file:///a.jpg' }] });
+    const callbacks = setup();
+    const { result } = await renderHook(() => useGifticonImage(callbacks));
 
     await act(async () => {
       await result.current.pickFromLibrary();
     });
-    await act(async () => result.current.markDateManuallyEdited());
-    await act(async () => resolvers[0]('2027-05-05'));
+    // The user edits the date field by hand before OCR resolves.
+    await act(() => result.current.markDateManuallyEdited());
+    await act(async () => resolvers[0](GIFTICON_TEXT));
 
-    expect(onExpiryDetected).not.toHaveBeenCalled();
+    expect(callbacks.onExpiryDetected).not.toHaveBeenCalled();
     expect(result.current.dateAutoDetected).toBe(false);
+    // Name/brand aren't guarded by the same ref, so they still auto-fill.
+    expect(callbacks.onNameDetected).toHaveBeenCalledWith('아메리카노 Tall');
+    expect(callbacks.onBrandDetected).toHaveBeenCalledWith('스타벅스');
+  });
+
+  it('picking a new photo resets every manually-edited guard from the previous one', async () => {
+    const resolvers: ((v: string | null) => void)[] = [];
+    mockedRecognizeText.mockImplementation(
+      () => new Promise<string | null>((r) => resolvers.push(r)),
+    );
+    mockedLibrary.mockResolvedValue({ canceled: false, assets: [{ uri: 'file:///a.jpg' }] });
+    const callbacks = setup();
+    const { result } = await renderHook(() => useGifticonImage(callbacks));
+
+    await act(async () => {
+      await result.current.pickFromLibrary();
+    });
+    await act(() => result.current.markNameManuallyEdited());
+    await act(async () => resolvers[0](GIFTICON_TEXT));
+    expect(callbacks.onNameDetected).not.toHaveBeenCalled();
+
+    // A newly picked photo is a fresh start — the guard from the previous
+    // photo shouldn't carry over and suppress this one's own guess.
+    await act(async () => {
+      await result.current.pickFromLibrary();
+    });
+    await act(async () => resolvers[1](GIFTICON_TEXT));
+    expect(callbacks.onNameDetected).toHaveBeenCalledWith('아메리카노 Tall');
   });
 });

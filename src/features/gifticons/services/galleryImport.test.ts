@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as MediaLibrary from 'expo-media-library';
 import { recognizeText } from './ocrService';
+import { recognizeBarcodeFromImage } from './barcodeRecognition';
 import { newGifticonId } from './gifticonService';
 import { saveGifticon } from './saveGifticon';
 import { syncGifticonReminders } from './gifticonReminders';
@@ -37,6 +38,7 @@ jest.mock('./ocrService', () => ({
   ...jest.requireActual('./ocrService'),
   recognizeText: jest.fn(),
 }));
+jest.mock('./barcodeRecognition', () => ({ recognizeBarcodeFromImage: jest.fn() }));
 jest.mock('./gifticonService', () => ({ newGifticonId: jest.fn() }));
 jest.mock('./saveGifticon', () => ({ saveGifticon: jest.fn() }));
 jest.mock('./gifticonReminders', () => ({ syncGifticonReminders: jest.fn() }));
@@ -45,6 +47,7 @@ const mockedExe = MediaLibrary.Query.prototype.exe as jest.Mock;
 const mockedGetPermissions = MediaLibrary.getPermissionsAsync as jest.Mock;
 const mockedRequestPermissions = MediaLibrary.requestPermissionsAsync as jest.Mock;
 const mockedRecognizeText = recognizeText as jest.Mock;
+const mockedRecognizeBarcode = recognizeBarcodeFromImage as jest.Mock;
 const mockedNewGifticonId = newGifticonId as jest.Mock;
 const mockedSaveGifticon = saveGifticon as jest.Mock;
 const mockedSyncReminders = syncGifticonReminders as jest.Mock;
@@ -62,6 +65,7 @@ beforeEach(async () => {
   jest.clearAllMocks();
   mockedGetPermissions.mockResolvedValue({ granted: true, canAskAgain: true });
   mockedExe.mockResolvedValue([]);
+  mockedRecognizeBarcode.mockResolvedValue(null);
   mockedNewGifticonId.mockReturnValue('draft-1');
   mockedSaveGifticon.mockResolvedValue('draft-1');
   mockedSyncReminders.mockResolvedValue(undefined);
@@ -94,9 +98,9 @@ describe('scanGalleryForGifticons', () => {
     expect(mockedExe).not.toHaveBeenCalled();
   });
 
-  it('creates a gifticon from a photo with a parseable expiry date', async () => {
+  it('creates a gifticon from a photo with a parseable expiry date, guessing brand/name', async () => {
     mockedExe.mockResolvedValue([fakeAsset('a1', 1_000)]);
-    mockedRecognizeText.mockResolvedValue('스타벅스 아메리카노\n유효기간 2026.12.31까지');
+    mockedRecognizeText.mockResolvedValue('스타벅스\n아메리카노 Tall\n유효기간 2026.12.31까지');
 
     await expect(scanGalleryForGifticons('u1')).resolves.toBe(1);
 
@@ -107,8 +111,8 @@ describe('scanGalleryForGifticons', () => {
         imageUri: 'file:///a1.jpg',
         imageChanged: true,
         fields: expect.objectContaining({
-          name: '스타벅스 아메리카노',
-          brand: '미확인 브랜드',
+          name: '아메리카노 Tall',
+          brand: '스타벅스',
           category: 'etc',
           expiresAt: '2026-12-31',
         }),
@@ -117,6 +121,42 @@ describe('scanGalleryForGifticons', () => {
     expect(mockedSyncReminders).toHaveBeenCalledWith(
       expect.objectContaining({ isOwner: true, isEditing: false }),
     );
+  });
+
+  it('falls back to placeholder brand/name when nothing usable is guessed', async () => {
+    mockedExe.mockResolvedValue([fakeAsset('a1', 1_000)]);
+    mockedRecognizeText.mockResolvedValue('기프티콘\n유효기간 2026.12.31까지');
+
+    await scanGalleryForGifticons('u1');
+
+    expect(mockedSaveGifticon).toHaveBeenCalledWith(
+      expect.objectContaining({
+        fields: expect.objectContaining({ name: '새 기프티콘', brand: '미확인 브랜드' }),
+      }),
+    );
+  });
+
+  it('includes a barcode found in the photo itself', async () => {
+    mockedExe.mockResolvedValue([fakeAsset('a1', 1_000)]);
+    mockedRecognizeText.mockResolvedValue('스타벅스\n아메리카노 Tall\n유효기간 2026.12.31까지');
+    mockedRecognizeBarcode.mockResolvedValue('8801234567890');
+
+    await scanGalleryForGifticons('u1');
+
+    expect(mockedSaveGifticon).toHaveBeenCalledWith(
+      expect.objectContaining({
+        fields: expect.objectContaining({ barcode: '8801234567890' }),
+      }),
+    );
+  });
+
+  it('does not barcode-scan a photo that never even looked like a gifticon', async () => {
+    mockedExe.mockResolvedValue([fakeAsset('a1', 1_000)]);
+    mockedRecognizeText.mockResolvedValue('오늘 점심 메뉴 사진');
+
+    await scanGalleryForGifticons('u1');
+
+    expect(mockedRecognizeBarcode).not.toHaveBeenCalled();
   });
 
   it('creates a gifticon from a keyword match even without a parseable date', async () => {

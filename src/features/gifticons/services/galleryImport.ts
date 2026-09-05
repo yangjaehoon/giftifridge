@@ -3,7 +3,8 @@ import * as MediaLibrary from 'expo-media-library';
 import { newGifticonId } from './gifticonService';
 import { saveGifticon } from './saveGifticon';
 import { syncGifticonReminders } from './gifticonReminders';
-import { parseExpiryDateFromText, recognizeText } from './ocrService';
+import { guessBrandAndName, parseExpiryDateFromText, recognizeText } from './ocrService';
+import { recognizeBarcodeFromImage } from './barcodeRecognition';
 import { defaultExpiryDate, toDateString } from '../../../shared/utils/date';
 import type { GifticonCategory } from '../types';
 
@@ -40,17 +41,6 @@ function looksLikeGifticon(text: string): boolean {
     parseExpiryDateFromText(text) != null ||
     GIFTICON_KEYWORDS.some((keyword) => text.includes(keyword))
   );
-}
-
-// There's no reliable way to pick the product name out of OCR text (unlike a
-// date, it has no consistent shape), so this is a rough guess the user is
-// expected to correct afterward — the first short-enough non-empty line.
-function guessName(text: string): string {
-  const line = text
-    .split('\n')
-    .map((l) => l.trim())
-    .find((l) => l.length > 0 && l.length <= 30);
-  return line ?? FALLBACK_NAME;
 }
 
 async function getLastCheckedAt(): Promise<number> {
@@ -147,12 +137,17 @@ async function runScan(ownerId: string): Promise<number> {
         continue;
       }
 
+      // Only worth the extra native call for photos already confirmed to
+      // look like a gifticon — no point barcode-scanning everything else.
+      const barcode = await recognizeBarcodeFromImage(uri);
+      const { brand, name } = guessBrandAndName(text);
       const draftId = newGifticonId();
       const fields = {
-        name: guessName(text),
-        brand: FALLBACK_BRAND,
+        name: name ?? FALLBACK_NAME,
+        brand: brand ?? FALLBACK_BRAND,
         category: FALLBACK_CATEGORY,
         expiresAt: parseExpiryDateFromText(text) ?? toDateString(defaultExpiryDate()),
+        barcode: barcode ?? undefined,
       };
       await saveGifticon({ draftId, ownerId, imageUri: uri, imageChanged: true, fields });
       // Only marked done once the create actually went through — if

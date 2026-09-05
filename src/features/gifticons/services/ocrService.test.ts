@@ -1,5 +1,5 @@
 import TextRecognition from '@react-native-ml-kit/text-recognition';
-import { parseExpiryDateFromText, recognizeExpiryDate } from './ocrService';
+import { guessBrandAndName, parseExpiryDateFromText, recognizeExpiryDate } from './ocrService';
 
 jest.mock('@react-native-ml-kit/text-recognition', () => ({
   __esModule: true,
@@ -58,6 +58,38 @@ describe('parseExpiryDateFromText', () => {
 
   it('accepts a valid leap day', () => {
     expect(parseExpiryDateFromText('유효기한 2028.02.29까지')).toBe(isoDate(2028, 2, 29));
+  });
+});
+
+describe('guessBrandAndName', () => {
+  it('reads the first two clean lines as (brand, name)', () => {
+    const text = '스타벅스\n아메리카노 Tall\n유효기간 2026.12.31까지\n바코드 8801234567890';
+    expect(guessBrandAndName(text)).toEqual({ brand: '스타벅스', name: '아메리카노 Tall' });
+  });
+
+  it('skips boilerplate, date, and barcode-like lines', () => {
+    const text = [
+      '기프티콘',
+      '교환권 안내',
+      '이디야',
+      '아메리카노',
+      '유효기간 2026.12.31까지',
+    ].join('\n');
+    expect(guessBrandAndName(text)).toEqual({ brand: '이디야', name: '아메리카노' });
+  });
+
+  it('returns null name when only one usable line is found', () => {
+    expect(guessBrandAndName('스타벅스\n유효기간 2026.12.31까지')).toEqual({
+      brand: '스타벅스',
+      name: null,
+    });
+  });
+
+  it('returns null brand and name when nothing usable is found', () => {
+    expect(guessBrandAndName('기프티콘\n유효기간 2026.12.31까지\n8801234567890')).toEqual({
+      brand: null,
+      name: null,
+    });
   });
 });
 

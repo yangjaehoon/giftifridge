@@ -84,3 +84,46 @@ export async function recognizeExpiryDate(imageUri: string): Promise<string | nu
   const text = await recognizeText(imageUri);
   return text == null ? null : parseExpiryDateFromText(text);
 }
+
+// Boilerplate that shows up on gifticons but is never the brand/product name
+// itself, so a line containing one of these is skipped as a candidate.
+const NOISE_KEYWORDS = [
+  '기프티콘',
+  '교환권',
+  '모바일',
+  '유효기간',
+  '유효기한',
+  '교환처',
+  '바코드',
+  '고객센터',
+  '환불',
+  '전국',
+  '점',
+];
+const MIN_LINE_LENGTH = 2;
+const MAX_LINE_LENGTH = 30;
+// A line more digit-dense than this reads as a barcode number or price, not text.
+const MAX_DIGIT_RATIO = 0.4;
+
+function isNoiseLine(line: string): boolean {
+  if (line.length < MIN_LINE_LENGTH || line.length > MAX_LINE_LENGTH) return true;
+  if (parseExpiryDateFromText(line) != null) return true;
+  const digitCount = (line.match(/\d/g) ?? []).length;
+  if (digitCount / line.length > MAX_DIGIT_RATIO) return true;
+  return NOISE_KEYWORDS.some((keyword) => line.includes(keyword));
+}
+
+/**
+ * Best-effort brand/product-name guess from OCR text — there's no format to
+ * anchor on the way a date has one, so this is a heuristic the user is
+ * expected to double-check, not a reliable parse. Most gifticon layouts put
+ * the brand name above the product name, so the first two non-boilerplate
+ * lines are read as (brand, name) in that order.
+ */
+export function guessBrandAndName(text: string): { brand: string | null; name: string | null } {
+  const lines = text
+    .split('\n')
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0 && !isNoiseLine(line));
+  return { brand: lines[0] ?? null, name: lines[1] ?? null };
+}
