@@ -122,14 +122,36 @@ describe('guessGifticonFields', () => {
     });
   });
 
-  it('has no category for an unlisted brand — the position guess only covers brand/name', () => {
+  it('infers a category from product-name keywords when the brand is unlisted', () => {
     const text = 'CUP 사이즈 안내\n딸기 스무디\n유효기간 2026.12.31까지';
-    // "CU" must not match inside "CUP" — falls back to the position guess.
+    // "CU" must not match inside "CUP" — the brand/name come from the position
+    // guess, and "스무디" pins the category even without a known brand.
     expect(guessGifticonFields(ocrResult(text))).toEqual({
       brand: 'CUP 사이즈 안내',
       name: '딸기 스무디',
+      category: 'cafe',
+    });
+  });
+
+  it('leaves category null for an unlisted brand when no keyword matches', () => {
+    const text = '무명문구\n캐릭터 스티커\n유효기간 2026.12.31까지';
+    expect(guessGifticonFields(ocrResult(text))).toEqual({
+      brand: '무명문구',
+      name: '캐릭터 스티커',
       category: null,
     });
+  });
+
+  it('infers restaurant / culture / etc from their keywords too', () => {
+    expect(
+      guessGifticonFields(ocrResult('무명치킨\n후라이드 한마리\n유효기간 2026.12.31까지')).category,
+    ).toBe('restaurant');
+    expect(
+      guessGifticonFields(ocrResult('무명극장\n영화 관람권 1매\n유효기간 2026.12.31까지')).category,
+    ).toBe('culture');
+    expect(
+      guessGifticonFields(ocrResult('무명마트\n금액권 1만원권\n유효기간 2026.12.31까지')).category,
+    ).toBe('convenience');
   });
 
   it('keeps a short brand name that happens to contain a couple of digits', () => {
@@ -185,7 +207,8 @@ describe('guessGifticonFields', () => {
     expect(guessGifticonFields(ocrResult(text))).toEqual({
       brand: '동네빵집',
       name: '소금빵 세트',
-      category: null,
+      // "빵" pins the category even on the position (no known brand) path.
+      category: 'cafe',
     });
   });
 

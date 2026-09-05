@@ -348,11 +348,99 @@ function findKnownBrand(text: string): KnownBrand | null {
   return KNOWN_BRANDS.find((brand) => containsBrandKey(haystack, compact(brand.name))) ?? null;
 }
 
+// When the brand isn't in KNOWN_BRANDS there's no category from it, but the
+// product name usually gives it away — an "아메리카노" is a cafe, a "치킨" a
+// restaurant. Unlike product names themselves this keyword set is small and
+// slow-changing, and it only fills the gap the brand match left (see
+// inferCategoryFromKeywords). Order matters: the more specific compound
+// ("문화상품권", "편의점상품권") must be listed before the bare "상품권".
+const CATEGORY_KEYWORDS: { category: GifticonCategory; keywords: string[] }[] = [
+  {
+    category: 'cafe',
+    keywords: [
+      '아메리카노',
+      '라떼',
+      '카푸치노',
+      '에스프레소',
+      '카페모카',
+      '마키아토',
+      '콜드브루',
+      '아이스티',
+      '에이드',
+      '스무디',
+      '프라푸치노',
+      '버블티',
+      '밀크티',
+      '빙수',
+      '케이크',
+      '베이글',
+      '크로플',
+      '마카롱',
+      '도넛',
+      '도너츠',
+      '아이스크림',
+      '젤라또',
+      '와플',
+      '쿠키',
+      '아포가토',
+      '빵',
+    ],
+  },
+  {
+    category: 'restaurant',
+    keywords: [
+      '치킨',
+      '버거',
+      '햄버거',
+      '피자',
+      '떡볶이',
+      '족발',
+      '보쌈',
+      '국밥',
+      '돈까스',
+      '돈가스',
+      '파스타',
+      '스테이크',
+      '초밥',
+      '삼겹살',
+      '곱창',
+      '냉면',
+      '쌀국수',
+      '마라탕',
+      '부대찌개',
+      '김밥',
+      '짜장면',
+      '짬뽕',
+      '탕수육',
+      '샌드위치',
+    ],
+  },
+  {
+    category: 'culture',
+    keywords: ['영화', '관람권', '예매권', '도서상품권', '문화상품권', '이북', '웹툰'],
+  },
+  { category: 'convenience', keywords: ['편의점상품권', '편의점', '금액권'] },
+  { category: 'etc', keywords: ['상품권', '교환권'] },
+];
+
+/**
+ * Category from product-name/brand keywords — a fallback for when the brand
+ * isn't in KNOWN_BRANDS. Returns null when nothing matches rather than guess.
+ */
+function inferCategoryFromKeywords(text: string): GifticonCategory | null {
+  const haystack = compact(text);
+  for (const { category, keywords } of CATEGORY_KEYWORDS) {
+    if (keywords.some((keyword) => haystack.includes(compact(keyword)))) return category;
+  }
+  return null;
+}
+
 export interface GuessedGifticonFields {
   brand: string | null;
   name: string | null;
-  /** Only set when the brand matched KNOWN_BRANDS — there's no positional
-   * fallback for category the way there is for brand/name. */
+  /** From the matched KNOWN_BRANDS entry, or — when the brand is unlisted —
+   * inferred from product-name keywords (see inferCategoryFromKeywords);
+   * null when neither yields one. */
   category: GifticonCategory | null;
 }
 
@@ -446,5 +534,7 @@ export function guessGifticonFields(recognized: RecognizedText): GuessedGifticon
     };
   }
 
-  return { brand: headlineLines[0] ?? null, name: headlineLines[1] ?? null, category: null };
+  const brand = headlineLines[0] ?? null;
+  const name = headlineLines[1] ?? null;
+  return { brand, name, category: inferCategoryFromKeywords(`${brand ?? ''} ${name ?? ''}`) };
 }
