@@ -6,6 +6,7 @@ import {
   signInWithEmail,
   signOut,
   subscribeToAuthState,
+  waitForAuthUser,
 } from './auth';
 
 jest.mock('./config', () => ({ auth: { currentUser: { uid: 'current' } } }));
@@ -50,6 +51,34 @@ describe('lib/firebase/auth', () => {
 
   it('getCurrentAuthUser reads currentUser off the handle', () => {
     expect(getCurrentAuthUser()).toEqual({ uid: 'current' });
+  });
+
+  it('waitForAuthUser resolves with the first onAuthStateChanged emission and unsubscribes', async () => {
+    const unsubscribe = jest.fn();
+    let emit: (user: unknown) => void = () => {};
+    (fb.onAuthStateChanged as jest.Mock).mockImplementation((_handle, cb) => {
+      emit = cb;
+      return unsubscribe;
+    });
+
+    const pending = waitForAuthUser();
+    emit({ uid: 'u1' });
+
+    await expect(pending).resolves.toEqual({ uid: 'u1' });
+    expect(unsubscribe).toHaveBeenCalledTimes(1);
+  });
+
+  it('waitForAuthUser resolves with null when signed out', async () => {
+    let emit: (user: unknown) => void = () => {};
+    (fb.onAuthStateChanged as jest.Mock).mockImplementation((_handle, cb) => {
+      emit = cb;
+      return jest.fn();
+    });
+
+    const pending = waitForAuthUser();
+    emit(null);
+
+    await expect(pending).resolves.toBeNull();
   });
 
   it('linkEmailCredential builds an email credential and links it', () => {

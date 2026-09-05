@@ -12,6 +12,7 @@ import {
 import { useAuthActions, useCurrentUser } from '../context/AuthContext';
 import { useEmailAuthForm } from '../hooks/useEmailAuthForm';
 import NotificationOffsetSettings from '../components/NotificationOffsetSettings';
+import GalleryAutoImportSettings from '../components/GalleryAutoImportSettings';
 import DevSeedButton from '../components/DevSeedButton';
 import AppInfo from '../components/AppInfo';
 import Button from '../../../shared/components/Button';
@@ -34,6 +35,7 @@ export default function SettingsScreen() {
     return (
       <ScrollView style={styles.flex} contentContainerStyle={styles.container}>
         <NotificationOffsetSettings />
+        <GalleryAutoImportSettings ownerId={user.uid} />
         <Text style={styles.title}>계정</Text>
         <Text style={styles.subtitle}>{user.email}로 로그인되어 있어요.</Text>
         <Button label="로그아웃" onPress={handleSignOut} />
@@ -54,6 +56,7 @@ export default function SettingsScreen() {
         keyboardShouldPersistTaps="handled"
       >
         <NotificationOffsetSettings />
+        <GalleryAutoImportSettings ownerId={user?.uid} />
         <Text style={styles.title}>계정</Text>
         <Text style={styles.subtitle}>
           {form.mode === 'signUp'

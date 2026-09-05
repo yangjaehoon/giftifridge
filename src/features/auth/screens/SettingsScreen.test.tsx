@@ -19,6 +19,10 @@ jest.mock('../../../shared/utils/notificationPrefs', () => ({
   setNotificationOffsets: jest.fn(),
 }));
 jest.mock('../errors', () => ({ getAuthErrorMessage: () => '로그인에 실패했어요.' }));
+jest.mock('../components/GalleryAutoImportSettings', () => ({
+  __esModule: true,
+  default: () => null,
+}));
 
 const mockedUseCurrentUser = useCurrentUser as jest.Mock;
 const mockedUseAuthActions = useAuthActions as jest.Mock;

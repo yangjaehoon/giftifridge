@@ -34,6 +34,22 @@ export function getCurrentAuthUser(): User | null {
   return auth.currentUser;
 }
 
+/**
+ * Resolves once Firebase has finished reading its persisted session — unlike
+ * `auth.currentUser`, which can read `null` for a moment right after startup
+ * before that hydration completes. For callers with no UI to wait alongside
+ * (e.g. a headless background task), not AuthContext's onAuthStateChanged
+ * subscription, which only runs once AuthProvider mounts.
+ */
+export function waitForAuthUser(): Promise<User | null> {
+  return new Promise((resolve) => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      unsubscribe();
+      resolve(user);
+    });
+  });
+}
+
 export function linkEmailCredential(user: User, email: string, password: string) {
   return linkWithCredential(user, EmailAuthProvider.credential(email, password));
 }

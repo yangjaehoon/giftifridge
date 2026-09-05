@@ -68,11 +68,19 @@ export function parseExpiryDateFromText(text: string): string | null {
   return toDateString(new Date(year, month - 1, day));
 }
 
-export async function recognizeExpiryDate(imageUri: string): Promise<string | null> {
+/** Raw OCR text, or null if recognition failed. Shared by recognizeExpiryDate
+ * and the gallery auto-import scan, which also needs it to spot gifticon
+ * keywords. */
+export async function recognizeText(imageUri: string): Promise<string | null> {
   try {
     const result = await TextRecognition.recognize(imageUri, TextRecognitionScript.KOREAN);
-    return parseExpiryDateFromText(result.text);
+    return result.text;
   } catch {
     return null;
   }
+}
+
+export async function recognizeExpiryDate(imageUri: string): Promise<string | null> {
+  const text = await recognizeText(imageUri);
+  return text == null ? null : parseExpiryDateFromText(text);
 }
