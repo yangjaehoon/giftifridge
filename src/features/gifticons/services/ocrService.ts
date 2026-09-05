@@ -113,17 +113,99 @@ function isNoiseLine(line: string): boolean {
   return NOISE_KEYWORDS.some((keyword) => line.includes(keyword));
 }
 
+// Common Korean gifticon brands, checked before falling back to the
+// position-based guess below — a known name pins the brand correctly
+// regardless of which line it lands on (and regardless of whether that line
+// would otherwise be filtered as noise, e.g. "전국 GS25 매장에서 사용 가능").
+// Not exhaustive: a brand missing from this list still works via the
+// position fallback, just less reliably.
+const KNOWN_BRANDS = [
+  // 카페
+  '스타벅스',
+  '이디야',
+  '투썸플레이스',
+  '메가커피',
+  '컴포즈커피',
+  '빽다방',
+  '폴바셋',
+  '커피빈',
+  '할리스',
+  '파스쿠찌',
+  '엔젤리너스',
+  '탐앤탐스',
+  '만랩커피',
+  // 편의점
+  'GS25',
+  'CU',
+  '세븐일레븐',
+  '이마트24',
+  '미니스톱',
+  // 패스트푸드/치킨
+  '맥도날드',
+  '버거킹',
+  '롯데리아',
+  'KFC',
+  '맘스터치',
+  '서브웨이',
+  '교촌치킨',
+  '굽네치킨',
+  'bhc',
+  'BBQ',
+  '네네치킨',
+  // 베이커리/디저트
+  '배스킨라빈스',
+  '던킨',
+  '파리바게뜨',
+  '뚜레쥬르',
+  '파리크라상',
+  // 문화/기타
+  'CGV',
+  '롯데시네마',
+  '메가박스',
+  '올리브영',
+];
+
+function compact(value: string): string {
+  return value.replace(/\s+/g, '').toLowerCase();
+}
+
+const ASCII_ONLY_RE = /^[a-z0-9]+$/;
+
+// A plain substring check is fine for Korean brand names (multi-syllable
+// blocks rarely embed inside an unrelated word), but a short Latin/digit
+// token like "CU" or "KFC" would otherwise match inside all sorts of
+// unrelated English text (e.g. "CU" inside "CUP"). For those, require the
+// token to stand alone rather than be embedded in a longer alphanumeric run.
+function containsBrandKey(haystack: string, brandKey: string): boolean {
+  if (!ASCII_ONLY_RE.test(brandKey)) return haystack.includes(brandKey);
+  return new RegExp(`(?:^|[^a-z0-9])${brandKey}(?:[^a-z0-9]|$)`).test(haystack);
+}
+
+function findKnownBrand(text: string): string | null {
+  const haystack = compact(text);
+  return KNOWN_BRANDS.find((brand) => containsBrandKey(haystack, compact(brand))) ?? null;
+}
+
 /**
  * Best-effort brand/product-name guess from OCR text — there's no format to
  * anchor on the way a date has one, so this is a heuristic the user is
- * expected to double-check, not a reliable parse. Most gifticon layouts put
- * the brand name above the product name, so the first two non-boilerplate
- * lines are read as (brand, name) in that order.
+ * expected to double-check, not a reliable parse. A known brand name (see
+ * KNOWN_BRANDS) is matched first since it's unambiguous; otherwise, most
+ * gifticon layouts put the brand above the product name, so the first two
+ * non-boilerplate lines are read as (brand, name) in that order.
  */
 export function guessBrandAndName(text: string): { brand: string | null; name: string | null } {
-  const lines = text
+  const cleanLines = text
     .split('\n')
     .map((line) => line.trim())
     .filter((line) => line.length > 0 && !isNoiseLine(line));
-  return { brand: lines[0] ?? null, name: lines[1] ?? null };
+
+  const knownBrand = findKnownBrand(text);
+  if (knownBrand) {
+    const brandKey = compact(knownBrand);
+    const name = cleanLines.find((line) => !containsBrandKey(compact(line), brandKey));
+    return { brand: knownBrand, name: name ?? null };
+  }
+
+  return { brand: cleanLines[0] ?? null, name: cleanLines[1] ?? null };
 }

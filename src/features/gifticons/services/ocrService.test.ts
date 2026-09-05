@@ -96,6 +96,28 @@ describe('guessBrandAndName', () => {
     const text = 'GS25\n연세우유 크림빵\n유효기간 2026.12.31까지';
     expect(guessBrandAndName(text)).toEqual({ brand: 'GS25', name: '연세우유 크림빵' });
   });
+
+  it('finds a known brand regardless of which line it appears on', () => {
+    // Name first, brand second — the opposite of the usual layout assumption.
+    const text = '아메리카노 Tall\n스타벅스\n유효기간 2026.12.31까지';
+    expect(guessBrandAndName(text)).toEqual({ brand: '스타벅스', name: '아메리카노 Tall' });
+  });
+
+  it('finds a known brand even inside an otherwise-noisy line', () => {
+    const text = '아메리카노 Tall\n전국 스타벅스 매장에서 교환 가능\n유효기간 2026.12.31까지';
+    expect(guessBrandAndName(text)).toEqual({ brand: '스타벅스', name: '아메리카노 Tall' });
+  });
+
+  it('matches a known brand case- and spacing-insensitively', () => {
+    const text = 'b h c\n순살치킨\n유효기간 2026.12.31까지';
+    expect(guessBrandAndName(text)).toEqual({ brand: 'bhc', name: '순살치킨' });
+  });
+
+  it('does not mistake a short Latin brand token for a substring of unrelated text', () => {
+    const text = 'CUP 사이즈 안내\n딸기 스무디\n유효기간 2026.12.31까지';
+    // "CU" must not match inside "CUP" — falls back to the position guess.
+    expect(guessBrandAndName(text)).toEqual({ brand: 'CUP 사이즈 안내', name: '딸기 스무디' });
+  });
 });
 
 describe('recognizeText', () => {
