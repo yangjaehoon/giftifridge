@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { toGifticon } from './gifticonMapper';
 import type { Gifticon } from '../types';
 
 // A write-through mirror of a gifticon list in AsyncStorage. The web Firebase
@@ -14,12 +15,25 @@ const MAX_CACHED = 300;
 
 const scopedKey = (scope: string, key: string) => `${PREFIX}${scope}:${key}`;
 
+// The mirror is trusted as little as any other stored blob: every entry is run
+// back through toGifticon, so a row from an older app schema (or a corrupt
+// one) can't reach a screen that assumes valid string fields.
+function parseGifticons(raw: string | null): Gifticon[] | null {
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return null;
+    return parsed
+      .map((g) => (g && typeof g === 'object' ? toGifticon((g as Gifticon).id, g) : null))
+      .filter((g): g is Gifticon => g !== null);
+  } catch {
+    return null;
+  }
+}
+
 async function readAt(fullKey: string): Promise<Gifticon[] | null> {
   try {
-    const raw = await AsyncStorage.getItem(fullKey);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? (parsed as Gifticon[]) : null;
+    return parseGifticons(await AsyncStorage.getItem(fullKey));
   } catch {
     return null;
   }
@@ -57,15 +71,8 @@ export async function readCachedGifticon(id: string): Promise<Gifticon | null> {
     const keys = (await AsyncStorage.getAllKeys()).filter((k) => k.startsWith(PREFIX));
     if (keys.length === 0) return null;
     for (const [, raw] of await AsyncStorage.multiGet(keys)) {
-      if (!raw) continue;
-      try {
-        const list = JSON.parse(raw);
-        if (!Array.isArray(list)) continue;
-        const found = (list as Gifticon[]).find((g) => g?.id === id);
-        if (found) return found;
-      } catch {
-        // skip a corrupt entry
-      }
+      const found = parseGifticons(raw)?.find((g) => g.id === id);
+      if (found) return found;
     }
     return null;
   } catch {

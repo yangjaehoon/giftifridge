@@ -61,9 +61,11 @@ async function mapWithConcurrency(items, limit, fn) {
 
 /**
  * Deletes every gifticon owned by `uid` and its Storage image. Images are
- * removed inline (not via the onGifticonDeleted fan-out) so the sweep doesn't
- * depend on hundreds of trigger deliveries landing. Returns
- * { gifticons, imagesDeleted }.
+ * removed inline first so the sweep's success doesn't depend on hundreds of
+ * onGifticonDeleted deliveries landing; that trigger still fires per
+ * batch-deleted doc, but finds the object already gone (ignoreNotFound). In
+ * dry-run mode nothing is deleted — the count is returned for the log.
+ * Returns { gifticons, imagesDeleted }.
  */
 async function deleteOwnedGifticons(db, uid, dryRun) {
   const snap = await db.collection('gifticons').where('ownerId', '==', uid).get();

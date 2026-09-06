@@ -9,6 +9,18 @@ const MAX_RETRY_DELAY_MS = 30000;
 const EMPTY_ITEMS = Object.freeze([]) as never[];
 
 type Unsubscribe = () => void;
+
+/**
+ * Per-snapshot metadata. `fromCache: true` means the snapshot came from the
+ * SDK's own cache without a server round-trip — on a cold start with no
+ * network the web Firestore SDK emits an *empty* fromCache snapshot almost
+ * immediately, which must not be mistaken for a server-confirmed "you have
+ * nothing". Absent meta is treated as server-authoritative.
+ */
+export interface SnapshotMeta {
+  fromCache: boolean;
+}
+
 /**
  * A keyed live subscription. Implementations must:
  *  - return an unsubscribe function
@@ -20,15 +32,16 @@ type Unsubscribe = () => void;
  */
 type Subscribe<T> = (
   key: string,
-  onChange: (items: T[]) => void,
+  onChange: (items: T[], meta?: SnapshotMeta) => void,
   onError: (error: Error) => void,
 ) => Unsubscribe;
 
 /**
  * Optional offline mirror. `read` seeds the list on a cold start before any
- * live snapshot arrives; `write` is called (fire-and-forget) with every
- * snapshot so the mirror stays current. A live snapshot — including an empty
- * one — always wins over `read`.
+ * server-confirmed snapshot arrives; `write` is called (fire-and-forget) with
+ * every server snapshot so the mirror stays current. A server snapshot —
+ * including an empty one — always wins over `read`; an empty *fromCache*
+ * snapshot does not.
  */
 export interface ListCache<T> {
   read: (key: string) => Promise<T[] | null>;
@@ -55,9 +68,16 @@ export function useFirestoreList<T>(
   const [prevKey, setPrevKey] = useState(key);
   const retryCountRef = useRef(0);
   const subscribedKeyRef = useRef(key);
-  // Whether a live snapshot has landed for the current key — once it has, a
-  // slow cache read must not overwrite it (it may be the newer, empty truth).
-  const liveReceivedRef = useRef(false);
+  // Whether a server-confirmed snapshot (or any non-empty one) has landed for
+  // the current key — once it has, a slow mirror read must not overwrite it.
+  const authoritativeRef = useRef(false);
+  // The mirror read finished with nothing usable, and a fromCache-only
+  // (offline) snapshot has been seen — together these mean "we've done every
+  // offline thing we can and there's nothing", so stop the skeleton. Kept
+  // separate so a plain mirror miss on an *online* start doesn't flash the
+  // empty state before the server snapshot lands.
+  const mirrorMissRef = useRef(false);
+  const offlineSnapshotSeenRef = useRef(false);
 
   if (key !== prevKey) {
     setPrevKey(key);
@@ -74,32 +94,55 @@ export function useFirestoreList<T>(
     if (subscribedKeyRef.current !== key) {
       subscribedKeyRef.current = key;
       retryCountRef.current = 0;
-      liveReceivedRef.current = false;
+      authoritativeRef.current = false;
+      mirrorMissRef.current = false;
+      offlineSnapshotSeenRef.current = false;
     }
     let retryTimeout: ReturnType<typeof setTimeout>;
     let cancelled = false;
 
+    // "Nothing more is coming and there's nothing to show" — clear the
+    // skeleton. Needs a fromCache-only snapshot AND (no mirror, or the mirror
+    // came back empty), so an online start with a mirror miss keeps the
+    // skeleton until the server reply instead of flashing the empty state.
+    const settleIfNothingElseComing = () => {
+      if ((!cache || mirrorMissRef.current) && offlineSnapshotSeenRef.current) setLoading(false);
+    };
+
     // Seed from the offline mirror so a cold start with no network still shows
-    // the list (the barcode above all). Only applied while no live snapshot has
-    // arrived and nothing is shown yet.
+    // the list (the barcode above all). Skipped once a server-confirmed (or
+    // any non-empty) snapshot has arrived.
     if (cache) {
       cache.read(key).then((cached) => {
-        if (cancelled || !cached || liveReceivedRef.current) return;
-        setItems((current) => (current.length ? current : cached));
-        setLoading(false);
+        if (cancelled || authoritativeRef.current) return;
+        if (cached && cached.length) {
+          setItems((current) => (current.length ? current : cached));
+          setLoading(false);
+        } else {
+          mirrorMissRef.current = true;
+          settleIfNothingElseComing();
+        }
       });
     }
 
     const unsubscribe = subscribe(
       key,
-      (next) => {
-        liveReceivedRef.current = true;
+      (next, meta) => {
         retryCountRef.current = 0;
-        setItems(next);
-        setLoading(false);
         setRefreshing(false);
         setError(null);
-        cache?.write(key, next);
+        // An empty fromCache snapshot is the SDK saying "nothing cached, haven't
+        // reached the server" — it must not block or clear the offline mirror.
+        // Anything else (server-confirmed, or any non-empty snapshot) wins.
+        if (!meta?.fromCache || next.length > 0) {
+          authoritativeRef.current = true;
+          setItems(next);
+          setLoading(false);
+          cache?.write(key, next);
+        } else {
+          offlineSnapshotSeenRef.current = true;
+          settleIfNothingElseComing();
+        }
       },
       (err) => {
         setError(err);

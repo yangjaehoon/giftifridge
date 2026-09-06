@@ -54,6 +54,18 @@ describe('gifticonListCache', () => {
     expect(await cache.read('bad')).toBeNull();
   });
 
+  it('drops entries that are not valid gifticons (e.g. an older schema)', async () => {
+    await AsyncStorage.setItem(
+      'gifticonCache:owner:mixed',
+      JSON.stringify([
+        makeGifticon('good'),
+        { id: 'no-owner', name: 'x' }, // missing required fields
+        { id: 'bad-date', ...makeGifticon('bad-date'), expiresAt: 'not-a-date' },
+      ]),
+    );
+    expect(await gifticonListCache('owner').read('mixed')).toEqual([makeGifticon('good')]);
+  });
+
   it('caps the stored list', async () => {
     const cache = gifticonListCache('owner');
     const many = Array.from({ length: 350 }, (_, i) => makeGifticon(`g${i}`));

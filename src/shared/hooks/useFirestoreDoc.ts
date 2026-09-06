@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import type { SnapshotMeta } from './useFirestoreList';
 
 const MAX_RETRY_DELAY_MS = 30000;
 
@@ -8,11 +9,12 @@ type Unsubscribe = () => void;
  * unsubscribe function, must not call `onChange` synchronously during the
  * subscribe call, and must pass `null` (not a partial object) when the document
  * is missing or fails validation. `onError` MAY fire on an unrecoverable
- * listener failure; the hook then retries with backoff.
+ * listener failure; the hook then retries with backoff. `meta.fromCache`
+ * distinguishes an offline no-server-round-trip snapshot from a confirmed one.
  */
 type Subscribe<T> = (
   key: string,
-  onChange: (doc: T | null) => void,
+  onChange: (doc: T | null, meta?: SnapshotMeta) => void,
   onError: (error: Error) => void,
 ) => Unsubscribe;
 
@@ -26,6 +28,9 @@ export function useFirestoreDoc<T>(key: string | undefined, subscribe: Subscribe
   const [data, setData] = useState<T | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
+  // Has the server given a definitive answer for this key (vs only an offline
+  // fromCache snapshot)? Lets a caller keep its own fallback until then.
+  const [serverAnswered, setServerAnswered] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
   const [prevKey, setPrevKey] = useState(key);
   const retryCountRef = useRef(0);
@@ -36,6 +41,7 @@ export function useFirestoreDoc<T>(key: string | undefined, subscribe: Subscribe
     setData(null);
     setLoading(Boolean(key));
     setError(null);
+    setServerAnswered(false);
   }
 
   useEffect(() => {
@@ -48,11 +54,12 @@ export function useFirestoreDoc<T>(key: string | undefined, subscribe: Subscribe
 
     const unsubscribe = subscribe(
       key,
-      (next) => {
+      (next, meta) => {
         retryCountRef.current = 0;
         setData(next);
         setLoading(false);
         setError(null);
+        if (!meta?.fromCache) setServerAnswered(true);
       },
       (err) => {
         setError(err);
@@ -73,6 +80,8 @@ export function useFirestoreDoc<T>(key: string | undefined, subscribe: Subscribe
     data: key ? data : null,
     loading: key ? loading : false,
     error,
+    /** True once a server-confirmed snapshot has been received for this key. */
+    serverAnswered: key ? serverAnswered : false,
     refresh: () => setRefreshKey((k) => k + 1),
   };
 }

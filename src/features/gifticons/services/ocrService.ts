@@ -512,10 +512,11 @@ function keepHeadlineSizedLines(lines: RecognizedLine[]): RecognizedLine[] {
 
 // A headline-sized line that reads as a sentence fragment bled in from a web
 // page's result title ("있을까?", "…가격 알 수") rather than a product name:
-// too short to be a name, or ending in sentence punctuation. Used only to skip
-// over such a line when it lands between the brand and the real name.
+// a lone character, or ending in sentence punctuation. Used only to skip over
+// such a line when it lands between the brand and the real name — so it stays
+// permissive (real names like "빙수"/"라떼" are two chars).
 function looksLikeFragment(line: string): boolean {
-  return line.length < 3 || /[?!]$/.test(line);
+  return line.length < 2 || /[?!]$/.test(line);
 }
 
 /**

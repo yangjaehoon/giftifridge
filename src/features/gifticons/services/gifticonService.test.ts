@@ -183,13 +183,17 @@ describe('subscribeToGifticons', () => {
     const [, onSuccess] = mockedOnSnapshot.mock.calls[0];
 
     onSuccess({
+      metadata: { fromCache: false },
       docs: [
         { id: 'a', data: () => storedDoc({ name: 'personal' }) },
         { id: 'b', data: () => storedDoc({ name: 'shared', spaceId: 'space-1' }) },
       ],
     });
 
-    expect(onChange).toHaveBeenCalledWith([expect.objectContaining({ id: 'a', name: 'personal' })]);
+    expect(onChange).toHaveBeenCalledWith(
+      [expect.objectContaining({ id: 'a', name: 'personal' })],
+      { fromCache: false },
+    );
   });
 
   it('drops docs that are missing required fields instead of yielding them', () => {
@@ -198,6 +202,7 @@ describe('subscribeToGifticons', () => {
     const [, onSuccess] = mockedOnSnapshot.mock.calls[0];
 
     onSuccess({
+      metadata: { fromCache: false },
       docs: [
         { id: 'a', data: () => storedDoc() },
         { id: 'bad', data: () => ({ name: 'no owner, no dates' }) },
@@ -205,7 +210,9 @@ describe('subscribeToGifticons', () => {
       ],
     });
 
-    expect(onChange).toHaveBeenCalledWith([expect.objectContaining({ id: 'a' })]);
+    expect(onChange).toHaveBeenCalledWith([expect.objectContaining({ id: 'a' })], {
+      fromCache: false,
+    });
   });
 
   it('forwards listener errors to onError', () => {
@@ -226,11 +233,13 @@ describe('subscribeToSpaceGifticons', () => {
 
     const [, onSuccess] = mockedOnSnapshot.mock.calls[0];
     onSuccess({
+      metadata: { fromCache: false },
       docs: [{ id: 'a', data: () => storedDoc({ name: 'shared', spaceId: 'space-1' }) }],
     });
-    expect(onChange).toHaveBeenCalledWith([
-      expect.objectContaining({ id: 'a', name: 'shared', spaceId: 'space-1' }),
-    ]);
+    expect(onChange).toHaveBeenCalledWith(
+      [expect.objectContaining({ id: 'a', name: 'shared', spaceId: 'space-1' })],
+      { fromCache: false },
+    );
   });
 });
 
@@ -240,9 +249,16 @@ describe('subscribeToGifticon', () => {
     subscribeToGifticon('gift-1', onChange);
     const [, onSuccess] = mockedOnSnapshot.mock.calls[0];
 
-    onSuccess({ exists: () => true, id: 'gift-1', data: () => storedDoc({ name: 'x' }) });
+    onSuccess({
+      metadata: { fromCache: false },
+      exists: () => true,
+      id: 'gift-1',
+      data: () => storedDoc({ name: 'x' }),
+    });
 
-    expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ id: 'gift-1', name: 'x' }));
+    expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ id: 'gift-1', name: 'x' }), {
+      fromCache: false,
+    });
   });
 
   it('passes null when the stored doc is malformed', () => {
@@ -250,9 +266,14 @@ describe('subscribeToGifticon', () => {
     subscribeToGifticon('gift-1', onChange);
     const [, onSuccess] = mockedOnSnapshot.mock.calls[0];
 
-    onSuccess({ exists: () => true, id: 'gift-1', data: () => ({ name: 'x' }) });
+    onSuccess({
+      metadata: { fromCache: false },
+      exists: () => true,
+      id: 'gift-1',
+      data: () => ({ name: 'x' }),
+    });
 
-    expect(onChange).toHaveBeenCalledWith(null);
+    expect(onChange).toHaveBeenCalledWith(null, { fromCache: false });
   });
 
   it('passes null when the doc does not exist', () => {
@@ -260,9 +281,19 @@ describe('subscribeToGifticon', () => {
     subscribeToGifticon('gift-1', onChange);
     const [, onSuccess] = mockedOnSnapshot.mock.calls[0];
 
-    onSuccess({ exists: () => false });
+    onSuccess({ metadata: { fromCache: false }, exists: () => false });
 
-    expect(onChange).toHaveBeenCalledWith(null);
+    expect(onChange).toHaveBeenCalledWith(null, { fromCache: false });
+  });
+
+  it('flags a fromCache snapshot so callers can keep an offline fallback', () => {
+    const onChange = jest.fn();
+    subscribeToGifticon('gift-1', onChange);
+    const [, onSuccess] = mockedOnSnapshot.mock.calls[0];
+
+    onSuccess({ metadata: { fromCache: true }, exists: () => false });
+
+    expect(onChange).toHaveBeenCalledWith(null, { fromCache: true });
   });
 });
 

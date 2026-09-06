@@ -241,6 +241,34 @@ describe('useFirestoreList', () => {
       expect(result.current.items).toEqual([{ id: 'live' }]);
     });
 
+    it('keeps the offline mirror when the only snapshot is an empty fromCache one', async () => {
+      const { subscribe, calls } = createMockSubscribe<{ id: string }>();
+      const cache = makeCache([{ id: 'mirrored' }]);
+
+      const { result } = await renderHook(() => useFirestoreList('owner-1', subscribe, cache));
+
+      await act(async () => {
+        calls[0].onChange([], { fromCache: true }); // offline: nothing cached, no server
+      });
+      await waitFor(() => expect(result.current.items).toEqual([{ id: 'mirrored' }]));
+      expect(result.current.loading).toBe(false);
+      expect(cache.write).not.toHaveBeenCalled();
+    });
+
+    it('lets a server-confirmed empty snapshot clear the mirror', async () => {
+      const { subscribe, calls } = createMockSubscribe<{ id: string }>();
+      const cache = makeCache([{ id: 'mirrored' }]);
+
+      const { result } = await renderHook(() => useFirestoreList('owner-1', subscribe, cache));
+      await waitFor(() => expect(result.current.items).toEqual([{ id: 'mirrored' }]));
+
+      await act(async () => {
+        calls[0].onChange([], { fromCache: false });
+      });
+      expect(result.current.items).toEqual([]);
+      expect(cache.write).toHaveBeenCalledWith('owner-1', []);
+    });
+
     it('does not overwrite an already-received (empty) live snapshot with stale cache', async () => {
       const { subscribe, calls } = createMockSubscribe<{ id: string }>();
       let resolveRead: (v: { id: string }[]) => void = () => {};

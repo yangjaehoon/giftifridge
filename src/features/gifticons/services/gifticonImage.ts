@@ -48,10 +48,11 @@ async function compressUnderLimit(localUri: string): Promise<Blob> {
   let blob = await encodeJpeg(localUri, width, quality);
 
   if (blob.size > MAX_UPLOAD_BYTES) {
-    // JPEG size drops faster than linearly as quality falls, so scaling by the
-    // measured overshoot ratio lands under the cap in one more encode almost
-    // every time (and never overshoots badly upward).
-    quality = Math.max(MIN_COMPRESS_QUALITY, quality * (MAX_UPLOAD_BYTES / blob.size));
+    // JPEG size drops faster than linearly as quality falls, so scale by the
+    // *square root* of the overshoot ratio — a gentler cut that usually clears
+    // the cap in one more encode without dropping quality further than needed
+    // (the loop below still fine-tunes if it's still over).
+    quality = Math.max(MIN_COMPRESS_QUALITY, quality * Math.sqrt(MAX_UPLOAD_BYTES / blob.size));
     blob = await encodeJpeg(localUri, width, quality);
   }
 

@@ -202,6 +202,11 @@ describe('guessGifticonFields', () => {
     });
   });
 
+  it('keeps a genuinely short product name after the brand', () => {
+    const text = '설빙\n빙수\n유효기간 2026.12.31까지';
+    expect(guessGifticonFields(ocrResult(text))).toMatchObject({ brand: '설빙', name: '빙수' });
+  });
+
   it('takes the first real line after the brand, not the longest', () => {
     // A trailing option/disclaimer line can be longer than the product name;
     // "first after brand" must win over "longest".

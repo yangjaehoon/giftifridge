@@ -20,6 +20,9 @@ const PRICE_AS_OF = '2026년';
 interface PriceEntry {
   /** Substring matched against the (whitespace-stripped, lowercased) brand. */
   brand: string;
+  /** Skip this entry if the brand also contains one of these — guards a short
+   *  token like "메가" (the coffee chain) from matching "메가박스" (a cinema). */
+  notBrand?: string[];
   /** Any of these appearing in the normalized product name is a match; the
    *  longest matching keyword wins when an item matches several entries. */
   keywords: string[];
@@ -45,14 +48,14 @@ const MENU_PRICES: PriceEntry[] = [
   // 저가 커피 (2024~2025 인상 반영, 아이스 기준에 가깝게)
   { brand: '이디야', keywords: ['아메리카노'], price: 3200 },
   { brand: '이디야', keywords: ['카페라떼'], price: 3700 },
-  { brand: '메가', keywords: ['아메리카노'], price: 2000 },
-  { brand: '메가', keywords: ['카페라떼'], price: 3400 },
-  { brand: '컴포즈', keywords: ['아메리카노'], price: 2000 },
+  { brand: '메가', notBrand: ['메가박스'], keywords: ['아메리카노'], price: 2000 },
+  { brand: '메가', notBrand: ['메가박스'], keywords: ['카페라떼'], price: 3400 },
+  { brand: '컴포즈커피', keywords: ['아메리카노'], price: 2000 },
   { brand: '빽다방', keywords: ['아메리카노'], price: 2000 },
   { brand: '더벤티', keywords: ['아메리카노'], price: 1900 },
 
   // 카페 (기타)
-  { brand: '투썸', keywords: ['아메리카노'], price: 4900 },
+  { brand: '투썸플레이스', keywords: ['아메리카노'], price: 4900 },
   { brand: '폴바셋', keywords: ['아메리카노'], price: 5500 },
   { brand: '공차', keywords: ['밀크티'], price: 4300 },
 
@@ -120,6 +123,7 @@ export function lookupEstimatedPrice(brand: string, name: string): EstimatedPric
   let bestScore = 0;
   for (const entry of MENU_PRICES) {
     if (!b.includes(normalize(entry.brand))) continue;
+    if (entry.notBrand?.some((x) => b.includes(normalize(x)))) continue;
     for (const keyword of entry.keywords) {
       const k = normalize(keyword);
       if (k.length > bestScore && n.includes(k)) {

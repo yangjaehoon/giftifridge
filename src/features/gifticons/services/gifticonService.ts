@@ -64,9 +64,11 @@ export async function updateGifticon(id: string, data: NewGifticon): Promise<voi
   });
 }
 
+type SnapshotMeta = { fromCache: boolean };
+
 export function subscribeToGifticons(
   ownerId: string,
-  onChange: (items: Gifticon[]) => void,
+  onChange: (items: Gifticon[], meta?: SnapshotMeta) => void,
   onError?: (error: Error) => void,
 ) {
   const q = query(
@@ -82,7 +84,7 @@ export function subscribeToGifticons(
       const items = snapshot.docs
         .map((d) => toGifticon(d.id, d.data()))
         .filter((item): item is Gifticon => item !== null && !item.spaceId);
-      onChange(items);
+      onChange(items, { fromCache: snapshot.metadata.fromCache });
     },
     onError,
   );
@@ -90,7 +92,7 @@ export function subscribeToGifticons(
 
 export function subscribeToSpaceGifticons(
   spaceId: string,
-  onChange: (items: Gifticon[]) => void,
+  onChange: (items: Gifticon[], meta?: SnapshotMeta) => void,
   onError?: (error: Error) => void,
 ) {
   const q = query(
@@ -104,7 +106,7 @@ export function subscribeToSpaceGifticons(
       const items = snapshot.docs
         .map((d) => toGifticon(d.id, d.data()))
         .filter((item): item is Gifticon => item !== null);
-      onChange(items);
+      onChange(items, { fromCache: snapshot.metadata.fromCache });
     },
     onError,
   );
@@ -112,13 +114,15 @@ export function subscribeToSpaceGifticons(
 
 export function subscribeToGifticon(
   id: string,
-  onChange: (gifticon: Gifticon | null) => void,
+  onChange: (gifticon: Gifticon | null, meta?: SnapshotMeta) => void,
   onError?: (error: Error) => void,
 ) {
   return onSnapshot(
     docRef(COLLECTION, id),
     (snapshot) => {
-      onChange(snapshot.exists() ? toGifticon(snapshot.id, snapshot.data()) : null);
+      onChange(snapshot.exists() ? toGifticon(snapshot.id, snapshot.data()) : null, {
+        fromCache: snapshot.metadata.fromCache,
+      });
     },
     onError,
   );
