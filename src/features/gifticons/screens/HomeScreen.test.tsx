@@ -13,6 +13,9 @@ jest.mock('../hooks/useGifticons', () => ({ useGifticons: jest.fn() }));
 jest.mock('../hooks/useSpaceGifticons', () => ({ useSpaceGifticons: jest.fn() }));
 jest.mock('../hooks/useNearbyGifticons', () => ({ useNearbyGifticons: jest.fn() }));
 jest.mock('../../spaces/hooks/useMySpaces', () => ({ useMySpaces: jest.fn() }));
+jest.mock('../../auth/hooks/useLinkAccountPrompt', () => ({
+  useLinkAccountPrompt: jest.fn(() => ({ show: false, dismiss: jest.fn() })),
+}));
 
 const mockedUseAuth = useCurrentUser as jest.Mock;
 const mockedUseGifticons = useGifticons as jest.Mock;

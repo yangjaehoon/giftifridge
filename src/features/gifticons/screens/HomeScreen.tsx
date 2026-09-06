@@ -11,6 +11,8 @@ import {
 } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useCurrentUser } from '../../auth/context/AuthContext';
+import { useLinkAccountPrompt } from '../../auth/hooks/useLinkAccountPrompt';
+import LinkAccountBanner from '../../auth/components/LinkAccountBanner';
 import { useNearbyGifticons } from '../hooks/useNearbyGifticons';
 import { useGifticonListView } from '../hooks/useGifticonListView';
 import { useHomeGifticonContext } from '../hooks/useHomeGifticonContext';
@@ -34,10 +36,12 @@ type Props = NativeStackScreenProps<RootStackParamList, 'Home'>;
 const keyExtractor = (item: Gifticon) => item.id;
 
 export default function HomeScreen({ navigation }: Props) {
-  const { user } = useCurrentUser();
+  const { user, isAnonymous } = useCurrentUser();
   const { context, setContext, spaces, list } = useHomeGifticonContext(user?.uid);
   const { items, loading, refreshing, error, refresh } = list;
   const nearbyItems = useNearbyGifticons(items);
+  const isPersonal = context.type !== 'space';
+  const linkPrompt = useLinkAccountPrompt(isAnonymous, isPersonal ? items.length : 0);
   const {
     visible,
     counts,
@@ -103,6 +107,12 @@ export default function HomeScreen({ navigation }: Props) {
         </TouchableOpacity>
       )}
       <GifticonStats items={items.filter((i) => !i.isUsed)} />
+      {isPersonal && linkPrompt.show && (
+        <LinkAccountBanner
+          onLink={() => navigation.navigate('Settings')}
+          onDismiss={linkPrompt.dismiss}
+        />
+      )}
       <NearbyGifticonBanner items={nearbyItems} />
 
       <StatusTabs tab={tab} counts={counts} onChange={setTab} />
