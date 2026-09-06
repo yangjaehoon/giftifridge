@@ -510,6 +510,14 @@ function keepHeadlineSizedLines(lines: RecognizedLine[]): RecognizedLine[] {
   return lines.filter((line) => line.height >= reference * MIN_HEADLINE_HEIGHT_RATIO);
 }
 
+// A headline-sized line that reads as a sentence fragment bled in from a web
+// page's result title ("있을까?", "…가격 알 수") rather than a product name:
+// too short to be a name, or ending in sentence punctuation. Used only to skip
+// over such a line when it lands between the brand and the real name.
+function looksLikeFragment(line: string): boolean {
+  return line.length < 3 || /[?!]$/.test(line);
+}
+
 /**
  * Best-effort brand/name/category guess from OCR text — there's no format to
  * anchor on the way a date has one, so this is a heuristic the user is
@@ -538,26 +546,24 @@ export function guessGifticonFields(recognized: RecognizedText): GuessedGifticon
     // the brand name (e.g. 설빙's "인절미설빙"), and excluding by mere
     // substring would wrongly throw away the real product name there.
     const notJustBrand = (line: string) => compact(line) !== brandKey;
+    const nameOf = (line: string) => notJustBrand(line) && !looksLikeFragment(line);
     // The product name sits right under the brand on a real gifticon, so anchor
-    // on the line carrying the brand and take the next headline after it. When
-    // the brand only appears in the footer table (an old "사용처 | 스타벅스"
-    // layout with no standalone brand line) there's nothing to anchor to — the
-    // name is then the *last* headline before that table, not the first, which
-    // on a web-page screenshot would be the site/app name.
+    // on the line carrying the brand and take the *first* real headline after
+    // it (skipping a result-title fragment like "있을까?" a web screenshot can
+    // wedge in — see looksLikeFragment). When the brand only appears in the
+    // footer table (an old "사용처 | 스타벅스" layout with no standalone brand
+    // line) there's nothing to anchor to; the name is then the last headline
+    // before that table, not the first, which would be the site/app name.
     const brandLineIndex = headlineLines.findIndex((line) => compact(line).includes(brandKey));
-    const afterBrand =
-      brandLineIndex === -1 ? [] : headlineLines.slice(brandLineIndex + 1).filter(notJustBrand);
-    // Longest, not first: a web screenshot can leave a result-title fragment
-    // ("있을까?") wedged between the brand line and the real name, and the name
-    // is virtually always the longer string.
-    const longestAfterBrand = afterBrand.reduce<string | null>(
-      (best, line) => (best === null || line.length > best.length ? line : best),
-      null,
-    );
-    const lastBeforeFooter = [...headlineLines].reverse().find(notJustBrand) ?? null;
+    const afterBrand = brandLineIndex === -1 ? [] : headlineLines.slice(brandLineIndex + 1);
+    const nameAfterBrand = afterBrand.find(nameOf) ?? null;
+    const lastBeforeFooter =
+      [...headlineLines].reverse().find(nameOf) ??
+      [...headlineLines].reverse().find(notJustBrand) ??
+      null;
     return {
       brand: known.name,
-      name: longestAfterBrand ?? lastBeforeFooter,
+      name: nameAfterBrand ?? lastBeforeFooter,
       category: known.category,
     };
   }

@@ -35,16 +35,25 @@ async function encodeJpeg(localUri: string, width: number, quality: number): Pro
 }
 
 /**
- * Resizes/compresses to a JPEG that's under the Storage size cap: quality is
- * dropped first (cheap, keeps resolution readable), then the dimension, until
- * the blob fits or both hit their floor — at which point the smallest encode is
- * used as-is. `blob.size` can be undefined on some RN builds; treat that as
- * "fits" so this degrades to the old single-pass behaviour rather than looping.
+ * Resizes/compresses to a JPEG that's under the Storage size cap. The first
+ * over-cap result is used to scale quality down in one ratio-based jump (a full
+ * re-decode of a multi-megapixel original isn't cheap), then quality is stepped
+ * to the floor and only after that the dimension — so a large screenshot
+ * converges in ~2 passes instead of 6. `blob.size` can be undefined on some RN
+ * builds; treat that as "fits" so this degrades to the old single pass.
  */
 async function compressUnderLimit(localUri: string): Promise<Blob> {
   let width = IMAGE_MAX_DIMENSION;
   let quality = IMAGE_COMPRESS_QUALITY;
   let blob = await encodeJpeg(localUri, width, quality);
+
+  if (blob.size > MAX_UPLOAD_BYTES) {
+    // JPEG size drops faster than linearly as quality falls, so scaling by the
+    // measured overshoot ratio lands under the cap in one more encode almost
+    // every time (and never overshoots badly upward).
+    quality = Math.max(MIN_COMPRESS_QUALITY, quality * (MAX_UPLOAD_BYTES / blob.size));
+    blob = await encodeJpeg(localUri, width, quality);
+  }
 
   while (
     blob.size > MAX_UPLOAD_BYTES &&

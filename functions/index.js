@@ -16,41 +16,69 @@ initializeApp();
 // run there too; the scheduled job is pinned to the same region for locality.
 const REGION = 'asia-northeast3';
 
+// The scheduled sweep permanently deletes accounts and their data. Ship it in
+// dry-run first: it logs every account it *would* delete (and the gifticon
+// count) without touching anything, so a few weeks of logs can confirm no
+// actively-used account is being caught before this is flipped to false and
+// redeployed. onGifticonDeleted below is NOT gated by this — reversible image
+// cleanup runs live immediately.
+const CLEANUP_DRY_RUN = true;
+
 const imagePath = (gifticonId) => `gifticons/${gifticonId}.jpg`;
 
+async function deleteImage(gifticonId) {
+  try {
+    await getStorage().bucket().file(imagePath(gifticonId)).delete({ ignoreNotFound: true });
+    return true;
+  } catch (err) {
+    logger.warn('image delete failed', { gifticonId, error: String(err) });
+    return false;
+  }
+}
+
 /**
- * A gifticon's photo in Storage is keyed by its doc id. Deleting it here —
- * rather than only in the client's deleteGifticon — means the image is cleaned
- * up on every delete path: an in-app delete whose best-effort client Storage
- * call failed (offline / transient), and the scheduled cleanup below, which
- * deletes docs with no client around to run the Storage call.
+ * A gifticon's photo in Storage is keyed by its doc id. Deleting it here — not
+ * only in the client's deleteGifticon — makes the image cleanup reliable for an
+ * in-app delete whose best-effort client Storage call failed (offline /
+ * transient). The scheduled sweep deletes its images inline rather than leaning
+ * on this fan-out.
  */
 exports.onGifticonDeleted = onDocumentDeleted(
   { document: 'gifticons/{gifticonId}', region: REGION },
-  async (event) => {
-    const { gifticonId } = event.params;
-    try {
-      await getStorage().bucket().file(imagePath(gifticonId)).delete({ ignoreNotFound: true });
-    } catch (err) {
-      logger.warn('onGifticonDeleted: image delete failed', {
-        gifticonId,
-        error: String(err),
-      });
-    }
-  },
+  (event) => deleteImage(event.params.gifticonId),
 );
 
-const BATCH_LIMIT = 400;
+const DOC_BATCH_LIMIT = 400;
+const IMAGE_DELETE_CONCURRENCY = 20;
 
-async function deleteOwnedGifticons(db, uid) {
+async function mapWithConcurrency(items, limit, fn) {
+  const results = [];
+  for (let i = 0; i < items.length; i += limit) {
+    results.push(...(await Promise.all(items.slice(i, i + limit).map(fn))));
+  }
+  return results;
+}
+
+/**
+ * Deletes every gifticon owned by `uid` and its Storage image. Images are
+ * removed inline (not via the onGifticonDeleted fan-out) so the sweep doesn't
+ * depend on hundreds of trigger deliveries landing. Returns
+ * { gifticons, imagesDeleted }.
+ */
+async function deleteOwnedGifticons(db, uid, dryRun) {
   const snap = await db.collection('gifticons').where('ownerId', '==', uid).get();
-  for (let i = 0; i < snap.docs.length; i += BATCH_LIMIT) {
+  const ids = snap.docs.map((doc) => doc.id);
+  if (dryRun) return { gifticons: ids.length, imagesDeleted: 0 };
+
+  const outcomes = await mapWithConcurrency(ids, IMAGE_DELETE_CONCURRENCY, deleteImage);
+  const imagesDeleted = outcomes.filter(Boolean).length;
+
+  for (let i = 0; i < snap.docs.length; i += DOC_BATCH_LIMIT) {
     const batch = db.batch();
-    // Each delete fires onGifticonDeleted, which removes the Storage image.
-    for (const doc of snap.docs.slice(i, i + BATCH_LIMIT)) batch.delete(doc.ref);
+    for (const doc of snap.docs.slice(i, i + DOC_BATCH_LIMIT)) batch.delete(doc.ref);
     await batch.commit();
   }
-  return snap.size;
+  return { gifticons: ids.length, imagesDeleted };
 }
 
 /**
@@ -69,8 +97,10 @@ exports.cleanupInactiveAnonymousUsers = onSchedule(
     const now = Date.now();
 
     let scanned = 0;
+    let eligible = 0;
     let deletedUsers = 0;
     let deletedGifticons = 0;
+    let deletedImages = 0;
     let pageToken;
 
     do {
@@ -79,10 +109,21 @@ exports.cleanupInactiveAnonymousUsers = onSchedule(
       for (const user of page.users) {
         scanned += 1;
         if (!isEligibleForCleanup(user, now, MAX_IDLE_MS)) continue;
+        eligible += 1;
         try {
-          deletedGifticons += await deleteOwnedGifticons(db, user.uid);
-          await auth.deleteUser(user.uid);
-          deletedUsers += 1;
+          const { gifticons, imagesDeleted } = await deleteOwnedGifticons(
+            db,
+            user.uid,
+            CLEANUP_DRY_RUN,
+          );
+          deletedGifticons += gifticons;
+          deletedImages += imagesDeleted;
+          if (CLEANUP_DRY_RUN) {
+            logger.info('cleanup dry-run: would delete', { uid: user.uid, gifticons });
+          } else {
+            await auth.deleteUser(user.uid);
+            deletedUsers += 1;
+          }
         } catch (err) {
           logger.error('cleanupInactiveAnonymousUsers: user cleanup failed', {
             uid: user.uid,
@@ -93,9 +134,12 @@ exports.cleanupInactiveAnonymousUsers = onSchedule(
     } while (pageToken);
 
     logger.info('cleanupInactiveAnonymousUsers: done', {
+      dryRun: CLEANUP_DRY_RUN,
       scanned,
+      eligible,
       deletedUsers,
       deletedGifticons,
+      deletedImages,
     });
   },
 );

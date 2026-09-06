@@ -7,11 +7,14 @@
 // launch (see useFirstRunNotice).
 const MAX_IDLE_MS = 180 * 24 * 60 * 60 * 1000;
 
-// An anonymous Firebase Auth user has no linked sign-in providers. A user who
-// linked an email / Google / Apple account is never cleaned up here — their
-// data is recoverable, so keeping or deleting it is their choice.
+// An anonymous Firebase Auth user has no linked sign-in providers and no
+// email / phone on the account. Checking email/phone too (not just an empty
+// providerData) keeps a custom-token or Admin-SDK-created user — which also
+// has empty providerData — from being swept if the project ever grows one.
 function isAnonymous(userRecord) {
-  return (userRecord.providerData || []).length === 0;
+  return (
+    (userRecord.providerData || []).length === 0 && !userRecord.email && !userRecord.phoneNumber
+  );
 }
 
 // Most recent sign of life. lastRefreshTime moves whenever the SDK refreshes

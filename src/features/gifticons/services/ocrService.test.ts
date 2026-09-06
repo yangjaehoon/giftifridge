@@ -191,6 +191,28 @@ describe('guessGifticonFields', () => {
     });
   });
 
+  it('skips a sentence-fragment line wedged between the brand and the real name', () => {
+    // A web screenshot can bleed a result-title tail ("있을까?") in just under
+    // the brand; the real name is the next line, not that fragment.
+    const text = '뚜레쥬르\n있을까?\n행복한 플라워 하트 케이크\n유효기간 2026.12.31까지';
+    expect(guessGifticonFields(ocrResult(text))).toEqual({
+      brand: '뚜레쥬르',
+      name: '행복한 플라워 하트 케이크',
+      category: 'cafe',
+    });
+  });
+
+  it('takes the first real line after the brand, not the longest', () => {
+    // A trailing option/disclaimer line can be longer than the product name;
+    // "first after brand" must win over "longest".
+    const text = '스타벅스\n카페 아메리카노 T\n사이즈 변경 가능해요\n유효기간 2026.12.31까지';
+    expect(guessGifticonFields(ocrResult(text))).toEqual({
+      brand: '스타벅스',
+      name: '카페 아메리카노 T',
+      category: 'cafe',
+    });
+  });
+
   it('ignores a screenshot status-bar clock/battery instead of taking it as the name', () => {
     // A gifticon screenshot also captures the phone status bar; "2:55" and
     // "85%" land above the real content but are never the product name.

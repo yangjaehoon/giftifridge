@@ -22,6 +22,11 @@ describe('isAnonymous', () => {
   it('is false once an account is linked', () => {
     expect(isAnonymous(user({ providerData: [{ providerId: 'google.com' }] }))).toBe(false);
   });
+
+  it('is false for an account that carries an email or phone but no provider', () => {
+    expect(isAnonymous(user({ email: 'a@b.c' }))).toBe(false);
+    expect(isAnonymous(user({ phoneNumber: '+821000000000' }))).toBe(false);
+  });
 });
 
 describe('lastActiveMs', () => {

@@ -72,37 +72,30 @@ describe('uploadGifticonImage', () => {
     expect(mockedUploadBytes.mock.calls[1][0]).toBe('ref:gifticons/gift-1.jpg');
   });
 
-  it('re-encodes smaller until the blob fits under the Storage size cap', async () => {
-    // manipulateAsync tags each encode's uri with the params it was called with;
-    // fetch then hands back a blob whose size shrinks with quality/width, so the
-    // first two encodes are over the ~950 KiB cap and the third fits.
+  it('re-encodes once, at a ratio-scaled quality, when the first encode is over the cap', async () => {
     mockedManipulateAsync.mockImplementation(async (_uri, [op], opts) => ({
       uri: `w${op.resize.width}-q${opts.compress}`,
     }));
-    const sizeForUri = (uri: string): number => {
-      if (uri === 'w900-q0.5') return 2_000_000;
-      if (uri === 'w900-q0.35') return 1_200_000;
-      return 400_000;
-    };
+    // The starting encode is ~3x the cap; any lower-quality re-encode fits.
     (global.fetch as jest.Mock).mockImplementation(async (uri: string) => ({
-      blob: async () => ({ size: sizeForUri(uri) }),
+      blob: async () => ({ size: uri === 'w900-q0.5' ? 3_000_000 : 300_000 }),
     }));
 
     try {
       await uploadGifticonImage('gift-1', 'file:///big.jpg');
 
-      const widthsAndQualities = mockedManipulateAsync.mock.calls.map(([, [op], opts]) => [
+      const calls = mockedManipulateAsync.mock.calls.map(([, [op], opts]) => [
         op.resize.width,
         opts.compress,
       ]);
-      expect(widthsAndQualities).toEqual([
-        [900, 0.5],
-        [900, 0.35],
-        [900, 0.2],
-      ]);
+      expect(calls).toHaveLength(2);
+      expect(calls[0]).toEqual([900, 0.5]);
+      expect(calls[1][0]).toBe(900); // dimension untouched — only quality scaled
+      expect(calls[1][1]).toBeGreaterThanOrEqual(0.2);
+      expect(calls[1][1]).toBeLessThan(0.5);
       expect(mockedUploadBytes).toHaveBeenCalledWith(
         'ref:gifticons/gift-1.jpg',
-        { size: 400_000 },
+        { size: 300_000 },
         { contentType: 'image/jpeg' },
       );
     } finally {
