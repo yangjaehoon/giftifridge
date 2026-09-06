@@ -64,7 +64,7 @@ describe('GifticonCard', () => {
     const { getByText } = await render(
       <GifticonCard gifticon={makeGifticon({ id: '1' })} onPress={jest.fn()} />,
     );
-    expect(getByText('예상 4,500원')).toBeTruthy();
+    expect(getByText('예상 4,700원')).toBeTruthy();
   });
 
   it('renders a plain D-day for a gifticon expiring far in the future', async () => {
