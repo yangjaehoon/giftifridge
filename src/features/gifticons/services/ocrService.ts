@@ -337,15 +337,28 @@ const ASCII_ONLY_RE = /^[a-z0-9]+$/;
 // blocks rarely embed inside an unrelated word), but a short Latin/digit
 // token like "CU" or "KFC" would otherwise match inside all sorts of
 // unrelated English text (e.g. "CU" inside "CUP"). For those, require the
-// token to stand alone rather than be embedded in a longer alphanumeric run.
-function containsBrandKey(haystack: string, brandKey: string): boolean {
-  if (!ASCII_ONLY_RE.test(brandKey)) return haystack.includes(brandKey);
-  return new RegExp(`(?:^|[^a-z0-9])${brandKey}(?:[^a-z0-9]|$)`).test(haystack);
+// token to stand alone rather than be embedded in a longer alphanumeric run —
+// checked against both the fully-compacted text and a whitespace-preserving
+// one, since compact() turns "Naver Blog\nBHC" into "naverblogbhc" where the
+// word boundary "bhc" actually had is gone.
+function containsBrandKey(
+  compactHaystack: string,
+  spacedHaystack: string,
+  brandKey: string,
+): boolean {
+  if (!ASCII_ONLY_RE.test(brandKey)) return compactHaystack.includes(brandKey);
+  const bounded = new RegExp(`(?:^|[^a-z0-9])${brandKey}(?:[^a-z0-9]|$)`);
+  return bounded.test(compactHaystack) || bounded.test(spacedHaystack);
 }
 
 function findKnownBrand(text: string): KnownBrand | null {
-  const haystack = compact(text);
-  return KNOWN_BRANDS.find((brand) => containsBrandKey(haystack, compact(brand.name))) ?? null;
+  const compactHaystack = compact(text);
+  const spacedHaystack = text.replace(/\s+/g, ' ').toLowerCase();
+  return (
+    KNOWN_BRANDS.find((brand) =>
+      containsBrandKey(compactHaystack, spacedHaystack, compact(brand.name)),
+    ) ?? null
+  );
 }
 
 // When the brand isn't in KNOWN_BRANDS there's no category from it, but the
@@ -452,6 +465,12 @@ export interface GuessedGifticonFields {
 // as fine print rather than headline text.
 const MIN_HEADLINE_HEIGHT_RATIO = 0.5;
 
+// A logo or watermark (e.g. a "syrup gifticon" banner) can be drawn far bigger
+// than the real brand/name headline; as the reference height it would drop the
+// actual headline as "too small". When the tallest line towers over the
+// next-tallest like that, use the next-tallest as the reference instead.
+const HEIGHT_OUTLIER_RATIO = 1.7;
+
 // The fixed key/value block every gifticon card carries below its headline:
 // 교환처/사용처, 유효기간/유효기한/사용기한, 주문번호/교환수량, plus the
 // 바코드 label. The brand and product name are the lines just above it, so
@@ -485,8 +504,10 @@ function keepHeadlineSizedLines(lines: RecognizedLine[]): RecognizedLine[] {
   // "unverified", and this feature's whole point is not to trust unverified
   // lines as headline text.
   if (heights.length === 0) return lines;
-  const maxHeight = Math.max(...heights);
-  return lines.filter((line) => line.height >= maxHeight * MIN_HEADLINE_HEIGHT_RATIO);
+  heights.sort((a, b) => b - a);
+  const reference =
+    heights.length > 1 && heights[0] > heights[1] * HEIGHT_OUTLIER_RATIO ? heights[1] : heights[0];
+  return lines.filter((line) => line.height >= reference * MIN_HEADLINE_HEIGHT_RATIO);
 }
 
 /**
@@ -526,10 +547,17 @@ export function guessGifticonFields(recognized: RecognizedText): GuessedGifticon
     const brandLineIndex = headlineLines.findIndex((line) => compact(line).includes(brandKey));
     const afterBrand =
       brandLineIndex === -1 ? [] : headlineLines.slice(brandLineIndex + 1).filter(notJustBrand);
-    const lastBeforeFooter = [...headlineLines].reverse().find(notJustBrand);
+    // Longest, not first: a web screenshot can leave a result-title fragment
+    // ("있을까?") wedged between the brand line and the real name, and the name
+    // is virtually always the longer string.
+    const longestAfterBrand = afterBrand.reduce<string | null>(
+      (best, line) => (best === null || line.length > best.length ? line : best),
+      null,
+    );
+    const lastBeforeFooter = [...headlineLines].reverse().find(notJustBrand) ?? null;
     return {
       brand: known.name,
-      name: afterBrand[0] ?? lastBeforeFooter ?? null,
+      name: longestAfterBrand ?? lastBeforeFooter,
       category: known.category,
     };
   }
