@@ -12,6 +12,7 @@ import { useMaxBrightnessWhileFocused } from '../../../shared/hooks/useMaxBright
 import GifticonDetailSkeleton from '../components/GifticonDetailSkeleton';
 import GifticonBarcode from '../components/GifticonBarcode';
 import BarcodeZoomModal from '../components/BarcodeZoomModal';
+import ImageZoomModal from '../components/ImageZoomModal';
 import GifticonUsagePanel from '../components/GifticonUsagePanel';
 import GifticonStatusOverlay from '../components/GifticonStatusOverlay';
 import { CATEGORY_LABELS } from '../types';
@@ -34,6 +35,7 @@ export default function GifticonDetailScreen({ route, navigation }: Props) {
   const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState(false);
   const [barcodeZoomed, setBarcodeZoomed] = useState(false);
+  const [imageZoomed, setImageZoomed] = useState(false);
   const copyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -139,14 +141,59 @@ export default function GifticonDetailScreen({ route, navigation }: Props) {
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
-      <View style={styles.imageWrap}>
+      {gifticon.barcode ? (
+        <View style={styles.barcodeCard}>
+          <TouchableOpacity
+            onPress={() => setBarcodeZoomed(true)}
+            accessibilityRole="button"
+            accessibilityLabel="바코드 크게 보기"
+          >
+            <GifticonBarcode value={gifticon.barcode} />
+          </TouchableOpacity>
+          <Text style={styles.barcodeNumber} selectable accessibilityLabel={gifticon.barcode}>
+            {gifticon.barcode.replace(/(.{4})/g, '$1 ').trim()}
+          </Text>
+          <Text style={styles.barcodeHint}>탭하면 크게 볼 수 있어요</Text>
+          <TouchableOpacity
+            style={styles.copyButton}
+            onPress={copyBarcode}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            accessibilityRole="button"
+            accessibilityLabel="바코드 번호 복사"
+          >
+            <Text style={styles.copyButtonText}>{copied ? '복사됨 ✓' : '번호 복사'}</Text>
+          </TouchableOpacity>
+        </View>
+      ) : null}
+
+      {gifticon.barcode ? (
+        <BarcodeZoomModal
+          visible={barcodeZoomed}
+          value={gifticon.barcode}
+          onClose={() => setBarcodeZoomed(false)}
+        />
+      ) : null}
+
+      <TouchableOpacity
+        style={styles.imageWrap}
+        onPress={() => setImageZoomed(true)}
+        accessibilityRole="button"
+        accessibilityLabel="기프티콘 이미지 크게 보기"
+      >
         <Image
           source={{ uri: gifticon.imageUrl }}
           style={styles.image}
           accessibilityLabel="기프티콘 이미지"
         />
         <GifticonStatusOverlay label={overlayLabel} textStyle={styles.overlayText} />
-      </View>
+      </TouchableOpacity>
+      <Text style={styles.imageHint}>탭하면 크게 볼 수 있어요</Text>
+
+      <ImageZoomModal
+        visible={imageZoomed}
+        uri={gifticon.imageUrl}
+        onClose={() => setImageZoomed(false)}
+      />
 
       <View style={styles.section}>
         <Text style={styles.brand}>
@@ -186,39 +233,6 @@ export default function GifticonDetailScreen({ route, navigation }: Props) {
         />
       )}
 
-      {gifticon.barcode ? (
-        <View style={styles.barcodeCard}>
-          <TouchableOpacity
-            onPress={() => setBarcodeZoomed(true)}
-            accessibilityRole="button"
-            accessibilityLabel="바코드 크게 보기"
-          >
-            <GifticonBarcode value={gifticon.barcode} />
-          </TouchableOpacity>
-          <Text style={styles.barcodeNumber} selectable accessibilityLabel={gifticon.barcode}>
-            {gifticon.barcode.replace(/(.{4})/g, '$1 ').trim()}
-          </Text>
-          <Text style={styles.barcodeHint}>탭하면 크게 볼 수 있어요</Text>
-          <TouchableOpacity
-            style={styles.copyButton}
-            onPress={copyBarcode}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-            accessibilityRole="button"
-            accessibilityLabel="바코드 번호 복사"
-          >
-            <Text style={styles.copyButtonText}>{copied ? '복사됨 ✓' : '번호 복사'}</Text>
-          </TouchableOpacity>
-        </View>
-      ) : null}
-
-      {gifticon.barcode ? (
-        <BarcodeZoomModal
-          visible={barcodeZoomed}
-          value={gifticon.barcode}
-          onClose={() => setBarcodeZoomed(false)}
-        />
-      ) : null}
-
       <Button
         label={gifticon.isUsed ? '사용가능으로 되돌리기' : '사용완료로 표시'}
         onPress={toggleUsed}
@@ -243,14 +257,17 @@ const styles = StyleSheet.create({
   retryButtonText: { color: colors.gray700, fontWeight: '700', fontSize: 14 },
   editLink: { color: colors.primary, fontSize: 13, marginRight: 4, fontWeight: '600' },
   imageWrap: {
-    width: '100%',
+    width: 132,
     aspectRatio: 3 / 4,
     borderRadius: 12,
     overflow: 'hidden',
     backgroundColor: colors.surfaceSubtle,
+    alignSelf: 'center',
+    marginTop: 24,
   },
   image: { width: '100%', height: '100%' },
-  overlayText: { fontSize: 28 },
+  overlayText: { fontSize: 13 },
+  imageHint: { fontSize: 12, color: colors.gray500, textAlign: 'center', marginTop: 6 },
   section: { marginTop: 20, gap: 4 },
   brand: { fontSize: 13, color: colors.gray500 },
   name: { fontSize: 20, fontWeight: '700', color: colors.gray900 },
@@ -265,7 +282,6 @@ const styles = StyleSheet.create({
   expiry: { fontSize: 14, color: colors.gray700 },
   meta: { fontSize: 12, color: colors.gray500, marginTop: 2 },
   barcodeCard: {
-    marginTop: 24,
     padding: 20,
     borderRadius: 12,
     borderWidth: 1,
