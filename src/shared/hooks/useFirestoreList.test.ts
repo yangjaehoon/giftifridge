@@ -1,4 +1,4 @@
-import { act, renderHook } from '@testing-library/react-native';
+import { act, renderHook, waitFor } from '@testing-library/react-native';
 import { useFirestoreList } from './useFirestoreList';
 
 function createMockSubscribe<T>() {
@@ -203,5 +203,79 @@ describe('useFirestoreList', () => {
       jest.advanceTimersByTime(5000);
     });
     expect(subscribe).toHaveBeenCalledTimes(1);
+  });
+
+  describe('offline cache', () => {
+    // renderHook doesn't flush a resolved promise inside an effect on its own;
+    // waitFor + a real timer tick does.
+    beforeEach(() => jest.useRealTimers());
+
+    function makeCache(initial: { id: string }[] | null) {
+      return {
+        read: jest.fn(async () => initial),
+        write: jest.fn(),
+      };
+    }
+
+    it('seeds items from the cache before any live snapshot arrives', async () => {
+      const { subscribe } = createMockSubscribe<{ id: string }>();
+      const cache = makeCache([{ id: 'cached' }]);
+
+      const { result } = await renderHook(() => useFirestoreList('owner-1', subscribe, cache));
+
+      await waitFor(() => expect(result.current.items).toEqual([{ id: 'cached' }]));
+      expect(result.current.loading).toBe(false);
+      expect(cache.read).toHaveBeenCalledWith('owner-1');
+    });
+
+    it('lets a live snapshot replace the cached items', async () => {
+      const { subscribe, calls } = createMockSubscribe<{ id: string }>();
+      const cache = makeCache([{ id: 'cached' }]);
+
+      const { result } = await renderHook(() => useFirestoreList('owner-1', subscribe, cache));
+      await waitFor(() => expect(result.current.items).toEqual([{ id: 'cached' }]));
+
+      await act(async () => {
+        calls[0].onChange([{ id: 'live' }]);
+      });
+      expect(result.current.items).toEqual([{ id: 'live' }]);
+    });
+
+    it('does not overwrite an already-received (empty) live snapshot with stale cache', async () => {
+      const { subscribe, calls } = createMockSubscribe<{ id: string }>();
+      let resolveRead: (v: { id: string }[]) => void = () => {};
+      const cache = {
+        read: jest.fn(() => new Promise<{ id: string }[]>((r) => (resolveRead = r))),
+        write: jest.fn(),
+      };
+
+      const { result } = await renderHook(() => useFirestoreList('owner-1', subscribe, cache));
+
+      await act(async () => {
+        calls[0].onChange([]); // live truth: no items
+      });
+      await act(async () => {
+        resolveRead([{ id: 'stale' }]); // cache read finishes late
+      });
+
+      expect(result.current.items).toEqual([]);
+    });
+
+    it('writes every snapshot through to the cache', async () => {
+      const { subscribe, calls } = createMockSubscribe<{ id: string }>();
+      const cache = makeCache(null);
+
+      await renderHook(() => useFirestoreList('owner-1', subscribe, cache));
+
+      await act(async () => {
+        calls[0].onChange([{ id: 'a' }]);
+      });
+      await act(async () => {
+        calls[0].onChange([{ id: 'a' }, { id: 'b' }]);
+      });
+
+      expect(cache.write).toHaveBeenNthCalledWith(1, 'owner-1', [{ id: 'a' }]);
+      expect(cache.write).toHaveBeenNthCalledWith(2, 'owner-1', [{ id: 'a' }, { id: 'b' }]);
+    });
   });
 });
