@@ -18,6 +18,7 @@ import OfflineBanner from '../shared/components/OfflineBanner';
 import { navigationRef } from './navigationRef';
 import { flushDeferredNavigations } from './deferredNavigation';
 import { useDeepLinks } from './useDeepLinks';
+import { useFirstRunNotice } from './useFirstRunNotice';
 
 export type RootStackParamList = {
   Home: undefined;
@@ -36,6 +37,7 @@ export default function RootNavigator() {
   const { initializing, authError, retryAnonymousSignIn } = useAuthBootstrap();
 
   useDeepLinks();
+  useFirstRunNotice();
 
   if (!isFirebaseConfigured) {
     return <SetupRequiredScreen />;

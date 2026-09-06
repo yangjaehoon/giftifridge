@@ -7,6 +7,8 @@ module.exports = defineConfig([
   expoConfig,
   prettierConfig,
   {
-    ignores: ['dist/*'],
+    // functions/ is a separate Node (CommonJS) package with its own runtime;
+    // the Expo/React config here doesn't apply to it.
+    ignores: ['dist/*', 'functions/**'],
   },
 ]);

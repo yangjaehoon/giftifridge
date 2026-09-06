@@ -23,6 +23,8 @@ jest.mock('./navigationRef', () => ({
   navigationRef: { isReady: jest.fn(() => true), navigate: jest.fn() },
 }));
 
+jest.mock('./useFirstRunNotice', () => ({ useFirstRunNotice: jest.fn() }));
+
 jest.mock('@react-navigation/native', () => ({
   NavigationContainer: ({ children }: { children: React.ReactNode }) => children,
 }));
