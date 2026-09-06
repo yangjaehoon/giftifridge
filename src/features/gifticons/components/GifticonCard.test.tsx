@@ -50,11 +50,21 @@ describe('GifticonCard', () => {
     expect(queryByText('10,000원')).toBeNull();
   });
 
-  it('omits the amount line when there is no amount', async () => {
+  it('omits the price line when there is no amount and no known estimate', async () => {
     const { queryByText } = await render(
-      <GifticonCard gifticon={makeGifticon({ id: '1' })} onPress={jest.fn()} />,
+      <GifticonCard
+        gifticon={makeGifticon({ id: '1', brand: '동네카페', name: '오늘의 커피' })}
+        onPress={jest.fn()}
+      />,
     );
     expect(queryByText(/원$/)).toBeNull();
+  });
+
+  it('shows a rough retail estimate for a known item that has no amount', async () => {
+    const { getByText } = await render(
+      <GifticonCard gifticon={makeGifticon({ id: '1' })} onPress={jest.fn()} />,
+    );
+    expect(getByText('예상 4,500원')).toBeTruthy();
   });
 
   it('renders a plain D-day for a gifticon expiring far in the future', async () => {

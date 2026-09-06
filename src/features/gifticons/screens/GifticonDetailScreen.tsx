@@ -17,6 +17,8 @@ import GifticonUsagePanel from '../components/GifticonUsagePanel';
 import GifticonStatusOverlay from '../components/GifticonStatusOverlay';
 import { CATEGORY_LABELS } from '../types';
 import { formatRemainingAmount, isAmountBased } from '../usage';
+import { lookupEstimatedPrice } from '../menuPrices';
+import { formatCurrency } from '../../../shared/utils/currency';
 import { daysUntil, formatDate } from '../../../shared/utils/date';
 import { haptics } from '../../../shared/utils/haptics';
 import type { RootStackParamList } from '../../../app/RootNavigator';
@@ -138,6 +140,11 @@ export default function GifticonDetailScreen({ route, navigation }: Props) {
   const expired = days < 0;
   const soon = !expired && days <= 7;
   const overlayLabel = gifticon.isUsed ? '사용완료' : expired ? '기한만료' : null;
+  // A rough retail estimate for a product voucher (no printed price); shown
+  // only when there's no real amount, framed as approximate with its as-of.
+  const estimate = isAmountBased(gifticon)
+    ? null
+    : lookupEstimatedPrice(gifticon.brand, gifticon.name);
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
@@ -202,6 +209,10 @@ export default function GifticonDetailScreen({ route, navigation }: Props) {
         <Text style={styles.name}>{gifticon.name}</Text>
         {isAmountBased(gifticon) ? (
           <Text style={styles.amount}>{formatRemainingAmount(gifticon)}</Text>
+        ) : estimate ? (
+          <Text style={styles.estimate}>
+            예상 금액 약 {formatCurrency(estimate.price)} · {estimate.asOf} 기준
+          </Text>
         ) : null}
 
         <View style={styles.expiryRow}>
@@ -272,6 +283,7 @@ const styles = StyleSheet.create({
   brand: { fontSize: 13, color: colors.gray500 },
   name: { fontSize: 20, fontWeight: '700', color: colors.gray900 },
   amount: { fontSize: 16, fontWeight: '700', color: colors.primary, marginTop: 2 },
+  estimate: { fontSize: 13, color: colors.gray500, marginTop: 4 },
   expiryRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 10 },
   ddayPill: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 999 },
   ddayOk: { backgroundColor: colors.surfaceMuted },

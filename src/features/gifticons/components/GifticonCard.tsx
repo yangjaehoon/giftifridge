@@ -3,6 +3,8 @@ import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import type { Gifticon } from '../types';
 import { CATEGORY_LABELS } from '../types';
 import { formatRemainingAmount, isAmountBased } from '../usage';
+import { lookupEstimatedPrice } from '../menuPrices';
+import { formatCurrency } from '../../../shared/utils/currency';
 import { daysUntil, formatDate } from '../../../shared/utils/date';
 import { colors } from '../../../shared/theme/colors';
 import GifticonStatusOverlay from './GifticonStatusOverlay';
@@ -24,8 +26,11 @@ function GifticonCard({
   const overlayLabel = gifticon.isUsed ? '사용완료' : expired ? '기한만료' : null;
   // Once partially spent, the face value on the card is no longer what's left —
   // show the balance instead so this doesn't read as more valuable than it is.
-  const priceText = isAmountBased(gifticon) ? formatRemainingAmount(gifticon) : null;
-  const priceLabel = priceText ? `, ${priceText}` : '';
+  // A product voucher has no balance; fall back to a rough retail estimate.
+  const balanceText = isAmountBased(gifticon) ? formatRemainingAmount(gifticon) : null;
+  const estimate = balanceText ? null : lookupEstimatedPrice(gifticon.brand, gifticon.name);
+  const estimateText = estimate ? `예상 ${formatCurrency(estimate.price)}` : null;
+  const priceLabel = (balanceText ?? estimateText) ? `, ${balanceText ?? estimateText}` : '';
 
   return (
     <TouchableOpacity
@@ -51,7 +56,11 @@ function GifticonCard({
         <Text style={styles.name} numberOfLines={1}>
           {gifticon.name}
         </Text>
-        {priceText ? <Text style={styles.amount}>{priceText}</Text> : null}
+        {balanceText ? (
+          <Text style={styles.amount}>{balanceText}</Text>
+        ) : estimateText ? (
+          <Text style={styles.estimate}>{estimateText}</Text>
+        ) : null}
         <Text style={styles.expiry}>~{formatDate(gifticon.expiresAt)}</Text>
       </View>
       <View style={styles.badgeArea}>
@@ -96,6 +105,7 @@ const styles = StyleSheet.create({
   brand: { fontSize: 12, color: colors.gray500 },
   name: { fontSize: 15, fontWeight: '600', color: colors.gray900, marginTop: 2 },
   amount: { fontSize: 13, fontWeight: '600', color: colors.gray700, marginTop: 3 },
+  estimate: { fontSize: 12, color: colors.gray500, marginTop: 3 },
   // Expiry is the thing users scan for — keep it readable, not de-emphasised.
   expiry: { fontSize: 12, fontWeight: '600', color: colors.gray600, marginTop: 2 },
   badgeArea: { marginLeft: 8, alignItems: 'flex-end' },

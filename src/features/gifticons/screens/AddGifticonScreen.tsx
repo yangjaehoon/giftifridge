@@ -33,7 +33,8 @@ import type { GifticonCategory } from '../types';
 import { CATEGORY_LABELS } from '../types';
 import Chip from '../../../shared/components/Chip';
 import { formatDate, toDateString } from '../../../shared/utils/date';
-import { groupDigits } from '../../../shared/utils/currency';
+import { formatCurrency, groupDigits } from '../../../shared/utils/currency';
+import { lookupEstimatedPrice } from '../menuPrices';
 import { getCurrentLocation } from '../../../shared/utils/location';
 import { haptics } from '../../../shared/utils/haptics';
 import { alertPermissionDenied } from '../../../shared/utils/permissionAlert';
@@ -101,6 +102,12 @@ export default function AddGifticonScreen({ navigation, route }: Props) {
   const [locationSaving, setLocationSaving] = useState(false);
   const brandRef = useRef<TextInput>(null);
   const amountRef = useRef<TextInput>(null);
+
+  // A rough retail price for well-known items, shown as a hint under 금액 when
+  // the user hasn't entered one — it's the "I don't know what this is worth"
+  // moment. Display-only; it never fills the amount field (that would make the
+  // gifticon look like a stored-value 금액권).
+  const priceEstimate = lookupEstimatedPrice(form.brand, form.name);
 
   useEffect(() => {
     navigation.setOptions({ title: isEditing ? '기프티콘 수정' : '기프티콘 등록' });
@@ -272,6 +279,12 @@ export default function AddGifticonScreen({ navigation, route }: Props) {
         {image.amountAutoDetected && (
           <Text style={styles.ocrHint}>사진에서 금액을 자동으로 인식했어요. 확인해주세요.</Text>
         )}
+        {!form.amount && priceEstimate ? (
+          <Text style={styles.ocrHint}>
+            참고: 이 상품 예상 가격 약 {formatCurrency(priceEstimate.price)} ({priceEstimate.asOf}{' '}
+            기준)
+          </Text>
+        ) : null}
 
         <Text style={styles.label}>카테고리</Text>
         <View style={styles.chipRow}>
