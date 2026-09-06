@@ -48,7 +48,7 @@ const MENU_PRICES: PriceEntry[] = [
   { brand: '메가', keywords: ['아메리카노'], price: 2000 },
   { brand: '메가', keywords: ['카페라떼'], price: 3400 },
   { brand: '컴포즈', keywords: ['아메리카노'], price: 2000 },
-  { brand: '빽다방', keywords: ['아메리카노'], price: 2300 },
+  { brand: '빽다방', keywords: ['아메리카노'], price: 2000 },
   { brand: '더벤티', keywords: ['아메리카노'], price: 1900 },
 
   // 카페 (기타)
