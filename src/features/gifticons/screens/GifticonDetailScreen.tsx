@@ -13,6 +13,7 @@ import GifticonDetailSkeleton from '../components/GifticonDetailSkeleton';
 import GifticonBarcode from '../components/GifticonBarcode';
 import BarcodeZoomModal from '../components/BarcodeZoomModal';
 import ImageZoomModal from '../components/ImageZoomModal';
+import ExpiredRefundNotice from '../components/ExpiredRefundNotice';
 import GifticonUsagePanel from '../components/GifticonUsagePanel';
 import GifticonStatusOverlay from '../components/GifticonStatusOverlay';
 import { CATEGORY_LABELS } from '../types';
@@ -39,6 +40,8 @@ export default function GifticonDetailScreen({ route, navigation }: Props) {
   const [barcodeZoomed, setBarcodeZoomed] = useState(false);
   const [imageZoomed, setImageZoomed] = useState(false);
   const copyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Ask "did you use it?" at most once per visit, when the barcode zoom closes.
+  const askedUsedRef = useRef(false);
 
   useEffect(() => {
     return () => {
@@ -84,6 +87,18 @@ export default function GifticonDetailScreen({ route, navigation }: Props) {
     } finally {
       setBusy(false);
     }
+  };
+
+  // Closing the enlarged barcode usually means it was just scanned. Nudge once
+  // to mark it used so the used/unused state stays honest without discipline.
+  const closeBarcodeZoom = () => {
+    setBarcodeZoomed(false);
+    if (!gifticon || gifticon.isUsed || askedUsedRef.current) return;
+    askedUsedRef.current = true;
+    Alert.alert('사용하셨나요?', '방금 바코드를 사용했다면 사용완료로 표시할게요.', [
+      { text: '아니요', style: 'cancel' },
+      { text: '네, 사용완료', onPress: () => void toggleUsed() },
+    ]);
   };
 
   const remove = () => {
@@ -177,7 +192,7 @@ export default function GifticonDetailScreen({ route, navigation }: Props) {
         <BarcodeZoomModal
           visible={barcodeZoomed}
           value={gifticon.barcode}
-          onClose={() => setBarcodeZoomed(false)}
+          onClose={closeBarcodeZoom}
         />
       ) : null}
 
@@ -234,6 +249,8 @@ export default function GifticonDetailScreen({ route, navigation }: Props) {
           <Text style={styles.meta}>사용일 {formatDate(gifticon.usedAt)}</Text>
         ) : null}
       </View>
+
+      {expired && !gifticon.isUsed ? <ExpiredRefundNotice /> : null}
 
       {isAmountBased(gifticon) && (
         <GifticonUsagePanel

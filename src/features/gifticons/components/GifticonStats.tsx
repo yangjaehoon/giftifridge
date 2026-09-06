@@ -1,12 +1,21 @@
 import React, { useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import type { Gifticon } from '../types';
-import { remainingAmount } from '../usage';
+import { isAmountBased, remainingAmount } from '../usage';
+import { lookupEstimatedPrice } from '../menuPrices';
 import { daysUntil } from '../../../shared/utils/date';
 import { formatCurrency } from '../../../shared/utils/currency';
 import { colors } from '../../../shared/theme/colors';
 
 const EXPIRING_SOON_WITHIN_DAYS = 7;
+
+// What one non-expired gifticon is worth for the home total: the real
+// remaining balance for a 금액권, otherwise a rough retail estimate for a
+// known product voucher (0 when neither applies).
+function gifticonValue(item: Gifticon): number {
+  if (isAmountBased(item)) return remainingAmount(item);
+  return lookupEstimatedPrice(item.brand, item.name)?.price ?? 0;
+}
 
 export default function GifticonStats({ items }: { items: Gifticon[] }) {
   const { totalAmount, expiringSoonCount, totalCount } = useMemo(() => {
@@ -14,10 +23,9 @@ export default function GifticonStats({ items }: { items: Gifticon[] }) {
     let expiringSoonCount = 0;
     for (const item of items) {
       const days = daysUntil(item.expiresAt);
-      // An expired gifticon can't be spent, so it doesn't count toward "보유
-      // 금액" — and what's left to spend is the remaining balance, not the
-      // original face value, once part of it has been used.
-      if (days >= 0) totalAmount += remainingAmount(item) ?? 0;
+      // An expired gifticon can't be spent, so it doesn't count toward the
+      // total.
+      if (days >= 0) totalAmount += gifticonValue(item);
       if (days >= 0 && days <= EXPIRING_SOON_WITHIN_DAYS) expiringSoonCount += 1;
     }
     return { totalAmount, expiringSoonCount, totalCount: items.length };
@@ -27,7 +35,7 @@ export default function GifticonStats({ items }: { items: Gifticon[] }) {
     <View style={styles.row}>
       <View style={styles.stat}>
         <Text style={styles.value}>{formatCurrency(totalAmount)}</Text>
-        <Text style={styles.label}>보유 금액</Text>
+        <Text style={styles.label}>예상 보유액</Text>
       </View>
       <View style={styles.stat}>
         <Text style={styles.value}>{expiringSoonCount}개</Text>

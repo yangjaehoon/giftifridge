@@ -261,6 +261,67 @@ describe('GifticonDetailScreen', () => {
     expect(queryByLabelText('바코드 확대 화면 닫기')).toBeNull();
   });
 
+  it('asks "사용하셨나요?" when the barcode zoom closes on an unused gifticon', async () => {
+    setHook({ gifticon: makeGifticon({ barcode: '8801234567' }) });
+    const { getByLabelText } = await renderScreen();
+
+    await act(async () => {
+      fireEvent.press(getByLabelText('바코드 크게 보기'));
+    });
+    await act(async () => {
+      fireEvent.press(getByLabelText('바코드 확대 화면 닫기'));
+    });
+
+    expect(Alert.alert).toHaveBeenCalledWith(
+      '사용하셨나요?',
+      expect.any(String),
+      expect.any(Array),
+    );
+    await act(async () => {
+      await pressAlertAction('네, 사용완료');
+    });
+    expect(mockedSetUsed).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'g1' }),
+      true,
+      'owner',
+    );
+  });
+
+  it('does not ask again on a second barcode-zoom close, or for an already-used gifticon', async () => {
+    setHook({ gifticon: makeGifticon({ barcode: '8801234567', isUsed: true }) });
+    const { getByLabelText } = await renderScreen();
+
+    await act(async () => {
+      fireEvent.press(getByLabelText('바코드 크게 보기'));
+    });
+    await act(async () => {
+      fireEvent.press(getByLabelText('바코드 확대 화면 닫기'));
+    });
+
+    expect(Alert.alert).not.toHaveBeenCalledWith(
+      '사용하셨나요?',
+      expect.anything(),
+      expect.anything(),
+    );
+  });
+
+  it('shows the refund notice on an expired, unused gifticon', async () => {
+    setHook({ gifticon: makeGifticon({ expiresAt: daysFromNow(-1) }) });
+    const { getByText } = await renderScreen();
+    expect(getByText(/환급받을 수 있어요/)).toBeTruthy();
+  });
+
+  it('hides the refund notice while active or already used', async () => {
+    const active = await renderScreen();
+    expect(active.queryByText(/환급받을 수 있어요/)).toBeNull();
+
+    jest.clearAllMocks();
+    jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+    setHook({ gifticon: makeGifticon({ expiresAt: daysFromNow(-1), isUsed: true }) });
+    const usedExpired = await renderScreen();
+    expect(usedExpired.queryByText(/환급받을 수 있어요/)).toBeNull();
+  });
+
   it('opens and closes the image zoom view on tap', async () => {
     setHook({ gifticon: makeGifticon() });
     const { getByLabelText, queryByLabelText } = await renderScreen();

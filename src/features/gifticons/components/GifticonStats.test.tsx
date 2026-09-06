@@ -28,7 +28,8 @@ describe('GifticonStats', () => {
     const items: Gifticon[] = [
       makeGifticon({ id: '1', amount: 10000, expiresAt: daysFromNow(3) }),
       makeGifticon({ id: '2', amount: 5000, expiresAt: daysFromNow(20) }),
-      makeGifticon({ id: '3', expiresAt: daysFromNow(20) }),
+      // unknown brand → no estimate, so this one adds nothing to the total
+      makeGifticon({ id: '3', brand: '동네문구', name: '볼펜', expiresAt: daysFromNow(20) }),
     ];
 
     const { getByText } = await render(<GifticonStats items={items} />);
@@ -36,6 +37,19 @@ describe('GifticonStats', () => {
     expect(getByText('15,000원')).toBeTruthy();
     expect(getByText('1개')).toBeTruthy();
     expect(getByText('3개')).toBeTruthy();
+  });
+
+  it('adds a known-item retail estimate for a product voucher with no amount', async () => {
+    const items: Gifticon[] = [
+      makeGifticon({ id: '1', amount: 5000, expiresAt: daysFromNow(20) }),
+      // no amount, but 스타벅스 아메리카노 has a table price (4,700)
+      makeGifticon({ id: '2', brand: '스타벅스', name: '아메리카노', expiresAt: daysFromNow(20) }),
+    ];
+
+    const { getByText } = await render(<GifticonStats items={items} />);
+
+    expect(getByText('9,700원')).toBeTruthy();
+    expect(getByText('예상 보유액')).toBeTruthy();
   });
 
   it('does not count an already-expired item as expiring soon', async () => {
