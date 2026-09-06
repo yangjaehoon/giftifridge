@@ -60,7 +60,7 @@ describe('gifticonListCache', () => {
       JSON.stringify([
         makeGifticon('good'),
         { id: 'no-owner', name: 'x' }, // missing required fields
-        { id: 'bad-date', ...makeGifticon('bad-date'), expiresAt: 'not-a-date' },
+        { ...makeGifticon('bad-date'), expiresAt: 'not-a-date' },
       ]),
     );
     expect(await gifticonListCache('owner').read('mixed')).toEqual([makeGifticon('good')]);

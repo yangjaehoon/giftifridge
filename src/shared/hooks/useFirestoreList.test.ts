@@ -1,14 +1,16 @@
 import { act, renderHook, waitFor } from '@testing-library/react-native';
-import { useFirestoreList } from './useFirestoreList';
+import { useFirestoreList, type SnapshotMeta } from './useFirestoreList';
+
+type OnChange<T> = (items: T[], meta?: SnapshotMeta) => void;
 
 function createMockSubscribe<T>() {
   const calls: {
-    onChange: (items: T[]) => void;
+    onChange: OnChange<T>;
     onError: (error: Error) => void;
   }[] = [];
   const unsubscribe = jest.fn();
   const subscribe = jest.fn(
-    (_key: string, onChange: (items: T[]) => void, onError: (error: Error) => void) => {
+    (_key: string, onChange: OnChange<T>, onError: (error: Error) => void) => {
       calls.push({ onChange, onError });
       return unsubscribe;
     },
