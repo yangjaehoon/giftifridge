@@ -251,4 +251,25 @@ describe('useGifticonImage', () => {
     });
     expect(callbacks.onNameDetected).toHaveBeenCalledWith('아메리카노 Tall');
   });
+
+  it('drops the auto-detected flag for a field once the form reports it edited', async () => {
+    mockedRecognizeText.mockResolvedValue(ocrResult(GIFTICON_TEXT));
+    mockedLibrary.mockResolvedValue({ canceled: false, assets: [{ uri: 'file:///a.jpg' }] });
+    const callbacks = setup();
+    const { result, rerender } = await renderHook(() => useGifticonImage(callbacks));
+
+    await act(async () => {
+      await result.current.pickFromLibrary();
+    });
+    expect(result.current.nameAutoDetected).toBe(true);
+    expect(result.current.brandAutoDetected).toBe(true);
+
+    // The user corrects the name; the form now reports it claimed. In the app
+    // that keystroke re-renders the screen — here, rerender stands in for it.
+    callbacks.isFieldEdited.mockImplementation((field: string) => field === 'name');
+    await act(async () => rerender(undefined));
+
+    expect(result.current.nameAutoDetected).toBe(false);
+    expect(result.current.brandAutoDetected).toBe(true);
+  });
 });

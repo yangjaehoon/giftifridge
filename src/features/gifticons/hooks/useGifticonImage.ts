@@ -54,7 +54,11 @@ function useDetectedField<T>(
   };
   const reset = () => setAutoDetected(false);
 
-  return { autoDetected, detect, reset };
+  // Once the user edits the field, the "we guessed this, check it" hint no
+  // longer applies — they've just checked it. Derived rather than cleared on
+  // edit so the two hooks don't have to talk (the edit re-renders the screen,
+  // which recomputes this).
+  return { autoDetected: autoDetected && !isFieldEdited(key), detect, reset };
 }
 
 /**

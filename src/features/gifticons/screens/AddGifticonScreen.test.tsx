@@ -223,6 +223,26 @@ describe('AddGifticonScreen — create', () => {
     expect(queryByText('사진에서 상품명을 자동으로 인식했어요. 확인해주세요.')).toBeNull();
   });
 
+  it("hides a field's auto-detected hint once the user edits it", async () => {
+    mockedRecognizeText.mockResolvedValue(
+      ocrResult('스타벅스\n아메리카노 Tall\n유효기간 2026.12.31까지'),
+    );
+    const { getByText, getByPlaceholderText, queryByText } = await renderScreen(undefined);
+
+    await pickImage(getByText);
+    await waitFor(() =>
+      expect(getByText('사진에서 상품명을 자동으로 인식했어요. 확인해주세요.')).toBeTruthy(),
+    );
+
+    await act(async () => {
+      fireEvent.changeText(getByPlaceholderText('아메리카노 Tall'), '아메리카노 Grande');
+    });
+
+    expect(queryByText('사진에서 상품명을 자동으로 인식했어요. 확인해주세요.')).toBeNull();
+    // a field the user didn't touch keeps its hint
+    expect(getByText('사진에서 브랜드를 자동으로 인식했어요. 확인해주세요.')).toBeTruthy();
+  });
+
   it('discards a stale OCR result when a newer image is picked before it resolves', async () => {
     const resolvers: ((v: RecognizedText | null) => void)[] = [];
     mockedRecognizeText.mockImplementation(
