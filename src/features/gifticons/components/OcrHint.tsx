@@ -37,5 +37,7 @@ export default function OcrHint({ show, subject, message, guessMessage, confiden
 
 const styles = StyleSheet.create({
   hint: { fontSize: 12, color: colors.primary, marginTop: 6 },
-  hintGuess: { color: colors.amber },
+  // Darker amber + weight so the "please check this" line — the one that most
+  // needs reading — is the more legible of the two, not the less.
+  hintGuess: { color: colors.amberText, fontWeight: '600' },
 });

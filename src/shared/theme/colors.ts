@@ -2,6 +2,9 @@ export const colors = {
   primary: '#2FAF9E',
   primaryBright: '#4ECDC4',
   amber: '#F2994A',
+  // Darker amber for small "please double-check this" text — the bright amber
+  // above fails WCAG AA contrast at body sizes on the light backgrounds.
+  amberText: '#8A5200',
   danger: '#E0554F',
 
   background: '#F4FAF9',
