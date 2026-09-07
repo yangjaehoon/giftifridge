@@ -7,6 +7,7 @@ import { isFirebaseConfigured } from '../lib/firebase/config';
 import HomeScreen from '../features/gifticons/screens/HomeScreen';
 import AddGifticonScreen from '../features/gifticons/screens/AddGifticonScreen';
 import GifticonDetailScreen from '../features/gifticons/screens/GifticonDetailScreen';
+import SpendingReportScreen from '../features/gifticons/screens/SpendingReportScreen';
 import GifticonCardSkeleton from '../features/gifticons/components/GifticonCardSkeleton';
 import SettingsScreen from '../features/auth/screens/SettingsScreen';
 import CreateSpaceScreen from '../features/spaces/screens/CreateSpaceScreen';
@@ -24,6 +25,7 @@ export type RootStackParamList = {
   Home: undefined;
   AddGifticon: { spaceId?: string; gifticonId?: string } | undefined;
   GifticonDetail: { gifticonId: string };
+  Report: undefined;
   Settings: undefined;
   CreateSpace: undefined;
   JoinSpace: { spaceId?: string } | undefined;
@@ -72,6 +74,11 @@ export default function RootNavigator() {
             name="GifticonDetail"
             component={GifticonDetailScreen}
             options={{ title: '상세보기' }}
+          />
+          <Stack.Screen
+            name="Report"
+            component={SpendingReportScreen}
+            options={{ title: '소비 리포트' }}
           />
           <Stack.Screen name="Settings" component={SettingsScreen} options={{ title: '설정' }} />
           <Stack.Screen

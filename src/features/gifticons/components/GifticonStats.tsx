@@ -1,23 +1,22 @@
 import React, { useMemo } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import type { Gifticon } from '../types';
-import { isAmountBased, remainingAmount } from '../usage';
-import { lookupEstimatedPrice } from '../menuPrices';
+import { spendableValue } from '../gifticonValue';
 import { daysUntil } from '../../../shared/utils/date';
 import { formatCurrency } from '../../../shared/utils/currency';
 import { colors } from '../../../shared/theme/colors';
 
 const EXPIRING_SOON_WITHIN_DAYS = 7;
 
-// What one non-expired gifticon is worth for the home total: the real
-// remaining balance for a 금액권, otherwise a rough retail estimate for a
-// known product voucher (0 when neither applies).
-function gifticonValue(item: Gifticon): number {
-  if (isAmountBased(item)) return remainingAmount(item);
-  return lookupEstimatedPrice(item.brand, item.name)?.price ?? 0;
-}
-
-export default function GifticonStats({ items }: { items: Gifticon[] }) {
+/** `onPress` turns the row into a link to the spending report; omitted (e.g. in
+ *  a space context, where there's no per-space report yet) it's plain. */
+export default function GifticonStats({
+  items,
+  onPress,
+}: {
+  items: Gifticon[];
+  onPress?: () => void;
+}) {
   const { totalAmount, expiringSoonCount, totalCount } = useMemo(() => {
     let totalAmount = 0;
     let expiringSoonCount = 0;
@@ -25,14 +24,21 @@ export default function GifticonStats({ items }: { items: Gifticon[] }) {
       const days = daysUntil(item.expiresAt);
       // An expired gifticon can't be spent, so it doesn't count toward the
       // total.
-      if (days >= 0) totalAmount += gifticonValue(item);
+      if (days >= 0) totalAmount += spendableValue(item);
       if (days >= 0 && days <= EXPIRING_SOON_WITHIN_DAYS) expiringSoonCount += 1;
     }
     return { totalAmount, expiringSoonCount, totalCount: items.length };
   }, [items]);
 
+  const Container = onPress ? TouchableOpacity : View;
+
   return (
-    <View style={styles.row}>
+    <Container
+      style={styles.row}
+      onPress={onPress}
+      accessibilityRole={onPress ? 'button' : undefined}
+      accessibilityLabel={onPress ? '소비 리포트 보기' : undefined}
+    >
       <View style={styles.stat}>
         <Text style={styles.value}>{formatCurrency(totalAmount)}</Text>
         <Text style={styles.label}>예상 보유액</Text>
@@ -45,7 +51,7 @@ export default function GifticonStats({ items }: { items: Gifticon[] }) {
         <Text style={styles.value}>{totalCount}개</Text>
         <Text style={styles.label}>보유 기프티콘</Text>
       </View>
-    </View>
+    </Container>
   );
 }
 

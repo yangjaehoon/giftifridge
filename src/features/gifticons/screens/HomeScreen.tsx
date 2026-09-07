@@ -106,7 +106,10 @@ export default function HomeScreen({ navigation }: Props) {
           <Text style={styles.membersLinkText}>멤버 관리</Text>
         </TouchableOpacity>
       )}
-      <GifticonStats items={items.filter((i) => !i.isUsed)} />
+      <GifticonStats
+        items={items.filter((i) => !i.isUsed)}
+        onPress={isPersonal ? () => navigation.navigate('Report') : undefined}
+      />
       {isPersonal && linkPrompt.show && (
         <LinkAccountBanner
           onLink={() => navigation.navigate('Settings')}

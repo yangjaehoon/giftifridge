@@ -1,5 +1,5 @@
 import React from 'react';
-import { render } from '@testing-library/react-native';
+import { fireEvent, render } from '@testing-library/react-native';
 import GifticonStats from './GifticonStats';
 import type { Gifticon } from '../types';
 
@@ -93,5 +93,18 @@ describe('GifticonStats', () => {
 
     expect(getByText('0원')).toBeTruthy();
     expect(getAllByText('0개')).toHaveLength(2);
+  });
+
+  it('is a plain row with no button role when given no onPress', async () => {
+    const { queryByLabelText } = await render(<GifticonStats items={[]} />);
+    expect(queryByLabelText('소비 리포트 보기')).toBeNull();
+  });
+
+  it('becomes a link to the report when onPress is provided', async () => {
+    const onPress = jest.fn();
+    const { getByLabelText } = await render(<GifticonStats items={[]} onPress={onPress} />);
+
+    fireEvent.press(getByLabelText('소비 리포트 보기'));
+    expect(onPress).toHaveBeenCalledTimes(1);
   });
 });
