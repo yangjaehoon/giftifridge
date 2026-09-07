@@ -8,6 +8,7 @@ import { extractSpaceCode } from '../inviteLink';
 import type { Space } from '../types';
 import { withTimeout, WRITE_TIMEOUT_MS } from '../../../shared/utils/withTimeout';
 import Button from '../../../shared/components/Button';
+import { formStyles } from '../../../shared/theme/forms';
 import { useToast } from '../../../shared/components/ToastProvider';
 import { useAsyncAction } from '../../../shared/hooks/useAsyncAction';
 import type { RootStackParamList } from '../../../app/RootNavigator';
@@ -62,9 +63,9 @@ export default function JoinSpaceScreen({ route, navigation }: Props) {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.label}>초대 코드 또는 링크</Text>
+      <Text style={formStyles.label}>초대 코드 또는 링크</Text>
       <TextInput
-        style={styles.input}
+        style={formStyles.input}
         value={code}
         onChangeText={setCode}
         placeholder="giftifridge://join/..."
@@ -92,15 +93,6 @@ export default function JoinSpaceScreen({ route, navigation }: Props) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 20, backgroundColor: colors.surface },
-  label: { fontSize: 13, fontWeight: '600', color: colors.gray700, marginBottom: 6, marginTop: 14 },
-  input: {
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    fontSize: 15,
-  },
   lookup: { marginTop: 12 },
   previewCard: {
     marginTop: 24,

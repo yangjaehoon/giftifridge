@@ -6,6 +6,7 @@ import { createSpace, newSpaceId } from '../services/spaceService';
 import { getSpaceWriteErrorMessage } from '../errors';
 import { withTimeout, WRITE_TIMEOUT_MS } from '../../../shared/utils/withTimeout';
 import Button from '../../../shared/components/Button';
+import { formStyles } from '../../../shared/theme/forms';
 import { useToast } from '../../../shared/components/ToastProvider';
 import { useAsyncAction } from '../../../shared/hooks/useAsyncAction';
 import type { RootStackParamList } from '../../../app/RootNavigator';
@@ -39,8 +40,13 @@ export default function CreateSpaceScreen({ navigation }: Props) {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.label}>스페이스 이름</Text>
-      <TextInput style={styles.input} value={name} onChangeText={setName} placeholder="우리 가족" />
+      <Text style={formStyles.label}>스페이스 이름</Text>
+      <TextInput
+        style={formStyles.input}
+        value={name}
+        onChangeText={setName}
+        placeholder="우리 가족"
+      />
 
       <Button label="만들기" onPress={save} loading={saving} style={styles.submit} />
 
@@ -53,15 +59,6 @@ export default function CreateSpaceScreen({ navigation }: Props) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 20, backgroundColor: colors.surface },
-  label: { fontSize: 13, fontWeight: '600', color: colors.gray700, marginBottom: 6, marginTop: 14 },
-  input: {
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    fontSize: 15,
-  },
   submit: { marginTop: 28 },
   joinLink: { alignItems: 'center', marginTop: 20 },
   joinLinkText: { color: colors.gray600, fontSize: 13 },

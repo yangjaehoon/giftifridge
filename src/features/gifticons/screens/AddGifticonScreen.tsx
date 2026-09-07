@@ -43,6 +43,7 @@ import { alertPermissionDenied } from '../../../shared/utils/permissionAlert';
 import type { RootStackParamList } from '../../../app/RootNavigator';
 import { getGifticonErrorMessage, getGifticonWriteErrorMessage } from '../errors';
 import { colors } from '../../../shared/theme/colors';
+import { formStyles } from '../../../shared/theme/forms';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'AddGifticon'>;
 
@@ -161,7 +162,7 @@ export default function AddGifticonScreen({ navigation, route }: Props) {
   if (isEditing && !loadingExisting && !existing) {
     return (
       <View style={styles.notFound}>
-        <Text style={styles.errorText}>{getGifticonErrorMessage('notFound')}</Text>
+        <Text style={formStyles.errorText}>{getGifticonErrorMessage('notFound')}</Text>
       </View>
     );
   }
@@ -177,7 +178,7 @@ export default function AddGifticonScreen({ navigation, route }: Props) {
           style={[
             styles.imagePicker,
             !form.imageUri && styles.imagePickerEmpty,
-            form.fieldErrors.image && styles.inputError,
+            form.fieldErrors.image && formStyles.inputError,
           ]}
           onPress={image.pickFromLibrary}
           accessibilityRole="button"
@@ -200,7 +201,9 @@ export default function AddGifticonScreen({ navigation, route }: Props) {
         >
           <Text style={styles.cameraLinkText}>카메라로 촬영</Text>
         </TouchableOpacity>
-        {form.fieldErrors.image && <Text style={styles.errorText}>{form.fieldErrors.image}</Text>}
+        {form.fieldErrors.image && (
+          <Text style={formStyles.errorText}>{form.fieldErrors.image}</Text>
+        )}
         {image.recognizing && (
           <View style={styles.recognizingRow}>
             <ActivityIndicator size="small" color={colors.primary} />
@@ -208,35 +211,37 @@ export default function AddGifticonScreen({ navigation, route }: Props) {
           </View>
         )}
 
-        <Text style={styles.label}>상품명</Text>
+        <Text style={formStyles.label}>상품명</Text>
         <TextInput
-          style={[styles.input, form.fieldErrors.name && styles.inputError]}
+          style={[formStyles.input, form.fieldErrors.name && formStyles.inputError]}
           value={form.name}
           onChangeText={form.setName}
           placeholder="아메리카노 Tall"
           returnKeyType="next"
           onSubmitEditing={() => brandRef.current?.focus()}
         />
-        {form.fieldErrors.name && <Text style={styles.errorText}>{form.fieldErrors.name}</Text>}
+        {form.fieldErrors.name && <Text style={formStyles.errorText}>{form.fieldErrors.name}</Text>}
         <OcrHint show={image.nameAutoDetected} subject="상품명을" />
 
-        <Text style={styles.label}>브랜드</Text>
+        <Text style={formStyles.label}>브랜드</Text>
         <TextInput
           ref={brandRef}
-          style={[styles.input, form.fieldErrors.brand && styles.inputError]}
+          style={[formStyles.input, form.fieldErrors.brand && formStyles.inputError]}
           value={form.brand}
           onChangeText={form.setBrand}
           placeholder="스타벅스"
           returnKeyType="next"
           onSubmitEditing={() => amountRef.current?.focus()}
         />
-        {form.fieldErrors.brand && <Text style={styles.errorText}>{form.fieldErrors.brand}</Text>}
+        {form.fieldErrors.brand && (
+          <Text style={formStyles.errorText}>{form.fieldErrors.brand}</Text>
+        )}
         <OcrHint show={image.brandAutoDetected} subject="브랜드를" />
 
-        <Text style={styles.label}>금액 (선택)</Text>
+        <Text style={formStyles.label}>금액 (선택)</Text>
         <TextInput
           ref={amountRef}
-          style={styles.input}
+          style={formStyles.input}
           value={groupDigits(form.amount)}
           onChangeText={(t) => form.setAmount(t.replace(/[^0-9]/g, ''))}
           placeholder="10,000"
@@ -250,7 +255,7 @@ export default function AddGifticonScreen({ navigation, route }: Props) {
           </Text>
         ) : null}
 
-        <Text style={styles.label}>카테고리</Text>
+        <Text style={formStyles.label}>카테고리</Text>
         <View style={styles.chipRow}>
           {CATEGORIES.map((c) => (
             <Chip
@@ -266,10 +271,10 @@ export default function AddGifticonScreen({ navigation, route }: Props) {
           message="브랜드를 보고 카테고리를 자동으로 선택했어요. 확인해주세요."
         />
 
-        <Text style={styles.label}>바코드 번호 (선택)</Text>
+        <Text style={formStyles.label}>바코드 번호 (선택)</Text>
         <View style={styles.barcodeRow}>
           <TextInput
-            style={[styles.input, styles.barcodeInput]}
+            style={[formStyles.input, styles.barcodeInput]}
             value={form.barcode}
             onChangeText={form.setBarcode}
             placeholder="숫자 직접 입력 또는 스캔"
@@ -281,7 +286,7 @@ export default function AddGifticonScreen({ navigation, route }: Props) {
         </View>
         <OcrHint show={image.barcodeAutoDetected} subject="바코드를" />
 
-        <Text style={styles.label}>매장 위치 (선택)</Text>
+        <Text style={formStyles.label}>매장 위치 (선택)</Text>
         <TouchableOpacity
           style={styles.locationButton}
           onPress={saveCurrentLocation}
@@ -302,8 +307,8 @@ export default function AddGifticonScreen({ navigation, route }: Props) {
           <Text style={styles.ocrHint}>근처에 다시 왔을 때 이 기프티콘을 알려드려요.</Text>
         )}
 
-        <Text style={styles.label}>유효기한</Text>
-        <TouchableOpacity style={styles.input} onPress={() => setShowDatePicker(true)}>
+        <Text style={formStyles.label}>유효기한</Text>
+        <TouchableOpacity style={formStyles.input} onPress={() => setShowDatePicker(true)}>
           <Text>{formatDate(toDateString(form.expiresAt))}</Text>
         </TouchableOpacity>
         <OcrHint show={image.dateAutoDetected} subject="유효기한을" />
@@ -371,21 +376,10 @@ const styles = StyleSheet.create({
   },
   image: { width: '100%', height: '100%' },
   imagePlaceholder: { color: colors.gray500, textAlign: 'center', fontSize: 13, lineHeight: 20 },
-  label: { fontSize: 13, fontWeight: '600', color: colors.gray700, marginBottom: 6, marginTop: 14 },
   recognizingRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 10 },
   recognizingText: { fontSize: 12, color: colors.gray500 },
   ocrHint: { fontSize: 12, color: colors.primary, marginTop: 6 },
-  errorText: { fontSize: 12, color: colors.danger, marginTop: 6 },
   notFound: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 20 },
-  input: {
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    fontSize: 15,
-  },
-  inputError: { borderColor: colors.danger },
   chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   barcodeRow: { flexDirection: 'row', gap: 8, alignItems: 'center' },
   barcodeInput: { flex: 1 },
