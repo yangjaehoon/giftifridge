@@ -12,11 +12,18 @@ import GifticonStatusOverlay from './GifticonStatusOverlay';
 function GifticonCard({
   gifticon,
   onPress,
+  onLongPress,
+  selected = false,
 }: {
   gifticon: Gifticon;
   // Takes the gifticon so the list can pass one stable handler and let React.memo
   // actually skip unchanged rows.
   onPress: (gifticon: Gifticon) => void;
+  // Long-press enters the home list's multi-select mode. Omitted where there's
+  // no selection (e.g. the calendar's day list).
+  onLongPress?: (gifticon: Gifticon) => void;
+  // Checked state while multi-select is active.
+  selected?: boolean;
 }) {
   const days = daysUntil(gifticon.expiresAt);
   const expired = days < 0;
@@ -34,12 +41,19 @@ function GifticonCard({
 
   return (
     <TouchableOpacity
-      style={styles.card}
+      style={[styles.card, selected && styles.cardSelected]}
       onPress={() => onPress(gifticon)}
+      onLongPress={onLongPress ? () => onLongPress(gifticon) : undefined}
       activeOpacity={0.75}
-      accessibilityRole="button"
+      accessibilityRole={onLongPress ? 'checkbox' : 'button'}
+      accessibilityState={onLongPress ? { checked: selected } : undefined}
       accessibilityLabel={`${gifticon.brand} ${gifticon.name}${priceLabel}, 유효기한 ${formatDate(gifticon.expiresAt)}, ${status}`}
     >
+      {selected && (
+        <View style={styles.checkmark}>
+          <Text style={styles.checkmarkText}>✓</Text>
+        </View>
+      )}
       <View style={styles.thumbnailWrap}>
         <Image
           source={{ uri: gifticon.imageUrl }}
@@ -93,6 +107,20 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     elevation: 2,
   },
+  cardSelected: { borderWidth: 2, borderColor: colors.primary, padding: 8 },
+  checkmark: {
+    position: 'absolute',
+    top: 6,
+    right: 6,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 1,
+  },
+  checkmarkText: { color: colors.surface, fontSize: 12, fontWeight: '800' },
   thumbnailWrap: {
     width: 56,
     height: 56,

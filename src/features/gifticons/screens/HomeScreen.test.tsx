@@ -1,4 +1,5 @@
 import React from 'react';
+import { Alert } from 'react-native';
 import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
 import HomeScreen from './HomeScreen';
 import { useCurrentUser } from '../../auth/context/AuthContext';
@@ -6,6 +7,7 @@ import { useGifticons } from '../hooks/useGifticons';
 import { useSpaceGifticons } from '../hooks/useSpaceGifticons';
 import { useNearbyGifticons } from '../hooks/useNearbyGifticons';
 import { useMySpaces } from '../../spaces/hooks/useMySpaces';
+import { markGifticonsUsed, removeGifticons } from '../services/gifticonLifecycle';
 import type { Gifticon } from '../types';
 
 jest.mock('../../auth/context/AuthContext', () => ({ useCurrentUser: jest.fn() }));
@@ -13,6 +15,10 @@ jest.mock('../hooks/useGifticons', () => ({ useGifticons: jest.fn() }));
 jest.mock('../hooks/useSpaceGifticons', () => ({ useSpaceGifticons: jest.fn() }));
 jest.mock('../hooks/useNearbyGifticons', () => ({ useNearbyGifticons: jest.fn() }));
 jest.mock('../../spaces/hooks/useMySpaces', () => ({ useMySpaces: jest.fn() }));
+jest.mock('../services/gifticonLifecycle', () => ({
+  markGifticonsUsed: jest.fn(),
+  removeGifticons: jest.fn(),
+}));
 jest.mock('../../auth/hooks/useLinkAccountPrompt', () => ({
   useLinkAccountPrompt: jest.fn(() => ({ show: false, dismiss: jest.fn() })),
 }));
@@ -22,6 +28,8 @@ const mockedUseGifticons = useGifticons as jest.Mock;
 const mockedUseSpaceGifticons = useSpaceGifticons as jest.Mock;
 const mockedUseNearby = useNearbyGifticons as jest.Mock;
 const mockedUseMySpaces = useMySpaces as jest.Mock;
+const mockedMarkUsed = markGifticonsUsed as jest.Mock;
+const mockedRemove = removeGifticons as jest.Mock;
 
 function daysFromNow(days: number): string {
   const d = new Date();
@@ -158,6 +166,44 @@ describe('HomeScreen', () => {
     });
 
     expect(navigation.navigate).toHaveBeenCalledWith('GifticonDetail', { gifticonId: 'active-1' });
+  });
+
+  it('enters multi-select on long-press and batch-marks the selection used', async () => {
+    mockedMarkUsed.mockResolvedValue({ succeeded: 1, failed: 0 });
+    const { getByText, getByLabelText, queryByLabelText } = await renderScreen();
+
+    await act(async () => fireEvent(getByText('아메리카노'), 'longPress'));
+    expect(getByText('1개 선택')).toBeTruthy();
+    // FAB gives way to the selection bar.
+    expect(queryByLabelText('기프티콘 등록')).toBeNull();
+
+    await act(async () => fireEvent.press(getByLabelText('선택 항목 사용완료로 표시')));
+
+    expect(mockedMarkUsed).toHaveBeenCalledWith(
+      [expect.objectContaining({ id: 'active-1' })],
+      'u1',
+    );
+    // Selection clears afterwards → FAB is back.
+    expect(getByLabelText('기프티콘 등록')).toBeTruthy();
+  });
+
+  it('confirms before a batch delete and calls removeGifticons on confirm', async () => {
+    mockedRemove.mockResolvedValue({ succeeded: 1, failed: 0 });
+    const alert = jest.spyOn(Alert, 'alert');
+    const { getByText, getByLabelText } = await renderScreen();
+
+    await act(async () => fireEvent(getByText('아메리카노'), 'longPress'));
+    await act(async () => fireEvent.press(getByLabelText('선택 항목 삭제')));
+
+    const [, , buttons] = alert.mock.calls.at(-1) as unknown as [
+      string,
+      string,
+      { text: string; onPress?: () => void }[],
+    ];
+    await act(async () => buttons.find((b) => b.text === '삭제')?.onPress?.());
+
+    expect(mockedRemove).toHaveBeenCalledWith([expect.objectContaining({ id: 'active-1' })]);
+    alert.mockRestore();
   });
 
   it('opens the add screen from the FAB (no space param in personal context)', async () => {

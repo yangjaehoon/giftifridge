@@ -110,6 +110,40 @@ export async function recordGifticonUsage(
   await cancelOwnerRemindersIfClosed(gifticon, closesOutBalance, actingUid);
 }
 
+export interface BatchOutcome {
+  succeeded: number;
+  failed: number;
+}
+
+/**
+ * Runs one of the single-gifticon operations above across a selection, in
+ * parallel, and reports how many landed. One failure never aborts the rest —
+ * the home list's multi-select needs "3 done, 1 failed", not all-or-nothing.
+ */
+async function runBatch<T>(items: T[], op: (item: T) => Promise<unknown>): Promise<BatchOutcome> {
+  const results = await Promise.allSettled(items.map(op));
+  const succeeded = results.filter((r) => r.status === 'fulfilled').length;
+  return { succeeded, failed: results.length - succeeded };
+}
+
+/** Marks every not-yet-used gifticon in the selection used (already-used ones
+ *  are skipped and counted as succeeded — nothing to do). */
+export function markGifticonsUsed(
+  gifticons: Gifticon[],
+  actingUid: string | undefined,
+): Promise<BatchOutcome> {
+  const pending = gifticons.filter((g) => !g.isUsed);
+  return runBatch(pending, (g) => setGifticonUsed(g, true, actingUid)).then((outcome) => ({
+    succeeded: outcome.succeeded + (gifticons.length - pending.length),
+    failed: outcome.failed,
+  }));
+}
+
+/** Deletes every gifticon in the selection. */
+export function removeGifticons(gifticons: Gifticon[]): Promise<BatchOutcome> {
+  return runBatch(gifticons, removeGifticon);
+}
+
 /**
  * Removes one logged spend. Deliberately leaves isUsed alone — a gifticon
  * closed out via the used/unused toggle (by hand, or because a usage record

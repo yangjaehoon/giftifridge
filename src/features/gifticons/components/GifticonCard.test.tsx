@@ -119,6 +119,28 @@ describe('GifticonCard', () => {
     expect(onPress).toHaveBeenCalledTimes(1);
   });
 
+  it('calls onLongPress with the gifticon when held', async () => {
+    const onLongPress = jest.fn();
+    const gifticon = makeGifticon({ id: '1' });
+    const { getByText } = await render(
+      <GifticonCard gifticon={gifticon} onPress={jest.fn()} onLongPress={onLongPress} />,
+    );
+    fireEvent(getByText('아메리카노'), 'longPress');
+    expect(onLongPress).toHaveBeenCalledWith(gifticon);
+  });
+
+  it('reads as a checkbox showing its checked state while selectable', async () => {
+    const { getByRole } = await render(
+      <GifticonCard
+        gifticon={makeGifticon({ id: '1' })}
+        onPress={jest.fn()}
+        onLongPress={jest.fn()}
+        selected
+      />,
+    );
+    expect(getByRole('checkbox').props.accessibilityState).toEqual({ checked: true });
+  });
+
   it('exposes a single spoken label summarising the card', async () => {
     const { getByLabelText } = await render(
       <GifticonCard

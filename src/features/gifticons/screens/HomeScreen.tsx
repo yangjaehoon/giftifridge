@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect } from 'react';
 import {
+  Alert,
   FlatList,
   RefreshControl,
   ScrollView,
@@ -15,7 +16,9 @@ import { useLinkAccountPrompt } from '../../auth/hooks/useLinkAccountPrompt';
 import LinkAccountBanner from '../../auth/components/LinkAccountBanner';
 import { useNearbyGifticons } from '../hooks/useNearbyGifticons';
 import { useGifticonListView } from '../hooks/useGifticonListView';
+import { useGifticonSelection } from '../hooks/useGifticonSelection';
 import { useHomeGifticonContext } from '../hooks/useHomeGifticonContext';
+import { markGifticonsUsed, removeGifticons } from '../services/gifticonLifecycle';
 import SpaceSwitcher from '../../spaces/components/SpaceSwitcher';
 import Button from '../../../shared/components/Button';
 import Chip from '../../../shared/components/Chip';
@@ -24,7 +27,9 @@ import GifticonCardSkeleton from '../components/GifticonCardSkeleton';
 import GifticonStats from '../components/GifticonStats';
 import NearbyGifticonBanner from '../components/NearbyGifticonBanner';
 import StatusTabs from '../components/StatusTabs';
-import { getGifticonErrorMessage } from '../errors';
+import { useToast } from '../../../shared/components/ToastProvider';
+import { useAsyncAction } from '../../../shared/hooks/useAsyncAction';
+import { getGifticonErrorMessage, getGifticonWriteErrorMessage } from '../errors';
 import { CATEGORY_LABELS } from '../types';
 import type { Gifticon } from '../types';
 import { CATEGORY_FILTERS, EMPTY_TEXT, SORT_KEYS, SORT_LABELS } from '../gifticonFilters';
@@ -64,14 +69,65 @@ export default function HomeScreen({ navigation }: Props) {
       context.type === 'space' ? { spaceId: context.spaceId } : undefined,
     );
 
+  const showToast = useToast();
+  const selection = useGifticonSelection();
+  const { busy: batchBusy, run: runBatch } = useAsyncAction(getGifticonWriteErrorMessage);
+  const selectedItems = visible.filter((g) => selection.selectedIds.has(g.id));
+
   const openDetail = useCallback(
     (g: Gifticon) => navigation.navigate('GifticonDetail', { gifticonId: g.id }),
     [navigation],
   );
+  const toggleSelect = useCallback((g: Gifticon) => selection.toggle(g.id), [selection]);
+  const beginSelect = useCallback((g: Gifticon) => selection.begin(g.id), [selection]);
+
+  const { selecting, selectedIds } = selection;
   const renderItem = useCallback(
-    ({ item }: { item: Gifticon }) => <GifticonCard gifticon={item} onPress={openDetail} />,
-    [openDetail],
+    ({ item }: { item: Gifticon }) => (
+      <GifticonCard
+        gifticon={item}
+        onPress={selecting ? toggleSelect : openDetail}
+        onLongPress={beginSelect}
+        selected={selectedIds.has(item.id)}
+      />
+    ),
+    [selecting, selectedIds, toggleSelect, beginSelect, openDetail],
   );
+
+  const batchMarkUsed = () =>
+    runBatch(() => markGifticonsUsed(selectedItems, user?.uid), {
+      fallback: 'update',
+      onSuccess: ({ succeeded, failed }) => {
+        selection.clear();
+        showToast(
+          failed > 0
+            ? `${succeeded}개 완료, ${failed}개는 실패했어요`
+            : `${succeeded}개를 사용완료로 표시했어요`,
+        );
+      },
+    });
+
+  const batchDelete = () => {
+    Alert.alert('삭제', `선택한 ${selection.count}개를 삭제할까요?`, [
+      { text: '취소', style: 'cancel' },
+      {
+        text: '삭제',
+        style: 'destructive',
+        onPress: () =>
+          runBatch(() => removeGifticons(selectedItems), {
+            fallback: 'delete',
+            onSuccess: ({ succeeded, failed }) => {
+              selection.clear();
+              showToast(
+                failed > 0
+                  ? `${succeeded}개 삭제, ${failed}개는 실패했어요`
+                  : `${succeeded}개를 삭제했어요`,
+              );
+            },
+          }),
+      },
+    ]);
+  };
 
   useEffect(() => {
     navigation.setOptions({
@@ -252,14 +308,48 @@ export default function HomeScreen({ navigation }: Props) {
         </>
       )}
 
-      <TouchableOpacity
-        style={styles.fab}
-        onPress={openAdd}
-        accessibilityRole="button"
-        accessibilityLabel="기프티콘 등록"
-      >
-        <Text style={styles.fabText}>+</Text>
-      </TouchableOpacity>
+      {selection.selecting ? (
+        <View style={styles.selectionBar}>
+          <TouchableOpacity
+            onPress={selection.clear}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            accessibilityRole="button"
+            accessibilityLabel="선택 취소"
+          >
+            <Text style={styles.selectionCancel}>취소</Text>
+          </TouchableOpacity>
+          <Text style={styles.selectionCount}>{selection.count}개 선택</Text>
+          <View style={styles.selectionActions}>
+            {tab !== 'used' && (
+              <TouchableOpacity
+                onPress={batchMarkUsed}
+                disabled={batchBusy}
+                accessibilityRole="button"
+                accessibilityLabel="선택 항목 사용완료로 표시"
+              >
+                <Text style={styles.selectionAction}>사용완료</Text>
+              </TouchableOpacity>
+            )}
+            <TouchableOpacity
+              onPress={batchDelete}
+              disabled={batchBusy}
+              accessibilityRole="button"
+              accessibilityLabel="선택 항목 삭제"
+            >
+              <Text style={[styles.selectionAction, styles.selectionDelete]}>삭제</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      ) : (
+        <TouchableOpacity
+          style={styles.fab}
+          onPress={openAdd}
+          accessibilityRole="button"
+          accessibilityLabel="기프티콘 등록"
+        >
+          <Text style={styles.fabText}>+</Text>
+        </TouchableOpacity>
+      )}
     </View>
   );
 }
@@ -334,4 +424,27 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
   fabText: { color: colors.surface, fontSize: 28, fontWeight: '400', marginTop: -2 },
+  selectionBar: {
+    position: 'absolute',
+    left: 16,
+    right: 16,
+    bottom: 24,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: colors.surfaceStrong,
+    borderRadius: 14,
+    paddingHorizontal: 18,
+    paddingVertical: 14,
+    shadowColor: colors.shadow,
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 5,
+  },
+  selectionCancel: { color: colors.surface, fontSize: 14, opacity: 0.8 },
+  selectionCount: { color: colors.surface, fontSize: 14, fontWeight: '700' },
+  selectionActions: { flexDirection: 'row', gap: 18 },
+  selectionAction: { color: colors.primaryBright, fontSize: 14, fontWeight: '700' },
+  selectionDelete: { color: colors.danger },
 });

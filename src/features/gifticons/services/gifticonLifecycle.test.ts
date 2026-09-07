@@ -8,8 +8,10 @@ import {
 import { cancelNotifications } from './notificationService';
 import {
   deleteGifticonUsageRecord,
+  markGifticonsUsed,
   recordGifticonUsage,
   removeGifticon,
+  removeGifticons,
   setGifticonUsed,
 } from './gifticonLifecycle';
 import type { Gifticon } from '../types';
@@ -172,6 +174,70 @@ describe('recordGifticonUsage', () => {
       'remaining balance',
     );
     expect(mockedAddUsage).not.toHaveBeenCalled();
+  });
+});
+
+const batchItem = (id: string, isUsed = false): Gifticon => ({
+  id,
+  ownerId: 'owner',
+  name: '아메리카노',
+  brand: '스타벅스',
+  category: 'cafe',
+  imageUrl: 'https://x/y.jpg',
+  expiresAt: '2027-01-10',
+  isUsed,
+  createdAt: '2026-01-01T00:00:00.000Z',
+  notificationIds: [],
+});
+
+describe('markGifticonsUsed (batch)', () => {
+  const mk = batchItem;
+
+  it('marks every not-yet-used gifticon used and counts them', async () => {
+    const outcome = await markGifticonsUsed([mk('a'), mk('b')], 'owner');
+
+    expect(outcome).toEqual({ succeeded: 2, failed: 0 });
+    expect(mockedMarkUsed).toHaveBeenCalledWith('a', true);
+    expect(mockedMarkUsed).toHaveBeenCalledWith('b', true);
+  });
+
+  it('skips already-used gifticons but still counts them as succeeded', async () => {
+    const outcome = await markGifticonsUsed([mk('a'), mk('b', true)], 'owner');
+
+    expect(outcome).toEqual({ succeeded: 2, failed: 0 });
+    expect(mockedMarkUsed).toHaveBeenCalledTimes(1);
+    expect(mockedMarkUsed).toHaveBeenCalledWith('a', true);
+  });
+
+  it('reports partial failure without aborting the rest', async () => {
+    mockedMarkUsed.mockImplementation(async (id: string) => {
+      if (id === 'b') throw new Error('write failed');
+    });
+
+    const outcome = await markGifticonsUsed([mk('a'), mk('b'), mk('c')], 'owner');
+
+    expect(outcome).toEqual({ succeeded: 2, failed: 1 });
+  });
+});
+
+describe('removeGifticons (batch)', () => {
+  const mk = (id: string): Gifticon => batchItem(id);
+
+  it('deletes every gifticon and counts them', async () => {
+    const outcome = await removeGifticons([mk('a'), mk('b')]);
+
+    expect(outcome).toEqual({ succeeded: 2, failed: 0 });
+    expect(mockedDelete).toHaveBeenCalledTimes(2);
+  });
+
+  it('reports partial failure', async () => {
+    mockedDelete.mockImplementation(async (g: Gifticon) => {
+      if (g.id === 'a') throw new Error('delete failed');
+    });
+
+    const outcome = await removeGifticons([mk('a'), mk('b')]);
+
+    expect(outcome).toEqual({ succeeded: 1, failed: 1 });
   });
 });
 
