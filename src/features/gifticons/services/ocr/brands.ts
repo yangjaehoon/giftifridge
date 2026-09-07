@@ -92,25 +92,29 @@ export function compact(value: string): string {
 }
 
 const ASCII_ONLY_RE = /^[a-z0-9]+$/;
+const REGEX_META_RE = /[.*+?^${}()|[\]\\]/g;
 
-// Where `brandKey` first appears in the compacted text, or -1. A plain
-// substring search is fine for Korean brand names (multi-syllable blocks
-// rarely embed inside an unrelated word), but a short Latin/digit token like
-// "CU" or "KFC" would otherwise match inside all sorts of unrelated English
-// text (e.g. "CU" inside "CUP"). For those, require the token to stand alone
-// rather than be embedded in a longer alphanumeric run — checked against both
-// the fully-compacted text and a whitespace-preserving one, since compact()
-// turns "Naver Blog\nBHC" into "naverblogbhc" where the word boundary "bhc"
-// actually had is gone.
-function brandKeyPosition(
-  compactHaystack: string,
-  spacedHaystack: string,
-  brandKey: string,
-): number {
-  if (!ASCII_ONLY_RE.test(brandKey)) return compactHaystack.indexOf(brandKey);
-  const bounded = new RegExp(`(?:^|[^a-z0-9])${brandKey}(?:[^a-z0-9]|$)`);
-  const at = bounded.exec(compactHaystack)?.index ?? bounded.exec(spacedHaystack)?.index;
-  return at ?? -1;
+// One matcher per known brand, compiled once. Each regex captures group 1 = the
+// brand key with `\s*` between every character, so OCR that split the name
+// ("b h c", "스타 벅스") still matches. A Latin/digit key ("CU", "KFC") is
+// additionally required to stand alone — not embedded in a longer alphanumeric
+// run — so "CU" doesn't match inside "CUP". All matching is done against the
+// lower-cased original text (whitespace preserved), so one comparable index
+// space is used to pick the earliest brand.
+const BRAND_MATCHERS: { brand: KnownBrand; re: RegExp }[] = KNOWN_BRANDS.map((brand) => {
+  const spaced = compact(brand.name)
+    .split('')
+    .map((ch) => ch.replace(REGEX_META_RE, '\\$&'))
+    .join('\\s*');
+  const source = ASCII_ONLY_RE.test(compact(brand.name))
+    ? `(?:^|[^a-z0-9])(${spaced})(?:[^a-z0-9]|$)`
+    : `(${spaced})`;
+  return { brand, re: new RegExp(source) };
+});
+
+function brandKeyPosition(lowerText: string, re: RegExp): number {
+  const m = re.exec(lowerText);
+  return m ? m.index + m[0].indexOf(m[1]) : -1;
 }
 
 // The real brand sits near the top of a gifticon, so when the text names more
@@ -118,11 +122,10 @@ function brandKeyPosition(
 // the earliest one wins rather than whichever happens to come first in the
 // KNOWN_BRANDS array.
 export function findKnownBrand(text: string): KnownBrand | null {
-  const compactHaystack = compact(text);
-  const spacedHaystack = text.replace(/\s+/g, ' ').toLowerCase();
+  const lowerText = text.toLowerCase();
   let best: { brand: KnownBrand; at: number } | null = null;
-  for (const brand of KNOWN_BRANDS) {
-    const at = brandKeyPosition(compactHaystack, spacedHaystack, compact(brand.name));
+  for (const { brand, re } of BRAND_MATCHERS) {
+    const at = brandKeyPosition(lowerText, re);
     if (at !== -1 && (best == null || at < best.at)) best = { brand, at };
   }
   return best?.brand ?? null;

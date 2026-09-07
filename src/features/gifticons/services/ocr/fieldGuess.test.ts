@@ -124,6 +124,15 @@ describe('guessGifticonFields', () => {
     });
   });
 
+  it('matches a known Korean brand OCR-split by whitespace', () => {
+    const text = '스타 벅스\n아메리카노 Tall\n유효기간 2026.12.31까지';
+    expect(guessGifticonFields(ocrResult(text))).toEqual({
+      brand: '스타벅스',
+      name: '아메리카노 Tall',
+      category: 'cafe',
+    });
+  });
+
   it('skips a sentence-fragment line wedged between the brand and the real name', () => {
     // A web screenshot can bleed a result-title tail ("있을까?") in just under
     // the brand; the real name is the next line, not that fragment.
