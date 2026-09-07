@@ -10,7 +10,11 @@ const { onCall, HttpsError } = require('firebase-functions/v2/https');
 const logger = require('firebase-functions/logger');
 
 const { isEligibleForCleanup, MAX_IDLE_MS } = require('./eligibility');
-const { deleteAccount, imagePath, mapWithConcurrency } = require('./accountData');
+const {
+  deleteAccount: runAccountTeardown,
+  imagePath,
+  mapWithConcurrency,
+} = require('./accountData');
 
 initializeApp();
 
@@ -58,13 +62,13 @@ exports.onGifticonDeleted = onDocumentDeleted(
  * user explicitly asked — and it applies to anonymous and linked accounts alike.
  * The teardown itself lives in ./accountData so it can be unit-tested.
  */
-exports.deleteAccount = onCall({ region: REGION }, async (request) => {
+exports.deleteAccount = onCall({ region: REGION, timeoutSeconds: 120 }, async (request) => {
   const uid = request.auth && request.auth.uid;
   if (!uid) {
     throw new HttpsError('unauthenticated', 'Must be signed in to delete an account.');
   }
   try {
-    const summary = await deleteAccount(
+    const summary = await runAccountTeardown(
       {
         db: getFirestore(),
         auth: getAuth(),
