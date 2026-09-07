@@ -26,6 +26,9 @@ const AUTO_IMPORT_THRESHOLD = 6;
 // rescues a photo with no confident date, though — there is still nothing to
 // put in expiresAt.
 const BARCODE_GRAPHIC_POINTS = 5;
+// How far below the threshold a photo can score and still be worth another OCR
+// pass on a later scan (see isRetryWorthwhile) rather than a permanent skip.
+const RETRY_SCORE_MARGIN = 3;
 const PROSE_MIN_LINES = 12;
 const PROSE_MIN_AVG_LINE_LENGTH = 22;
 // A confident expiry more than this many days in the past is more likely an OCR
@@ -81,6 +84,20 @@ export function isItemCouponPrice(
   category: GifticonCategory | null,
 ): boolean {
   return amount != null && !amount.confident && (category === 'cafe' || category === 'restaurant');
+}
+
+/**
+ * A photo that missed the auto-import bar but scored close and has a real
+ * (confident, non-stale) date: worth another OCR pass on a later scan — a
+ * clearer future capture, or an improved parser, might tip it — rather than a
+ * permanent skip. A dateless or way-off photo is a confirmed no.
+ */
+export function isRetryWorthwhile(assessment: GifticonAssessment): boolean {
+  return (
+    !assessment.create &&
+    assessment.expiresAt != null &&
+    assessment.score >= AUTO_IMPORT_THRESHOLD - RETRY_SCORE_MARGIN
+  );
 }
 
 /** The amount to actually save: the parsed value, unless it reads as a printed

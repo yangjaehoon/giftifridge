@@ -309,6 +309,38 @@ describe('scanGalleryForGifticons', () => {
     expect(mockedRecognizeText).toHaveBeenCalledTimes(1);
   });
 
+  it('holds a close-but-not-enough dated photo for a retry instead of a permanent skip', async () => {
+    await AsyncStorage.setItem('galleryImportLastCheckedAt', '500');
+    mockedExe.mockResolvedValue([fakeAsset('a1', 1_000)]);
+    // "유효기간 <date>까지" alone scores 5 (< threshold 6) but has a real date.
+    mockedRecognizeText.mockResolvedValue(ocrResult('유효기간 2028.12.31 까지'));
+
+    await scanGalleryForGifticons('u1');
+
+    expect(mockedSaveGifticon).not.toHaveBeenCalled();
+    expect(JSON.parse((await AsyncStorage.getItem('galleryImportImportedIds')) ?? '[]')).toEqual(
+      [],
+    );
+    // cursor held at the asset so a later scan re-fetches it
+    expect(await AsyncStorage.getItem('galleryImportLastCheckedAt')).toBe('1000');
+    expect(JSON.parse((await AsyncStorage.getItem('galleryImportRetries')) ?? '{}')).toEqual({
+      a1: 1,
+    });
+  });
+
+  it('gives up on a retried photo after the cap and marks it done', async () => {
+    await AsyncStorage.setItem('galleryImportRetries', JSON.stringify({ a1: 2 }));
+    mockedExe.mockResolvedValue([fakeAsset('a1', 1_000)]);
+    mockedRecognizeText.mockResolvedValue(ocrResult('유효기간 2028.12.31 까지'));
+
+    await scanGalleryForGifticons('u1');
+
+    expect(JSON.parse((await AsyncStorage.getItem('galleryImportImportedIds')) ?? '[]')).toEqual([
+      'a1',
+    ]);
+    expect(JSON.parse((await AsyncStorage.getItem('galleryImportRetries')) ?? '{}')).toEqual({});
+  });
+
   it('advances the scan cursor past the newest processed asset', async () => {
     await AsyncStorage.setItem('galleryImportLastCheckedAt', '1000');
     mockedExe.mockResolvedValueOnce([fakeAsset('a1', 5_000)]);

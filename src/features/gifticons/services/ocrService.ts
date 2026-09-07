@@ -19,5 +19,10 @@ export { guessGifticonFields, countCardFooterLabels } from './ocr/fieldGuess';
 export type { GuessedGifticonFields } from './ocr/fieldGuess';
 export { findKnownBrand } from './ocr/brands';
 export type { KnownBrand } from './ocr/brands';
-export { assessGifticon, isItemCouponPrice, resolveImportAmount } from './ocr/gifticonScore';
+export {
+  assessGifticon,
+  isItemCouponPrice,
+  isRetryWorthwhile,
+  resolveImportAmount,
+} from './ocr/gifticonScore';
 export type { GifticonAssessment } from './ocr/gifticonScore';

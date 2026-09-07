@@ -7,6 +7,7 @@ import { syncGifticonReminders } from './gifticonReminders';
 import {
   assessGifticon,
   guessGifticonFields,
+  isRetryWorthwhile,
   recognizeText,
   resolveImportAmount,
 } from './ocrService';
@@ -23,9 +24,14 @@ import type { GifticonCategory } from '../types';
 export const ENABLED_KEY = 'galleryImportEnabled';
 const LAST_CHECKED_KEY = 'galleryImportLastCheckedAt';
 const IMPORTED_IDS_KEY = 'galleryImportImportedIds';
+const RETRIES_KEY = 'galleryImportRetries';
 // Bounds the dedupe set's storage footprint; recent-enough that a normal scan
 // cadence never sees the same asset id twice before it would roll off anyway.
 const IMPORTED_IDS_CAP = 500;
+// A photo that scored close but not enough (isRetryWorthwhile) gets this many
+// more OCR passes on later scans before it's given up on for good — enough for
+// an improved parser or a re-photo to land, without re-OCRing it forever.
+const MAX_IMPORT_RETRIES = 2;
 // Caps how many photos one scan processes (each one is an OCR pass), so a
 // single run — especially a background one with a limited execution window —
 // can't run long or drain the battery.
@@ -59,6 +65,25 @@ async function getImportedIds(): Promise<Set<string>> {
 async function saveImportedIds(ids: Set<string>): Promise<void> {
   const trimmed = Array.from(ids).slice(-IMPORTED_IDS_CAP);
   await AsyncStorage.setItem(IMPORTED_IDS_KEY, JSON.stringify(trimmed));
+}
+
+async function getRetries(): Promise<Map<string, number>> {
+  const raw = await AsyncStorage.getItem(RETRIES_KEY);
+  if (!raw) return new Map();
+  try {
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return new Map();
+    return new Map(
+      Object.entries(parsed).filter(([, v]) => typeof v === 'number') as [string, number][],
+    );
+  } catch {
+    return new Map();
+  }
+}
+
+async function saveRetries(retries: Map<string, number>): Promise<void> {
+  const entries = Array.from(retries.entries()).slice(-IMPORTED_IDS_CAP);
+  await AsyncStorage.setItem(RETRIES_KEY, JSON.stringify(Object.fromEntries(entries)));
 }
 
 /** Checks/requests photo-library read permission, granular to images only. */
@@ -99,6 +124,7 @@ async function runScan(ownerId: string): Promise<number> {
 
   const lastCheckedAt = await getLastCheckedAt();
   const importedIds = await getImportedIds();
+  const retries = await getRetries();
   // Barcodes the user already has (from the offline list mirror) — a re-photo
   // of an existing gifticon shouldn't become a second entry. Also grows within
   // this scan so a burst of the same gifticon can't double-create.
@@ -117,6 +143,9 @@ async function runScan(ownerId: string): Promise<number> {
 
   let imported = 0;
   let newestCheckedAt = lastCheckedAt;
+  // The scan cursor is held back to just before the oldest still-retryable
+  // asset, so a later scan re-fetches and re-OCRs it.
+  let oldestPending = Number.POSITIVE_INFINITY;
 
   try {
     for (const asset of assets) {
@@ -166,7 +195,19 @@ async function runScan(ownerId: string): Promise<number> {
             amount: assessment.amount,
           });
         }
-        importedIds.add(asset.id);
+        // Close-but-not-enough with a real date: leave it off the done set and
+        // hold the cursor so a later scan retries it, up to MAX_IMPORT_RETRIES.
+        if (
+          assessment != null &&
+          isRetryWorthwhile(assessment) &&
+          (retries.get(asset.id) ?? 0) < MAX_IMPORT_RETRIES
+        ) {
+          retries.set(asset.id, (retries.get(asset.id) ?? 0) + 1);
+          oldestPending = Math.min(oldestPending, creationTime);
+        } else {
+          retries.delete(asset.id);
+          importedIds.add(asset.id);
+        }
         continue;
       }
 
@@ -177,6 +218,7 @@ async function runScan(ownerId: string): Promise<number> {
           reason: 'duplicate barcode',
           score: assessment.score,
         });
+        retries.delete(asset.id);
         importedIds.add(asset.id);
         continue;
       }
@@ -220,6 +262,7 @@ async function runScan(ownerId: string): Promise<number> {
       // Only marked done once the create actually went through — if
       // saveGifticon throws, this asset is left off the dedupe set so the
       // next scan retries it instead of silently losing the photo.
+      retries.delete(asset.id);
       importedIds.add(asset.id);
       if (barcode != null) knownBarcodes.add(barcode);
       await syncGifticonReminders({
@@ -237,9 +280,12 @@ async function runScan(ownerId: string): Promise<number> {
   } finally {
     // Persist whatever progress was made even if one asset's OCR/create threw
     // partway through — otherwise the next scan re-fetches (and re-creates a
-    // duplicate for) every photo already successfully imported this run.
-    await AsyncStorage.setItem(LAST_CHECKED_KEY, String(newestCheckedAt));
+    // duplicate for) every photo already successfully imported this run. The
+    // cursor stops just before the oldest still-retryable asset (Math.min with
+    // Infinity is a no-op when nothing is pending).
+    await AsyncStorage.setItem(LAST_CHECKED_KEY, String(Math.min(newestCheckedAt, oldestPending)));
     await saveImportedIds(importedIds);
+    await saveRetries(retries);
   }
   return imported;
 }
