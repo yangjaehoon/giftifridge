@@ -27,6 +27,8 @@ jest.mock('./useFirstRunNotice', () => ({ useFirstRunNotice: jest.fn() }));
 
 jest.mock('@react-navigation/native', () => ({
   NavigationContainer: ({ children }: { children: React.ReactNode }) => children,
+  DefaultTheme: { dark: false, colors: {} },
+  DarkTheme: { dark: true, colors: {} },
 }));
 
 jest.mock('@react-navigation/native-stack', () => ({

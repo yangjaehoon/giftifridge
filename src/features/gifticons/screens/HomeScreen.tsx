@@ -34,13 +34,16 @@ import { CATEGORY_LABELS } from '../types';
 import type { Gifticon } from '../types';
 import { CATEGORY_FILTERS, EMPTY_TEXT, SORT_KEYS, SORT_LABELS } from '../gifticonFilters';
 import type { RootStackParamList } from '../../../app/RootNavigator';
-import { colors } from '../../../shared/theme/colors';
+import type { Palette } from '../../../shared/theme/colors';
+import { useColors, useThemedStyles } from '../../../shared/theme/ThemeProvider';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Home'>;
 
 const keyExtractor = (item: Gifticon) => item.id;
 
 export default function HomeScreen({ navigation }: Props) {
+  const colors = useColors();
+  const styles = useThemedStyles(makeStyles);
   const { user, isAnonymous } = useCurrentUser();
   const { context, setContext, spaces, list } = useHomeGifticonContext(user?.uid);
   const { items, loading, refreshing, error, refresh } = list;
@@ -152,7 +155,7 @@ export default function HomeScreen({ navigation }: Props) {
         </View>
       ),
     });
-  }, [navigation]);
+  }, [navigation, styles]);
 
   return (
     <View style={styles.container}>
@@ -354,97 +357,98 @@ export default function HomeScreen({ navigation }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background },
-  headerActions: { flexDirection: 'row', gap: 16, marginRight: 4 },
-  settingsLink: { color: colors.primary, fontSize: 13 },
-  membersLink: { alignSelf: 'flex-end', marginRight: 16, marginTop: 6 },
-  membersLinkText: { color: colors.primary, fontSize: 12, fontWeight: '600' },
-  categoryScroll: { flexGrow: 0, flexShrink: 0 },
-  categoryRow: { paddingHorizontal: 16, paddingTop: 10, gap: 8, alignItems: 'center' },
-  searchRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginHorizontal: 16,
-    marginTop: 10,
-    paddingHorizontal: 14,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 10,
-    backgroundColor: colors.surface,
-  },
-  searchInput: { flex: 1, paddingVertical: 10, fontSize: 14, color: colors.gray900 },
-  searchClear: { paddingLeft: 8, paddingVertical: 4 },
-  searchClearText: { fontSize: 18, color: colors.gray400, fontWeight: '700' },
-  sortRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flexWrap: 'wrap',
-    gap: 8,
-    marginHorizontal: 16,
-    marginTop: 10,
-  },
-  sortLabel: { fontSize: 12, fontWeight: '600', color: colors.gray500 },
-  sortDir: {
-    marginLeft: 'auto',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  sortDirText: { fontSize: 12, fontWeight: '600', color: colors.gray700 },
-  listContent: { paddingVertical: 8, paddingBottom: 100, flexGrow: 1 },
-  empty: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: 80, gap: 4 },
-  emptyText: { color: colors.gray500, fontSize: 14 },
-  emptyAction: { marginTop: 12, minWidth: 160 },
-  inlineError: {
-    backgroundColor: colors.amber,
-    marginHorizontal: 16,
-    marginTop: 12,
-    paddingVertical: 8,
-    paddingHorizontal: 14,
-    borderRadius: 10,
-  },
-  inlineErrorText: { color: colors.surface, fontSize: 12, fontWeight: '700' },
-  fab: {
-    position: 'absolute',
-    right: 20,
-    bottom: 28,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: colors.shadow,
-    shadowOpacity: 0.2,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 3 },
-    elevation: 4,
-  },
-  fabText: { color: colors.surface, fontSize: 28, fontWeight: '400', marginTop: -2 },
-  selectionBar: {
-    position: 'absolute',
-    left: 16,
-    right: 16,
-    bottom: 24,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: colors.surfaceStrong,
-    borderRadius: 14,
-    paddingHorizontal: 18,
-    paddingVertical: 14,
-    shadowColor: colors.shadow,
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 3 },
-    elevation: 5,
-  },
-  selectionCancel: { color: colors.surface, fontSize: 14, opacity: 0.8 },
-  selectionCount: { color: colors.surface, fontSize: 14, fontWeight: '700' },
-  selectionActions: { flexDirection: 'row', gap: 18 },
-  selectionAction: { color: colors.primaryBright, fontSize: 14, fontWeight: '700' },
-  selectionDelete: { color: colors.danger },
-});
+const makeStyles = (colors: Palette) =>
+  StyleSheet.create({
+    container: { flex: 1, backgroundColor: colors.background },
+    headerActions: { flexDirection: 'row', gap: 16, marginRight: 4 },
+    settingsLink: { color: colors.primary, fontSize: 13 },
+    membersLink: { alignSelf: 'flex-end', marginRight: 16, marginTop: 6 },
+    membersLinkText: { color: colors.primary, fontSize: 12, fontWeight: '600' },
+    categoryScroll: { flexGrow: 0, flexShrink: 0 },
+    categoryRow: { paddingHorizontal: 16, paddingTop: 10, gap: 8, alignItems: 'center' },
+    searchRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginHorizontal: 16,
+      marginTop: 10,
+      paddingHorizontal: 14,
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: 10,
+      backgroundColor: colors.surface,
+    },
+    searchInput: { flex: 1, paddingVertical: 10, fontSize: 14, color: colors.gray900 },
+    searchClear: { paddingLeft: 8, paddingVertical: 4 },
+    searchClearText: { fontSize: 18, color: colors.gray400, fontWeight: '700' },
+    sortRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      flexWrap: 'wrap',
+      gap: 8,
+      marginHorizontal: 16,
+      marginTop: 10,
+    },
+    sortLabel: { fontSize: 12, fontWeight: '600', color: colors.gray500 },
+    sortDir: {
+      marginLeft: 'auto',
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+      borderRadius: 20,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    sortDirText: { fontSize: 12, fontWeight: '600', color: colors.gray700 },
+    listContent: { paddingVertical: 8, paddingBottom: 100, flexGrow: 1 },
+    empty: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: 80, gap: 4 },
+    emptyText: { color: colors.gray500, fontSize: 14 },
+    emptyAction: { marginTop: 12, minWidth: 160 },
+    inlineError: {
+      backgroundColor: colors.amber,
+      marginHorizontal: 16,
+      marginTop: 12,
+      paddingVertical: 8,
+      paddingHorizontal: 14,
+      borderRadius: 10,
+    },
+    inlineErrorText: { color: colors.surface, fontSize: 12, fontWeight: '700' },
+    fab: {
+      position: 'absolute',
+      right: 20,
+      bottom: 28,
+      width: 56,
+      height: 56,
+      borderRadius: 28,
+      backgroundColor: colors.primary,
+      alignItems: 'center',
+      justifyContent: 'center',
+      shadowColor: colors.shadow,
+      shadowOpacity: 0.2,
+      shadowRadius: 6,
+      shadowOffset: { width: 0, height: 3 },
+      elevation: 4,
+    },
+    fabText: { color: colors.surface, fontSize: 28, fontWeight: '400', marginTop: -2 },
+    selectionBar: {
+      position: 'absolute',
+      left: 16,
+      right: 16,
+      bottom: 24,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      backgroundColor: colors.surfaceStrong,
+      borderRadius: 14,
+      paddingHorizontal: 18,
+      paddingVertical: 14,
+      shadowColor: colors.shadow,
+      shadowOpacity: 0.2,
+      shadowRadius: 8,
+      shadowOffset: { width: 0, height: 3 },
+      elevation: 5,
+    },
+    selectionCancel: { color: colors.surface, fontSize: 14, opacity: 0.8 },
+    selectionCount: { color: colors.surface, fontSize: 14, fontWeight: '700' },
+    selectionActions: { flexDirection: 'row', gap: 18 },
+    selectionAction: { color: colors.primaryBright, fontSize: 14, fontWeight: '700' },
+    selectionDelete: { color: colors.danger },
+  });

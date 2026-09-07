@@ -42,14 +42,18 @@ import { haptics } from '../../../shared/utils/haptics';
 import { alertPermissionDenied } from '../../../shared/utils/permissionAlert';
 import type { RootStackParamList } from '../../../app/RootNavigator';
 import { getGifticonErrorMessage, getGifticonWriteErrorMessage } from '../errors';
-import { colors } from '../../../shared/theme/colors';
-import { formStyles } from '../../../shared/theme/forms';
+import type { Palette } from '../../../shared/theme/colors';
+import { useColors, useThemedStyles } from '../../../shared/theme/ThemeProvider';
+import { useFormStyles } from '../../../shared/theme/forms';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'AddGifticon'>;
 
 const CATEGORIES = Object.keys(CATEGORY_LABELS) as GifticonCategory[];
 
 export default function AddGifticonScreen({ navigation, route }: Props) {
+  const colors = useColors();
+  const styles = useThemedStyles(makeStyles);
+  const formStyles = useFormStyles();
   const spaceId = route.params?.spaceId;
   const gifticonId = route.params?.gifticonId;
   const isEditing = Boolean(gifticonId);
@@ -379,54 +383,55 @@ export default function AddGifticonScreen({ navigation, route }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
-  flex: { flex: 1 },
-  container: { padding: 20, paddingBottom: 60 },
-  imagePicker: {
-    aspectRatio: 3 / 4,
-    borderRadius: 12,
-    backgroundColor: colors.surfaceSubtle,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 8,
-    overflow: 'hidden',
-  },
-  cameraLink: { alignSelf: 'center', paddingVertical: 8, paddingHorizontal: 12, marginBottom: 8 },
-  cameraLinkText: { color: colors.primary, fontSize: 13, fontWeight: '600' },
-  // Before a photo is chosen there's nothing to preview, so the picker is a
-  // compact tap target instead of a full 3:4 placeholder box.
-  imagePickerEmpty: {
-    aspectRatio: undefined,
-    height: 96,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  image: { width: '100%', height: '100%' },
-  imagePlaceholder: { color: colors.gray500, textAlign: 'center', fontSize: 13, lineHeight: 20 },
-  recognizingRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 10 },
-  recognizingText: { fontSize: 12, color: colors.gray500 },
-  ocrHint: { fontSize: 12, color: colors.primary, marginTop: 6 },
-  notFound: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 20 },
-  chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  barcodeRow: { flexDirection: 'row', gap: 8, alignItems: 'center' },
-  barcodeInput: { flex: 1 },
-  memoInput: { minHeight: 72, textAlignVertical: 'top' },
-  scanButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: colors.surfaceMuted,
-    borderRadius: 10,
-  },
-  scanButtonText: { color: colors.gray700, fontWeight: '600', fontSize: 13 },
-  locationButton: {
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 10,
-    paddingVertical: 12,
-    alignItems: 'center',
-  },
-  locationButtonText: { color: colors.gray700, fontSize: 14, fontWeight: '600' },
-  locationSearchLink: { alignSelf: 'center', paddingVertical: 8 },
-  locationSearchLinkText: { color: colors.primary, fontSize: 13, fontWeight: '600' },
-  submit: { marginTop: 28 },
-});
+const makeStyles = (colors: Palette) =>
+  StyleSheet.create({
+    flex: { flex: 1 },
+    container: { padding: 20, paddingBottom: 60 },
+    imagePicker: {
+      aspectRatio: 3 / 4,
+      borderRadius: 12,
+      backgroundColor: colors.surfaceSubtle,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginBottom: 8,
+      overflow: 'hidden',
+    },
+    cameraLink: { alignSelf: 'center', paddingVertical: 8, paddingHorizontal: 12, marginBottom: 8 },
+    cameraLinkText: { color: colors.primary, fontSize: 13, fontWeight: '600' },
+    // Before a photo is chosen there's nothing to preview, so the picker is a
+    // compact tap target instead of a full 3:4 placeholder box.
+    imagePickerEmpty: {
+      aspectRatio: undefined,
+      height: 96,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    image: { width: '100%', height: '100%' },
+    imagePlaceholder: { color: colors.gray500, textAlign: 'center', fontSize: 13, lineHeight: 20 },
+    recognizingRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 10 },
+    recognizingText: { fontSize: 12, color: colors.gray500 },
+    ocrHint: { fontSize: 12, color: colors.primary, marginTop: 6 },
+    notFound: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 20 },
+    chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+    barcodeRow: { flexDirection: 'row', gap: 8, alignItems: 'center' },
+    barcodeInput: { flex: 1 },
+    memoInput: { minHeight: 72, textAlignVertical: 'top' },
+    scanButton: {
+      paddingHorizontal: 16,
+      paddingVertical: 12,
+      backgroundColor: colors.surfaceMuted,
+      borderRadius: 10,
+    },
+    scanButtonText: { color: colors.gray700, fontWeight: '600', fontSize: 13 },
+    locationButton: {
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: 10,
+      paddingVertical: 12,
+      alignItems: 'center',
+    },
+    locationButtonText: { color: colors.gray700, fontSize: 14, fontWeight: '600' },
+    locationSearchLink: { alignSelf: 'center', paddingVertical: 8 },
+    locationSearchLinkText: { color: colors.primary, fontSize: 13, fontWeight: '600' },
+    submit: { marginTop: 28 },
+  });

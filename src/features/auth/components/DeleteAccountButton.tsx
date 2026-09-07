@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { ActivityIndicator, Alert, StyleSheet, Text, TouchableOpacity } from 'react-native';
 import { deleteAccount } from '../services/accountDeletion';
 import { confirmAsync } from '../../../shared/utils/confirmAsync';
-import { colors } from '../../../shared/theme/colors';
+import type { Palette } from '../../../shared/theme/colors';
+import { useColors, useThemedStyles } from '../../../shared/theme/ThemeProvider';
 
 /**
  * Irreversible "delete my account" action for the Settings screen — required by
@@ -12,6 +13,8 @@ import { colors } from '../../../shared/theme/colors';
  * the device back in anonymously and the screen re-renders itself.
  */
 export default function DeleteAccountButton() {
+  const colors = useColors();
+  const styles = useThemedStyles(makeStyles);
   const [deleting, setDeleting] = useState(false);
 
   const onPress = async () => {
@@ -50,14 +53,15 @@ export default function DeleteAccountButton() {
   );
 }
 
-const styles = StyleSheet.create({
-  button: {
-    borderWidth: 1,
-    borderColor: colors.danger,
-    borderRadius: 10,
-    paddingVertical: 14,
-    alignItems: 'center',
-    marginTop: 12,
-  },
-  buttonText: { color: colors.danger, fontWeight: '700', fontSize: 15 },
-});
+const makeStyles = (colors: Palette) =>
+  StyleSheet.create({
+    button: {
+      borderWidth: 1,
+      borderColor: colors.danger,
+      borderRadius: 10,
+      paddingVertical: 14,
+      alignItems: 'center',
+      marginTop: 12,
+    },
+    buttonText: { color: colors.danger, fontWeight: '700', fontSize: 15 },
+  });

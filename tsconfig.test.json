@@ -3,6 +3,6 @@
   "compilerOptions": {
     "types": ["jest", "node"]
   },
-  "include": ["src/**/*.test.ts", "src/**/*.test.tsx", "firestore.rules.test.ts"],
+  "include": ["src/**/*.test.ts", "src/**/*.test.tsx", "firestore.rules.test.ts", "jest.setup.ts"],
   "exclude": ["node_modules"]
 }

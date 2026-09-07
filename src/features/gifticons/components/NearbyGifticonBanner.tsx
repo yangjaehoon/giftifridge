@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import type { Gifticon } from '../types';
-import { colors } from '../../../shared/theme/colors';
+import type { Palette } from '../../../shared/theme/colors';
+import { useThemedStyles } from '../../../shared/theme/ThemeProvider';
 
 export default function NearbyGifticonBanner({ items }: { items: Gifticon[] }) {
+  const styles = useThemedStyles(makeStyles);
   const brands = [...new Set(items.map((item) => item.brand))];
   const signature = brands.join('|');
   // Remember which nearby set was dismissed; a different signature (the user
@@ -27,18 +29,19 @@ export default function NearbyGifticonBanner({ items }: { items: Gifticon[] }) {
   );
 }
 
-const styles = StyleSheet.create({
-  banner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    backgroundColor: colors.amber,
-    paddingVertical: 10,
-    paddingHorizontal: 14,
-    marginHorizontal: 16,
-    marginTop: 12,
-    borderRadius: 10,
-  },
-  text: { flex: 1, color: colors.surface, fontSize: 12, fontWeight: '700' },
-  close: { color: colors.surface, fontSize: 18, fontWeight: '700' },
-});
+const makeStyles = (colors: Palette) =>
+  StyleSheet.create({
+    banner: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+      backgroundColor: colors.amber,
+      paddingVertical: 10,
+      paddingHorizontal: 14,
+      marginHorizontal: 16,
+      marginTop: 12,
+      borderRadius: 10,
+    },
+    text: { flex: 1, color: colors.surface, fontSize: 12, fontWeight: '700' },
+    close: { color: colors.surface, fontSize: 18, fontWeight: '700' },
+  });

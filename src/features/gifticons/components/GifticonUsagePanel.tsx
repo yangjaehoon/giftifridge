@@ -7,7 +7,8 @@ import { formatCurrency, groupDigits } from '../../../shared/utils/currency';
 import { formatDate } from '../../../shared/utils/date';
 import { confirmAsync } from '../../../shared/utils/confirmAsync';
 import Button from '../../../shared/components/Button';
-import { colors } from '../../../shared/theme/colors';
+import type { Palette } from '../../../shared/theme/colors';
+import { useThemedStyles } from '../../../shared/theme/ThemeProvider';
 
 /**
  * Partial-spend log for an amount-based (금액권) gifticon — a gift card used
@@ -25,6 +26,7 @@ export default function GifticonUsagePanel({
   onDeleteRecord: (record: UsageRecord) => Promise<void>;
   busy: boolean;
 }) {
+  const styles = useThemedStyles(makeStyles);
   const [adding, setAdding] = useState(false);
   const [input, setInput] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -150,35 +152,36 @@ export default function GifticonUsagePanel({
   );
 }
 
-const styles = StyleSheet.create({
-  card: {
-    marginTop: 20,
-    padding: 16,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: colors.border,
-    gap: 12,
-  },
-  header: { gap: 2 },
-  title: { fontSize: 14, fontWeight: '700', color: colors.gray900 },
-  balance: { fontSize: 13, color: colors.gray600, fontWeight: '600' },
-  list: { gap: 8 },
-  row: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  rowDate: { fontSize: 12, color: colors.gray500, width: 78 },
-  rowAmount: { fontSize: 13, color: colors.gray700, fontWeight: '600', flex: 1 },
-  rowDelete: { fontSize: 12, color: colors.danger, fontWeight: '600' },
-  addButton: { marginTop: 4 },
-  form: { gap: 8 },
-  input: {
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    fontSize: 15,
-  },
-  inputError: { borderColor: colors.danger },
-  errorText: { fontSize: 12, color: colors.danger },
-  formButtons: { flexDirection: 'row', gap: 8 },
-  formButton: { flex: 1 },
-});
+const makeStyles = (colors: Palette) =>
+  StyleSheet.create({
+    card: {
+      marginTop: 20,
+      padding: 16,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: colors.border,
+      gap: 12,
+    },
+    header: { gap: 2 },
+    title: { fontSize: 14, fontWeight: '700', color: colors.gray900 },
+    balance: { fontSize: 13, color: colors.gray600, fontWeight: '600' },
+    list: { gap: 8 },
+    row: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+    rowDate: { fontSize: 12, color: colors.gray500, width: 78 },
+    rowAmount: { fontSize: 13, color: colors.gray700, fontWeight: '600', flex: 1 },
+    rowDelete: { fontSize: 12, color: colors.danger, fontWeight: '600' },
+    addButton: { marginTop: 4 },
+    form: { gap: 8 },
+    input: {
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: 10,
+      paddingHorizontal: 14,
+      paddingVertical: 10,
+      fontSize: 15,
+    },
+    inputError: { borderColor: colors.danger },
+    errorText: { fontSize: 12, color: colors.danger },
+    formButtons: { flexDirection: 'row', gap: 8 },
+    formButton: { flex: 1 },
+  });

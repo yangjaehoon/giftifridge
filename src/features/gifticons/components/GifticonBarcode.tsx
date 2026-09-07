@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import Barcode from '@kichiyaki/react-native-barcode-generator';
-import { colors } from '../../../shared/theme/colors';
+import type { Palette } from '../../../shared/theme/colors';
+import { useColors, useThemedStyles } from '../../../shared/theme/ThemeProvider';
 
 /**
  * A scannable CODE128 rendering of the stored barcode number. CODE128 encodes
@@ -20,6 +21,8 @@ export default function GifticonBarcode({
   height?: number;
   maxWidth?: number;
 }) {
+  const colors = useColors();
+  const styles = useThemedStyles(makeStyles);
   const [failed, setFailed] = useState(false);
   if (failed || value.trim() === '') return null;
 
@@ -42,6 +45,7 @@ export default function GifticonBarcode({
   );
 }
 
-const styles = StyleSheet.create({
-  wrap: { alignItems: 'center', paddingVertical: 4 },
-});
+const makeStyles = (colors: Palette) =>
+  StyleSheet.create({
+    wrap: { alignItems: 'center', paddingVertical: 4 },
+  });

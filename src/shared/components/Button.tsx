@@ -7,7 +7,8 @@ import {
   type StyleProp,
   type ViewStyle,
 } from 'react-native';
-import { colors } from '../theme/colors';
+import type { Palette } from '../theme/colors';
+import { useColors, useThemedStyles } from '../theme/ThemeProvider';
 
 type Variant = 'primary' | 'secondary' | 'ghostDanger';
 
@@ -34,8 +35,10 @@ export default function Button({
   accessibilityLabel?: string;
   style?: StyleProp<ViewStyle>;
 }) {
+  const colors = useColors();
+  const styles = useThemedStyles(makeStyles);
   const isDisabled = disabled || loading;
-  const spinnerColor = variant === 'primary' ? colors.surface : colors.gray700;
+  const spinnerColor = variant === 'primary' ? colors.onPrimary : colors.gray700;
 
   return (
     <TouchableOpacity
@@ -71,21 +74,22 @@ export default function Button({
   );
 }
 
-const styles = StyleSheet.create({
-  base: {
-    minHeight: 48,
-    borderRadius: 12,
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  primary: { backgroundColor: colors.primary },
-  secondary: { backgroundColor: colors.surfaceMuted },
-  ghostDanger: { backgroundColor: 'transparent' },
-  disabled: { opacity: 0.6 },
-  label: { fontSize: 15, fontWeight: '700' },
-  labelOnFill: { color: colors.surface },
-  labelSecondary: { color: colors.gray700 },
-  labelDanger: { color: colors.danger },
-});
+const makeStyles = (colors: Palette) =>
+  StyleSheet.create({
+    base: {
+      minHeight: 48,
+      borderRadius: 12,
+      paddingVertical: 14,
+      paddingHorizontal: 16,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    primary: { backgroundColor: colors.primary },
+    secondary: { backgroundColor: colors.surfaceMuted },
+    ghostDanger: { backgroundColor: 'transparent' },
+    disabled: { opacity: 0.6 },
+    label: { fontSize: 15, fontWeight: '700' },
+    labelOnFill: { color: colors.onPrimary },
+    labelSecondary: { color: colors.gray700 },
+    labelDanger: { color: colors.danger },
+  });

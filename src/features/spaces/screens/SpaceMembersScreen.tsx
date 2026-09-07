@@ -13,13 +13,15 @@ import Button from '../../../shared/components/Button';
 import { useToast } from '../../../shared/components/ToastProvider';
 import { useAsyncAction } from '../../../shared/hooks/useAsyncAction';
 import type { RootStackParamList } from '../../../app/RootNavigator';
-import { colors } from '../../../shared/theme/colors';
+import type { Palette } from '../../../shared/theme/colors';
+import { useThemedStyles } from '../../../shared/theme/ThemeProvider';
 
 const ROLE_LABELS = { owner: '소유자', member: '멤버' } as const;
 
 type Props = NativeStackScreenProps<RootStackParamList, 'SpaceMembers'>;
 
 export default function SpaceMembersScreen({ route, navigation }: Props) {
+  const styles = useThemedStyles(makeStyles);
   const { spaceId } = route.params;
   const { user } = useCurrentUser();
   const { space, members, loading, error, refresh } = useSpace(spaceId);
@@ -147,38 +149,39 @@ export default function SpaceMembersScreen({ route, navigation }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, padding: 20, backgroundColor: colors.surface },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 16, padding: 20 },
-  emptyText: { color: colors.gray500, fontSize: 14, textAlign: 'center' },
-  retryButton: {
-    backgroundColor: colors.surfaceMuted,
-    borderRadius: 10,
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-  },
-  retryButtonText: { color: colors.gray700, fontWeight: '700', fontSize: 14 },
-  title: { fontSize: 20, fontWeight: '800', color: colors.gray900 },
-  count: { fontSize: 13, color: colors.gray500, marginTop: 4, marginBottom: 12 },
-  list: { flexGrow: 0, marginBottom: 20 },
-  memberRow: {
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-    gap: 3,
-  },
-  memberTop: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  memberRole: { fontSize: 15, fontWeight: '600', color: colors.gray900 },
-  meBadge: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: colors.surface,
-    backgroundColor: colors.primary,
-    borderRadius: 8,
-    paddingHorizontal: 7,
-    paddingVertical: 2,
-    overflow: 'hidden',
-  },
-  memberMeta: { fontSize: 12, color: colors.gray500 },
-  invite: { marginBottom: 12 },
-});
+const makeStyles = (colors: Palette) =>
+  StyleSheet.create({
+    container: { flex: 1, padding: 20, backgroundColor: colors.surface },
+    center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 16, padding: 20 },
+    emptyText: { color: colors.gray500, fontSize: 14, textAlign: 'center' },
+    retryButton: {
+      backgroundColor: colors.surfaceMuted,
+      borderRadius: 10,
+      paddingHorizontal: 20,
+      paddingVertical: 12,
+    },
+    retryButtonText: { color: colors.gray700, fontWeight: '700', fontSize: 14 },
+    title: { fontSize: 20, fontWeight: '800', color: colors.gray900 },
+    count: { fontSize: 13, color: colors.gray500, marginTop: 4, marginBottom: 12 },
+    list: { flexGrow: 0, marginBottom: 20 },
+    memberRow: {
+      paddingVertical: 12,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+      gap: 3,
+    },
+    memberTop: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+    memberRole: { fontSize: 15, fontWeight: '600', color: colors.gray900 },
+    meBadge: {
+      fontSize: 11,
+      fontWeight: '700',
+      color: colors.surface,
+      backgroundColor: colors.primary,
+      borderRadius: 8,
+      paddingHorizontal: 7,
+      paddingVertical: 2,
+      overflow: 'hidden',
+    },
+    memberMeta: { fontSize: 12, color: colors.gray500 },
+    invite: { marginBottom: 12 },
+  });

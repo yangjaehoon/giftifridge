@@ -8,15 +8,18 @@ import { extractSpaceCode } from '../inviteLink';
 import type { Space } from '../types';
 import { withTimeout, WRITE_TIMEOUT_MS } from '../../../shared/utils/withTimeout';
 import Button from '../../../shared/components/Button';
-import { formStyles } from '../../../shared/theme/forms';
+import { useFormStyles } from '../../../shared/theme/forms';
 import { useToast } from '../../../shared/components/ToastProvider';
 import { useAsyncAction } from '../../../shared/hooks/useAsyncAction';
 import type { RootStackParamList } from '../../../app/RootNavigator';
-import { colors } from '../../../shared/theme/colors';
+import type { Palette } from '../../../shared/theme/colors';
+import { useThemedStyles } from '../../../shared/theme/ThemeProvider';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'JoinSpace'>;
 
 export default function JoinSpaceScreen({ route, navigation }: Props) {
+  const styles = useThemedStyles(makeStyles);
+  const formStyles = useFormStyles();
   const { user } = useCurrentUser();
   const showToast = useToast();
   const { busy: joining, run } = useAsyncAction(getSpaceWriteErrorMessage);
@@ -91,14 +94,15 @@ export default function JoinSpaceScreen({ route, navigation }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, padding: 20, backgroundColor: colors.surface },
-  lookup: { marginTop: 12 },
-  previewCard: {
-    marginTop: 24,
-    padding: 16,
-    borderRadius: 12,
-    backgroundColor: colors.surfaceSubtle,
-  },
-  previewName: { fontSize: 18, fontWeight: '700', color: colors.gray900, marginBottom: 12 },
-});
+const makeStyles = (colors: Palette) =>
+  StyleSheet.create({
+    container: { flex: 1, padding: 20, backgroundColor: colors.surface },
+    lookup: { marginTop: 12 },
+    previewCard: {
+      marginTop: 24,
+      padding: 16,
+      borderRadius: 12,
+      backgroundColor: colors.surfaceSubtle,
+    },
+    previewName: { fontSize: 18, fontWeight: '700', color: colors.gray900, marginBottom: 12 },
+  });

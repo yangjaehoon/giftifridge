@@ -1,10 +1,12 @@
 import React from 'react';
 import { StyleSheet, Switch, Text, View } from 'react-native';
 import { useGalleryAutoImport } from '../../gifticons/hooks/useGalleryAutoImport';
-import { colors } from '../../../shared/theme/colors';
+import type { Palette } from '../../../shared/theme/colors';
+import { useThemedStyles } from '../../../shared/theme/ThemeProvider';
 
 /** The "사진첩에서 자동 등록" toggle on the settings screen. */
 export default function GalleryAutoImportSettings({ ownerId }: { ownerId: string | undefined }) {
+  const styles = useThemedStyles(makeStyles);
   const { enabled, loading, toggle } = useGalleryAutoImport(ownerId);
 
   return (
@@ -28,10 +30,11 @@ export default function GalleryAutoImportSettings({ ownerId }: { ownerId: string
   );
 }
 
-const styles = StyleSheet.create({
-  section: { marginBottom: 28 },
-  row: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  textCol: { flex: 1 },
-  title: { fontSize: 15, fontWeight: '700', color: colors.gray900, marginBottom: 4 },
-  subtitle: { fontSize: 13, color: colors.gray500, lineHeight: 18 },
-});
+const makeStyles = (colors: Palette) =>
+  StyleSheet.create({
+    section: { marginBottom: 28 },
+    row: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+    textCol: { flex: 1 },
+    title: { fontSize: 15, fontWeight: '700', color: colors.gray900, marginBottom: 4 },
+    subtitle: { fontSize: 13, color: colors.gray500, lineHeight: 18 },
+  });

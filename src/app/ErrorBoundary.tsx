@@ -1,7 +1,8 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import Button from '../shared/components/Button';
-import { colors } from '../shared/theme/colors';
+import type { Palette } from '../shared/theme/colors';
+import { useThemedStyles } from '../shared/theme/ThemeProvider';
 
 interface Props {
   children: React.ReactNode;
@@ -34,29 +35,36 @@ export default class ErrorBoundary extends React.Component<Props, State> {
 
   render() {
     if (!this.state.hasError) return this.props.children;
-
-    return (
-      <View style={styles.container}>
-        <Text style={styles.title}>문제가 발생했어요</Text>
-        <Text style={styles.body}>
-          화면을 표시하는 중 오류가 발생했어요. 다시 시도해도 계속되면 앱을 완전히 종료한 뒤 다시
-          실행해주세요.
-        </Text>
-        <Button label="다시 시도" onPress={this.reset} style={styles.button} />
-      </View>
-    );
+    return <ErrorFallback onReset={this.reset} />;
   }
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: 'center',
-    padding: 24,
-    gap: 16,
-    backgroundColor: colors.surface,
-  },
-  title: { fontSize: 20, fontWeight: '700', textAlign: 'center', color: colors.gray900 },
-  body: { fontSize: 14, lineHeight: 20, color: colors.gray600, textAlign: 'center' },
-  button: { marginTop: 8 },
-});
+// A function component so the fallback can still theme itself — the boundary
+// itself has to be a class (that's the only way to catch a render error).
+function ErrorFallback({ onReset }: { onReset: () => void }) {
+  const styles = useThemedStyles(makeStyles);
+  return (
+    <View style={styles.container}>
+      <Text style={styles.title}>문제가 발생했어요</Text>
+      <Text style={styles.body}>
+        화면을 표시하는 중 오류가 발생했어요. 다시 시도해도 계속되면 앱을 완전히 종료한 뒤 다시
+        실행해주세요.
+      </Text>
+      <Button label="다시 시도" onPress={onReset} style={styles.button} />
+    </View>
+  );
+}
+
+const makeStyles = (colors: Palette) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      justifyContent: 'center',
+      padding: 24,
+      gap: 16,
+      backgroundColor: colors.surface,
+    },
+    title: { fontSize: 20, fontWeight: '700', textAlign: 'center', color: colors.gray900 },
+    body: { fontSize: 14, lineHeight: 20, color: colors.gray600, textAlign: 'center' },
+    button: { marginTop: 8 },
+  });

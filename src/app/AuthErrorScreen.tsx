@@ -1,7 +1,8 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import Button from '../shared/components/Button';
-import { colors } from '../shared/theme/colors';
+import type { Palette } from '../shared/theme/colors';
+import { useThemedStyles } from '../shared/theme/ThemeProvider';
 
 export default function AuthErrorScreen({
   message,
@@ -10,6 +11,7 @@ export default function AuthErrorScreen({
   message: string;
   onRetry: () => void;
 }) {
+  const styles = useThemedStyles(makeStyles);
   return (
     <View style={styles.container}>
       <Text style={styles.title}>문제가 발생했어요</Text>
@@ -19,15 +21,16 @@ export default function AuthErrorScreen({
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: 'center',
-    padding: 24,
-    gap: 16,
-    backgroundColor: colors.surface,
-  },
-  title: { fontSize: 20, fontWeight: '700', textAlign: 'center', color: colors.gray900 },
-  body: { fontSize: 14, lineHeight: 20, color: colors.gray600, textAlign: 'center' },
-  button: { marginTop: 8 },
-});
+const makeStyles = (colors: Palette) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      justifyContent: 'center',
+      padding: 24,
+      gap: 16,
+      backgroundColor: colors.surface,
+    },
+    title: { fontSize: 20, fontWeight: '700', textAlign: 'center', color: colors.gray900 },
+    body: { fontSize: 14, lineHeight: 20, color: colors.gray600, textAlign: 'center' },
+    button: { marginTop: 8 },
+  });

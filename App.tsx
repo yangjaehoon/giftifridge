@@ -4,6 +4,7 @@ import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AuthProvider } from './src/features/auth/context/AuthContext';
 import { ToastProvider } from './src/shared/components/ToastProvider';
+import { ThemeProvider } from './src/shared/theme/ThemeProvider';
 import ErrorBoundary from './src/app/ErrorBoundary';
 import RootNavigator from './src/app/RootNavigator';
 import { initNotifications } from './src/features/gifticons/services/notificationService';
@@ -17,14 +18,16 @@ export default function App() {
 
   return (
     <SafeAreaProvider>
-      <ErrorBoundary>
-        <AuthProvider>
-          <ToastProvider>
-            <RootNavigator />
-          </ToastProvider>
-        </AuthProvider>
-      </ErrorBoundary>
-      <StatusBar style="auto" />
+      <ThemeProvider>
+        <ErrorBoundary>
+          <AuthProvider>
+            <ToastProvider>
+              <RootNavigator />
+            </ToastProvider>
+          </AuthProvider>
+        </ErrorBoundary>
+        <StatusBar style="auto" />
+      </ThemeProvider>
     </SafeAreaProvider>
   );
 }

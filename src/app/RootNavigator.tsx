@@ -1,7 +1,9 @@
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
-import { NavigationContainer } from '@react-navigation/native';
+import { DarkTheme, DefaultTheme, NavigationContainer, type Theme } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { useTheme, useThemedStyles } from '../shared/theme/ThemeProvider';
+import type { Palette } from '../shared/theme/colors';
 import { useCurrentUser, useAuthBootstrap } from '../features/auth/context/AuthContext';
 import { isFirebaseConfigured } from '../lib/firebase/config';
 import HomeScreen from '../features/gifticons/screens/HomeScreen';
@@ -39,6 +41,9 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 export default function RootNavigator() {
   const { user } = useCurrentUser();
   const { initializing, authError, retryAnonymousSignIn } = useAuthBootstrap();
+  const { scheme, colors } = useTheme();
+  const styles = useThemedStyles(makeStyles);
+  const navTheme = navigationTheme(scheme, colors);
 
   useDeepLinks();
   useFirstRunNotice();
@@ -64,7 +69,7 @@ export default function RootNavigator() {
   return (
     <>
       <OfflineBanner />
-      <NavigationContainer ref={navigationRef} onReady={flushDeferredNavigations}>
+      <NavigationContainer ref={navigationRef} onReady={flushDeferredNavigations} theme={navTheme}>
         <Stack.Navigator>
           <Stack.Screen name="Home" component={HomeScreen} options={{ title: '기프티냉장콘' }} />
           <Stack.Screen
@@ -109,6 +114,29 @@ export default function RootNavigator() {
   );
 }
 
-const styles = StyleSheet.create({
-  initializing: { flex: 1, justifyContent: 'center', paddingTop: 60 },
-});
+// React Navigation draws the header and the screen background behind our own
+// screens, so its theme has to track ours or a dark screen sits on a white gap.
+function navigationTheme(scheme: 'light' | 'dark', colors: Palette): Theme {
+  const base = scheme === 'dark' ? DarkTheme : DefaultTheme;
+  return {
+    ...base,
+    colors: {
+      ...base.colors,
+      primary: colors.primary,
+      background: colors.background,
+      card: colors.surface,
+      text: colors.gray900,
+      border: colors.border,
+    },
+  };
+}
+
+const makeStyles = (colors: Palette) =>
+  StyleSheet.create({
+    initializing: {
+      flex: 1,
+      justifyContent: 'center',
+      paddingTop: 60,
+      backgroundColor: colors.background,
+    },
+  });

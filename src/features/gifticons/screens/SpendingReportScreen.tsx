@@ -8,7 +8,8 @@ import { buildSpendingReport } from '../gifticonReport';
 import { CATEGORY_LABELS } from '../types';
 import { formatCurrency } from '../../../shared/utils/currency';
 import type { RootStackParamList } from '../../../app/RootNavigator';
-import { colors } from '../../../shared/theme/colors';
+import type { Palette } from '../../../shared/theme/colors';
+import { useThemedStyles } from '../../../shared/theme/ThemeProvider';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Report'>;
 
@@ -18,6 +19,7 @@ type Props = NativeStackScreenProps<RootStackParamList, 'Report'>;
  * aren't included (same boundary as CSV export).
  */
 export default function SpendingReportScreen(_props: Props) {
+  const styles = useThemedStyles(makeStyles);
   const { user } = useCurrentUser();
   const { items, loading } = useGifticons(user?.uid);
   const report = useMemo(() => buildSpendingReport(items), [items]);
@@ -80,6 +82,7 @@ export default function SpendingReportScreen(_props: Props) {
 }
 
 function Tile({ label, value, sub }: { label: string; value: string; sub: string }) {
+  const styles = useThemedStyles(makeStyles);
   return (
     <View style={styles.tile}>
       <Text style={styles.tileLabel}>{label}</Text>
@@ -89,54 +92,55 @@ function Tile({ label, value, sub }: { label: string; value: string; sub: string
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background },
-  content: { padding: 16, paddingBottom: 40, gap: 14 },
-  loading: { flex: 1, backgroundColor: colors.background, paddingTop: 24 },
-  tiles: { flexDirection: 'row', gap: 12 },
-  tile: {
-    flex: 1,
-    backgroundColor: colors.surface,
-    borderRadius: 12,
-    padding: 16,
-    gap: 4,
-    shadowColor: colors.shadow,
-    shadowOpacity: 0.06,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 2,
-  },
-  tileLabel: { fontSize: 12, color: colors.gray500 },
-  tileValue: { fontSize: 18, fontWeight: '800', color: colors.gray900 },
-  tileSub: { fontSize: 12, color: colors.gray500 },
-  lostCard: {
-    backgroundColor: colors.surface,
-    borderRadius: 12,
-    padding: 18,
-    gap: 6,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  lostCardActive: { borderColor: colors.amber, backgroundColor: colors.surface },
-  lostLabel: { fontSize: 13, fontWeight: '700', color: colors.gray600 },
-  lostValue: { fontSize: 24, fontWeight: '800', color: colors.gray700 },
-  lostValueActive: { color: colors.amberText },
-  lostSub: { fontSize: 13, color: colors.gray500 },
-  section: {
-    backgroundColor: colors.surface,
-    borderRadius: 12,
-    padding: 16,
-    gap: 4,
-    shadowColor: colors.shadow,
-    shadowOpacity: 0.06,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 2,
-  },
-  sectionTitle: { fontSize: 14, fontWeight: '700', color: colors.gray900, marginBottom: 8 },
-  catRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 8 },
-  catName: { flex: 1, fontSize: 14, color: colors.gray900 },
-  catCount: { fontSize: 13, color: colors.gray500, marginRight: 14 },
-  catValue: { fontSize: 14, fontWeight: '700', color: colors.gray900 },
-  disclaimer: { fontSize: 12, color: colors.gray450, lineHeight: 17, marginTop: 4 },
-});
+const makeStyles = (colors: Palette) =>
+  StyleSheet.create({
+    container: { flex: 1, backgroundColor: colors.background },
+    content: { padding: 16, paddingBottom: 40, gap: 14 },
+    loading: { flex: 1, backgroundColor: colors.background, paddingTop: 24 },
+    tiles: { flexDirection: 'row', gap: 12 },
+    tile: {
+      flex: 1,
+      backgroundColor: colors.surface,
+      borderRadius: 12,
+      padding: 16,
+      gap: 4,
+      shadowColor: colors.shadow,
+      shadowOpacity: 0.06,
+      shadowRadius: 6,
+      shadowOffset: { width: 0, height: 2 },
+      elevation: 2,
+    },
+    tileLabel: { fontSize: 12, color: colors.gray500 },
+    tileValue: { fontSize: 18, fontWeight: '800', color: colors.gray900 },
+    tileSub: { fontSize: 12, color: colors.gray500 },
+    lostCard: {
+      backgroundColor: colors.surface,
+      borderRadius: 12,
+      padding: 18,
+      gap: 6,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    lostCardActive: { borderColor: colors.amber, backgroundColor: colors.surface },
+    lostLabel: { fontSize: 13, fontWeight: '700', color: colors.gray600 },
+    lostValue: { fontSize: 24, fontWeight: '800', color: colors.gray700 },
+    lostValueActive: { color: colors.amberText },
+    lostSub: { fontSize: 13, color: colors.gray500 },
+    section: {
+      backgroundColor: colors.surface,
+      borderRadius: 12,
+      padding: 16,
+      gap: 4,
+      shadowColor: colors.shadow,
+      shadowOpacity: 0.06,
+      shadowRadius: 6,
+      shadowOffset: { width: 0, height: 2 },
+      elevation: 2,
+    },
+    sectionTitle: { fontSize: 14, fontWeight: '700', color: colors.gray900, marginBottom: 8 },
+    catRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 8 },
+    catName: { flex: 1, fontSize: 14, color: colors.gray900 },
+    catCount: { fontSize: 13, color: colors.gray500, marginRight: 14 },
+    catValue: { fontSize: 14, fontWeight: '700', color: colors.gray900 },
+    disclaimer: { fontSize: 12, color: colors.gray450, lineHeight: 17, marginTop: 4 },
+  });

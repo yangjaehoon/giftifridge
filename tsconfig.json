@@ -4,5 +4,11 @@
     "strict": true,
     "types": ["node"]
   },
-  "exclude": ["node_modules", "**/*.test.ts", "**/*.test.tsx", "firestore.rules.test.ts"]
+  "exclude": [
+    "node_modules",
+    "**/*.test.ts",
+    "**/*.test.tsx",
+    "firestore.rules.test.ts",
+    "jest.setup.ts"
+  ]
 }

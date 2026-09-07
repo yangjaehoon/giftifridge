@@ -1,7 +1,8 @@
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import type { FilterTab } from '../gifticonFilters';
-import { colors } from '../../../shared/theme/colors';
+import type { Palette } from '../../../shared/theme/colors';
+import { useThemedStyles } from '../../../shared/theme/ThemeProvider';
 
 const TABS: { key: FilterTab; label: string }[] = [
   { key: 'active', label: '사용가능' },
@@ -19,6 +20,7 @@ export default function StatusTabs({
   counts: Record<FilterTab, number>;
   onChange: (tab: FilterTab) => void;
 }) {
+  const styles = useThemedStyles(makeStyles);
   return (
     <View style={styles.tabs} accessibilityRole="tablist">
       {TABS.map(({ key, label }) => (
@@ -39,16 +41,17 @@ export default function StatusTabs({
   );
 }
 
-const styles = StyleSheet.create({
-  tabs: { flexDirection: 'row', paddingHorizontal: 16, paddingTop: 12, gap: 8 },
-  tab: {
-    flex: 1,
-    paddingVertical: 10,
-    borderRadius: 10,
-    alignItems: 'center',
-    backgroundColor: colors.surfaceMuted,
-  },
-  tabActive: { backgroundColor: colors.primary },
-  tabText: { fontSize: 13, fontWeight: '600', color: colors.gray500 },
-  tabTextActive: { color: colors.surface },
-});
+const makeStyles = (colors: Palette) =>
+  StyleSheet.create({
+    tabs: { flexDirection: 'row', paddingHorizontal: 16, paddingTop: 12, gap: 8 },
+    tab: {
+      flex: 1,
+      paddingVertical: 10,
+      borderRadius: 10,
+      alignItems: 'center',
+      backgroundColor: colors.surfaceMuted,
+    },
+    tabActive: { backgroundColor: colors.primary },
+    tabText: { fontSize: 13, fontWeight: '600', color: colors.gray500 },
+    tabTextActive: { color: colors.surface },
+  });

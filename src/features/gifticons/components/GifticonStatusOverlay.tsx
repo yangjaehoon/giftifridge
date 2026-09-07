@@ -1,7 +1,8 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import type { StyleProp, TextStyle } from 'react-native';
-import { colors } from '../../../shared/theme/colors';
+import type { Palette } from '../../../shared/theme/colors';
+import { useThemedStyles } from '../../../shared/theme/ThemeProvider';
 
 /**
  * Dims a gifticon's image and stamps its status ('사용완료' / '기한만료')
@@ -22,6 +23,7 @@ export default function GifticonStatusOverlay({
   label: string | null;
   textStyle?: StyleProp<TextStyle>;
 }) {
+  const styles = useThemedStyles(makeStyles);
   if (!label) return null;
   return (
     <View style={styles.overlay} accessibilityElementsHidden importantForAccessibility="no">
@@ -32,22 +34,23 @@ export default function GifticonStatusOverlay({
   );
 }
 
-const styles = StyleSheet.create({
-  overlay: {
-    position: 'absolute',
-    top: 0,
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: 'rgba(30, 43, 42, 0.6)', // colors.gray900 at 60% opacity
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 4,
-  },
-  label: {
-    color: colors.surface,
-    fontWeight: '800',
-    fontSize: 15,
-    textAlign: 'center',
-  },
-});
+const makeStyles = (colors: Palette) =>
+  StyleSheet.create({
+    overlay: {
+      position: 'absolute',
+      top: 0,
+      bottom: 0,
+      left: 0,
+      right: 0,
+      backgroundColor: 'rgba(30, 43, 42, 0.6)', // colors.gray900 at 60% opacity
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingHorizontal: 4,
+    },
+    label: {
+      color: colors.surface,
+      fontWeight: '800',
+      fontSize: 15,
+      textAlign: 'center',
+    },
+  });

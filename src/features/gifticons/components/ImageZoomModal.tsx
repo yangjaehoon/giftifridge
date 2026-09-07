@@ -1,6 +1,7 @@
 import React from 'react';
 import { Image, Modal, StyleSheet, Text, TouchableOpacity } from 'react-native';
-import { colors } from '../../../shared/theme/colors';
+import type { Palette } from '../../../shared/theme/colors';
+import { useThemedStyles } from '../../../shared/theme/ThemeProvider';
 
 /**
  * Full-screen view of the gifticon's own photo, opened by tapping its
@@ -16,6 +17,7 @@ export default function ImageZoomModal({
   uri: string;
   onClose: () => void;
 }) {
+  const styles = useThemedStyles(makeStyles);
   return (
     <Modal visible={visible} animationType="fade" transparent onRequestClose={onClose}>
       <TouchableOpacity
@@ -37,15 +39,16 @@ export default function ImageZoomModal({
   );
 }
 
-const styles = StyleSheet.create({
-  backdrop: {
-    flex: 1,
-    backgroundColor: colors.surfaceStrong,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 16,
-    padding: 16,
-  },
-  image: { width: '100%', flex: 1 },
-  hint: { fontSize: 13, color: colors.surface, opacity: 0.8 },
-});
+const makeStyles = (colors: Palette) =>
+  StyleSheet.create({
+    backdrop: {
+      flex: 1,
+      backgroundColor: colors.surfaceStrong,
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 16,
+      padding: 16,
+    },
+    image: { width: '100%', flex: 1 },
+    hint: { fontSize: 13, color: colors.surface, opacity: 0.8 },
+  });

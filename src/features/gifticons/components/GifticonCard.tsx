@@ -6,7 +6,8 @@ import { formatRemainingAmount, isAmountBased } from '../usage';
 import { lookupEstimatedPrice } from '../menuPrices';
 import { formatCurrency } from '../../../shared/utils/currency';
 import { daysUntil, formatDate } from '../../../shared/utils/date';
-import { colors } from '../../../shared/theme/colors';
+import type { Palette } from '../../../shared/theme/colors';
+import { useThemedStyles } from '../../../shared/theme/ThemeProvider';
 import GifticonStatusOverlay from './GifticonStatusOverlay';
 
 function GifticonCard({
@@ -25,6 +26,7 @@ function GifticonCard({
   // Checked state while multi-select is active.
   selected?: boolean;
 }) {
+  const styles = useThemedStyles(makeStyles);
   const days = daysUntil(gifticon.expiresAt);
   const expired = days < 0;
   const soon = !expired && days <= 3;
@@ -92,53 +94,54 @@ function GifticonCard({
 
 export default React.memo(GifticonCard);
 
-const styles = StyleSheet.create({
-  card: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.surface,
-    borderRadius: 12,
-    padding: 10,
-    marginHorizontal: 16,
-    marginVertical: 6,
-    shadowColor: colors.shadow,
-    shadowOpacity: 0.06,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 2,
-  },
-  cardSelected: { borderWidth: 2, borderColor: colors.primary, padding: 8 },
-  checkmark: {
-    position: 'absolute',
-    top: 6,
-    right: 6,
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    backgroundColor: colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-    zIndex: 1,
-  },
-  checkmarkText: { color: colors.surface, fontSize: 12, fontWeight: '800' },
-  thumbnailWrap: {
-    width: 56,
-    height: 56,
-    borderRadius: 8,
-    overflow: 'hidden',
-    backgroundColor: colors.surfaceSubtle,
-  },
-  thumbnail: { width: '100%', height: '100%' },
-  info: { flex: 1, marginLeft: 12 },
-  brand: { fontSize: 12, color: colors.gray500 },
-  name: { fontSize: 15, fontWeight: '600', color: colors.gray900, marginTop: 2 },
-  amount: { fontSize: 13, fontWeight: '600', color: colors.gray700, marginTop: 3 },
-  estimate: { fontSize: 12, color: colors.gray500, marginTop: 3 },
-  // Expiry is the thing users scan for — keep it readable, not de-emphasised.
-  expiry: { fontSize: 12, fontWeight: '600', color: colors.gray600, marginTop: 2 },
-  badgeArea: { marginLeft: 8, alignItems: 'flex-end' },
-  dDay: { fontSize: 13, fontWeight: '700', color: colors.gray700 },
-  badge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
-  badgeSoon: { backgroundColor: colors.amber },
-  badgeText: { fontSize: 11, fontWeight: '700', color: colors.surface },
-});
+const makeStyles = (colors: Palette) =>
+  StyleSheet.create({
+    card: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: colors.surface,
+      borderRadius: 12,
+      padding: 10,
+      marginHorizontal: 16,
+      marginVertical: 6,
+      shadowColor: colors.shadow,
+      shadowOpacity: 0.06,
+      shadowRadius: 6,
+      shadowOffset: { width: 0, height: 2 },
+      elevation: 2,
+    },
+    cardSelected: { borderWidth: 2, borderColor: colors.primary, padding: 8 },
+    checkmark: {
+      position: 'absolute',
+      top: 6,
+      right: 6,
+      width: 20,
+      height: 20,
+      borderRadius: 10,
+      backgroundColor: colors.primary,
+      alignItems: 'center',
+      justifyContent: 'center',
+      zIndex: 1,
+    },
+    checkmarkText: { color: colors.surface, fontSize: 12, fontWeight: '800' },
+    thumbnailWrap: {
+      width: 56,
+      height: 56,
+      borderRadius: 8,
+      overflow: 'hidden',
+      backgroundColor: colors.surfaceSubtle,
+    },
+    thumbnail: { width: '100%', height: '100%' },
+    info: { flex: 1, marginLeft: 12 },
+    brand: { fontSize: 12, color: colors.gray500 },
+    name: { fontSize: 15, fontWeight: '600', color: colors.gray900, marginTop: 2 },
+    amount: { fontSize: 13, fontWeight: '600', color: colors.gray700, marginTop: 3 },
+    estimate: { fontSize: 12, color: colors.gray500, marginTop: 3 },
+    // Expiry is the thing users scan for — keep it readable, not de-emphasised.
+    expiry: { fontSize: 12, fontWeight: '600', color: colors.gray600, marginTop: 2 },
+    badgeArea: { marginLeft: 8, alignItems: 'flex-end' },
+    dDay: { fontSize: 13, fontWeight: '700', color: colors.gray700 },
+    badge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
+    badgeSoon: { backgroundColor: colors.amber },
+    badgeText: { fontSize: 11, fontWeight: '700', color: colors.surface },
+  });

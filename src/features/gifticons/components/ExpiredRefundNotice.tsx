@@ -1,6 +1,7 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { colors } from '../../../shared/theme/colors';
+import type { Palette } from '../../../shared/theme/colors';
+import { useThemedStyles } from '../../../shared/theme/ThemeProvider';
 
 /**
  * Shown on an expired, still-unused gifticon: a lapsed item voucher can still
@@ -8,6 +9,7 @@ import { colors } from '../../../shared/theme/colors';
  * users know it — so surfacing it here is real money back.
  */
 export default function ExpiredRefundNotice() {
+  const styles = useThemedStyles(makeStyles);
   return (
     <View style={styles.card} accessibilityRole="text">
       <Text style={styles.title}>기한이 지났어도 환급받을 수 있어요</Text>
@@ -19,13 +21,14 @@ export default function ExpiredRefundNotice() {
   );
 }
 
-const styles = StyleSheet.create({
-  card: {
-    marginTop: 20,
-    padding: 14,
-    borderRadius: 10,
-    backgroundColor: colors.surfaceMuted,
-  },
-  title: { fontSize: 13, fontWeight: '700', color: colors.gray900 },
-  body: { fontSize: 12, color: colors.gray700, lineHeight: 18, marginTop: 6 },
-});
+const makeStyles = (colors: Palette) =>
+  StyleSheet.create({
+    card: {
+      marginTop: 20,
+      padding: 14,
+      borderRadius: 10,
+      backgroundColor: colors.surfaceMuted,
+    },
+    title: { fontSize: 13, fontWeight: '700', color: colors.gray900 },
+    body: { fontSize: 12, color: colors.gray700, lineHeight: 18, marginTop: 6 },
+  });

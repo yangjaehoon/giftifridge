@@ -1,7 +1,8 @@
 import React from 'react';
 import { Modal, StyleSheet, Text, TouchableOpacity, useWindowDimensions } from 'react-native';
 import GifticonBarcode from './GifticonBarcode';
-import { colors } from '../../../shared/theme/colors';
+import type { Palette } from '../../../shared/theme/colors';
+import { useThemedStyles } from '../../../shared/theme/ThemeProvider';
 
 const HORIZONTAL_PADDING = 40;
 
@@ -20,6 +21,7 @@ export default function BarcodeZoomModal({
   value: string;
   onClose: () => void;
 }) {
+  const styles = useThemedStyles(makeStyles);
   const { width } = useWindowDimensions();
 
   return (
@@ -41,21 +43,22 @@ export default function BarcodeZoomModal({
   );
 }
 
-const styles = StyleSheet.create({
-  backdrop: {
-    flex: 1,
-    backgroundColor: colors.surface,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 16,
-    padding: 20,
-  },
-  number: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: colors.gray900,
-    letterSpacing: 2,
-    fontVariant: ['tabular-nums'],
-  },
-  hint: { fontSize: 13, color: colors.gray500 },
-});
+const makeStyles = (colors: Palette) =>
+  StyleSheet.create({
+    backdrop: {
+      flex: 1,
+      backgroundColor: colors.surface,
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 16,
+      padding: 20,
+    },
+    number: {
+      fontSize: 28,
+      fontWeight: '700',
+      color: colors.gray900,
+      letterSpacing: 2,
+      fontVariant: ['tabular-nums'],
+    },
+    hint: { fontSize: 13, color: colors.gray500 },
+  });

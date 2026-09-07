@@ -4,7 +4,8 @@ import type { Gifticon } from '../types';
 import { spendableValue } from '../gifticonValue';
 import { daysUntil } from '../../../shared/utils/date';
 import { formatCurrency } from '../../../shared/utils/currency';
-import { colors } from '../../../shared/theme/colors';
+import type { Palette } from '../../../shared/theme/colors';
+import { useThemedStyles } from '../../../shared/theme/ThemeProvider';
 
 const EXPIRING_SOON_WITHIN_DAYS = 7;
 
@@ -17,6 +18,7 @@ export default function GifticonStats({
   items: Gifticon[];
   onPress?: () => void;
 }) {
+  const styles = useThemedStyles(makeStyles);
   const { totalAmount, expiringSoonCount, totalCount } = useMemo(() => {
     let totalAmount = 0;
     let expiringSoonCount = 0;
@@ -55,21 +57,22 @@ export default function GifticonStats({
   );
 }
 
-const styles = StyleSheet.create({
-  row: {
-    flexDirection: 'row',
-    marginHorizontal: 16,
-    marginTop: 12,
-    backgroundColor: colors.surface,
-    borderRadius: 12,
-    paddingVertical: 14,
-    shadowColor: colors.shadow,
-    shadowOpacity: 0.06,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 2,
-  },
-  stat: { flex: 1, alignItems: 'center', gap: 2 },
-  value: { fontSize: 15, fontWeight: '700', color: colors.gray900 },
-  label: { fontSize: 12, color: colors.gray500 },
-});
+const makeStyles = (colors: Palette) =>
+  StyleSheet.create({
+    row: {
+      flexDirection: 'row',
+      marginHorizontal: 16,
+      marginTop: 12,
+      backgroundColor: colors.surface,
+      borderRadius: 12,
+      paddingVertical: 14,
+      shadowColor: colors.shadow,
+      shadowOpacity: 0.06,
+      shadowRadius: 6,
+      shadowOffset: { width: 0, height: 2 },
+      elevation: 2,
+    },
+    stat: { flex: 1, alignItems: 'center', gap: 2 },
+    value: { fontSize: 15, fontWeight: '700', color: colors.gray900 },
+    label: { fontSize: 12, color: colors.gray500 },
+  });

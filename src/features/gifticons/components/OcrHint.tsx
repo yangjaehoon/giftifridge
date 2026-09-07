@@ -1,5 +1,6 @@
 import { StyleSheet, Text } from 'react-native';
-import { colors } from '../../../shared/theme/colors';
+import type { Palette } from '../../../shared/theme/colors';
+import { useThemedStyles } from '../../../shared/theme/ThemeProvider';
 
 interface Props {
   /** Render nothing when false — lets the caller inline `<OcrHint show={...} />`
@@ -28,6 +29,7 @@ interface Props {
  * gets softer wording and an amber tint.
  */
 export default function OcrHint({ show, subject, message, guessMessage, confident = true }: Props) {
+  const styles = useThemedStyles(makeStyles);
   if (!show) return null;
   const text = confident
     ? (message ?? `사진에서 ${subject} 자동으로 인식했어요. 확인해주세요.`)
@@ -35,9 +37,10 @@ export default function OcrHint({ show, subject, message, guessMessage, confiden
   return <Text style={[styles.hint, !confident && styles.hintGuess]}>{text}</Text>;
 }
 
-const styles = StyleSheet.create({
-  hint: { fontSize: 12, color: colors.primary, marginTop: 6 },
-  // Darker amber + weight so the "please check this" line — the one that most
-  // needs reading — is the more legible of the two, not the less.
-  hintGuess: { color: colors.amberText, fontWeight: '600' },
-});
+const makeStyles = (colors: Palette) =>
+  StyleSheet.create({
+    hint: { fontSize: 12, color: colors.primary, marginTop: 6 },
+    // Darker amber + weight so the "please check this" line — the one that most
+    // needs reading — is the more legible of the two, not the less.
+    hintGuess: { color: colors.amberText, fontWeight: '600' },
+  });

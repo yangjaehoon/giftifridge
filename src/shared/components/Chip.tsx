@@ -1,6 +1,7 @@
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity } from 'react-native';
-import { colors } from '../theme/colors';
+import type { Palette } from '../theme/colors';
+import { useThemedStyles } from '../theme/ThemeProvider';
 
 export default function Chip({
   label,
@@ -13,6 +14,7 @@ export default function Chip({
   onPress: () => void;
   accessibilityLabel?: string;
 }) {
+  const styles = useThemedStyles(makeStyles);
   return (
     <TouchableOpacity
       style={[styles.chip, active && styles.chipActive]}
@@ -28,16 +30,17 @@ export default function Chip({
   );
 }
 
-const styles = StyleSheet.create({
-  chip: {
-    paddingHorizontal: 14,
-    paddingVertical: 9,
-    minHeight: 36,
-    justifyContent: 'center',
-    borderRadius: 20,
-    backgroundColor: colors.surfaceMuted,
-  },
-  chipActive: { backgroundColor: colors.primary },
-  chipText: { fontSize: 13, fontWeight: '600', color: colors.gray600 },
-  chipTextActive: { color: colors.surface },
-});
+const makeStyles = (colors: Palette) =>
+  StyleSheet.create({
+    chip: {
+      paddingHorizontal: 14,
+      paddingVertical: 9,
+      minHeight: 36,
+      justifyContent: 'center',
+      borderRadius: 20,
+      backgroundColor: colors.surfaceMuted,
+    },
+    chipActive: { backgroundColor: colors.primary },
+    chipText: { fontSize: 13, fontWeight: '600', color: colors.gray600 },
+    chipTextActive: { color: colors.surface },
+  });

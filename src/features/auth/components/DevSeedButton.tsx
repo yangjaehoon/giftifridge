@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { ActivityIndicator, Alert, StyleSheet, Text, TouchableOpacity } from 'react-native';
 import { seedDummyGifticons } from '../../gifticons/services/devSeed';
-import { colors } from '../../../shared/theme/colors';
+import type { Palette } from '../../../shared/theme/colors';
+import { useColors, useThemedStyles } from '../../../shared/theme/ThemeProvider';
 
 /**
  * Dev-only button that fills the current account with dummy gifticons.
@@ -9,6 +10,8 @@ import { colors } from '../../../shared/theme/colors';
  * unconditionally.
  */
 export default function DevSeedButton({ uid }: { uid: string }) {
+  const colors = useColors();
+  const styles = useThemedStyles(makeStyles);
   const [seeding, setSeeding] = useState(false);
 
   if (!__DEV__) return null;
@@ -43,13 +46,14 @@ export default function DevSeedButton({ uid }: { uid: string }) {
   );
 }
 
-const styles = StyleSheet.create({
-  button: {
-    backgroundColor: colors.gray400,
-    borderRadius: 10,
-    paddingVertical: 14,
-    alignItems: 'center',
-    marginTop: 12,
-  },
-  buttonText: { color: colors.surface, fontWeight: '700', fontSize: 15 },
-});
+const makeStyles = (colors: Palette) =>
+  StyleSheet.create({
+    button: {
+      backgroundColor: colors.gray400,
+      borderRadius: 10,
+      paddingVertical: 14,
+      alignItems: 'center',
+      marginTop: 12,
+    },
+    buttonText: { color: colors.surface, fontWeight: '700', fontSize: 15 },
+  });

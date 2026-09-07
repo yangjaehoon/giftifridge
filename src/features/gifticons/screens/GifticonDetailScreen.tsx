@@ -25,11 +25,13 @@ import { daysUntil, formatDate } from '../../../shared/utils/date';
 import { haptics } from '../../../shared/utils/haptics';
 import type { RootStackParamList } from '../../../app/RootNavigator';
 import { getGifticonErrorMessage, getGifticonWriteErrorMessage } from '../errors';
-import { colors } from '../../../shared/theme/colors';
+import type { Palette } from '../../../shared/theme/colors';
+import { useThemedStyles } from '../../../shared/theme/ThemeProvider';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'GifticonDetail'>;
 
 export default function GifticonDetailScreen({ route, navigation }: Props) {
+  const styles = useThemedStyles(makeStyles);
   const { gifticonId } = route.params;
   const { user } = useCurrentUser();
   const showToast = useToast();
@@ -71,7 +73,7 @@ export default function GifticonDetailScreen({ route, navigation }: Props) {
         </TouchableOpacity>
       ),
     });
-  }, [navigation, gifticon]);
+  }, [navigation, gifticon, styles.editLink]);
 
   const toggleUsed = () => {
     if (!gifticon) return;
@@ -275,75 +277,76 @@ export default function GifticonDetailScreen({ route, navigation }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { padding: 20, paddingBottom: 60 },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 20, gap: 16 },
-  retryButton: {
-    backgroundColor: colors.surfaceMuted,
-    borderRadius: 10,
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-  },
-  retryButtonText: { color: colors.gray700, fontWeight: '700', fontSize: 14 },
-  editLink: { color: colors.primary, fontSize: 13, marginRight: 4, fontWeight: '600' },
-  imageWrap: {
-    width: 132,
-    aspectRatio: 3 / 4,
-    borderRadius: 12,
-    overflow: 'hidden',
-    backgroundColor: colors.surfaceSubtle,
-    alignSelf: 'center',
-    marginTop: 24,
-  },
-  image: { width: '100%', height: '100%' },
-  overlayText: { fontSize: 13 },
-  imageHint: { fontSize: 12, color: colors.gray500, textAlign: 'center', marginTop: 6 },
-  section: { marginTop: 20, gap: 4 },
-  brand: { fontSize: 13, color: colors.gray500 },
-  name: { fontSize: 20, fontWeight: '700', color: colors.gray900 },
-  amount: { fontSize: 16, fontWeight: '700', color: colors.primary, marginTop: 2 },
-  estimate: { fontSize: 13, color: colors.gray500, marginTop: 4 },
-  expiryRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 10 },
-  ddayPill: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 999 },
-  ddayOk: { backgroundColor: colors.surfaceMuted },
-  ddaySoon: { backgroundColor: colors.amber },
-  ddayExpired: { backgroundColor: colors.border },
-  ddayText: { fontSize: 14, fontWeight: '800', color: colors.gray900 },
-  ddayTextOnColor: { color: colors.surface },
-  expiry: { fontSize: 14, color: colors.gray700 },
-  meta: { fontSize: 12, color: colors.gray500, marginTop: 2 },
-  barcodeCard: {
-    padding: 20,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: colors.border,
-    alignItems: 'center',
-    gap: 10,
-  },
-  barcodeNumber: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: colors.gray900,
-    letterSpacing: 2,
-    fontVariant: ['tabular-nums'],
-  },
-  barcodeHint: { fontSize: 12, color: colors.gray500, marginTop: -6 },
-  memoCard: {
-    marginTop: 20,
-    padding: 14,
-    borderRadius: 12,
-    backgroundColor: colors.surfaceMuted,
-    gap: 6,
-  },
-  memoLabel: { fontSize: 12, fontWeight: '700', color: colors.gray500 },
-  memoText: { fontSize: 14, color: colors.gray900, lineHeight: 20 },
-  copyButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 10,
-    backgroundColor: colors.surfaceMuted,
-  },
-  copyButtonText: { fontSize: 13, color: colors.gray700, fontWeight: '700' },
-  emptyText: { color: colors.gray500, fontSize: 14, textAlign: 'center' },
-  primaryAction: { marginTop: 32 },
-});
+const makeStyles = (colors: Palette) =>
+  StyleSheet.create({
+    container: { padding: 20, paddingBottom: 60 },
+    center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 20, gap: 16 },
+    retryButton: {
+      backgroundColor: colors.surfaceMuted,
+      borderRadius: 10,
+      paddingHorizontal: 20,
+      paddingVertical: 12,
+    },
+    retryButtonText: { color: colors.gray700, fontWeight: '700', fontSize: 14 },
+    editLink: { color: colors.primary, fontSize: 13, marginRight: 4, fontWeight: '600' },
+    imageWrap: {
+      width: 132,
+      aspectRatio: 3 / 4,
+      borderRadius: 12,
+      overflow: 'hidden',
+      backgroundColor: colors.surfaceSubtle,
+      alignSelf: 'center',
+      marginTop: 24,
+    },
+    image: { width: '100%', height: '100%' },
+    overlayText: { fontSize: 13 },
+    imageHint: { fontSize: 12, color: colors.gray500, textAlign: 'center', marginTop: 6 },
+    section: { marginTop: 20, gap: 4 },
+    brand: { fontSize: 13, color: colors.gray500 },
+    name: { fontSize: 20, fontWeight: '700', color: colors.gray900 },
+    amount: { fontSize: 16, fontWeight: '700', color: colors.primary, marginTop: 2 },
+    estimate: { fontSize: 13, color: colors.gray500, marginTop: 4 },
+    expiryRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 10 },
+    ddayPill: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 999 },
+    ddayOk: { backgroundColor: colors.surfaceMuted },
+    ddaySoon: { backgroundColor: colors.amber },
+    ddayExpired: { backgroundColor: colors.border },
+    ddayText: { fontSize: 14, fontWeight: '800', color: colors.gray900 },
+    ddayTextOnColor: { color: colors.surface },
+    expiry: { fontSize: 14, color: colors.gray700 },
+    meta: { fontSize: 12, color: colors.gray500, marginTop: 2 },
+    barcodeCard: {
+      padding: 20,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: colors.border,
+      alignItems: 'center',
+      gap: 10,
+    },
+    barcodeNumber: {
+      fontSize: 24,
+      fontWeight: '700',
+      color: colors.gray900,
+      letterSpacing: 2,
+      fontVariant: ['tabular-nums'],
+    },
+    barcodeHint: { fontSize: 12, color: colors.gray500, marginTop: -6 },
+    memoCard: {
+      marginTop: 20,
+      padding: 14,
+      borderRadius: 12,
+      backgroundColor: colors.surfaceMuted,
+      gap: 6,
+    },
+    memoLabel: { fontSize: 12, fontWeight: '700', color: colors.gray500 },
+    memoText: { fontSize: 14, color: colors.gray900, lineHeight: 20 },
+    copyButton: {
+      paddingHorizontal: 16,
+      paddingVertical: 10,
+      borderRadius: 10,
+      backgroundColor: colors.surfaceMuted,
+    },
+    copyButtonText: { fontSize: 13, color: colors.gray700, fontWeight: '700' },
+    emptyText: { color: colors.gray500, fontSize: 14, textAlign: 'center' },
+    primaryAction: { marginTop: 32 },
+  });

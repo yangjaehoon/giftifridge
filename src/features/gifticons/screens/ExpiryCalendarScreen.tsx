@@ -9,7 +9,8 @@ import { gifticonsByExpiryDate, monthMatrix, shiftMonth } from '../expiryCalenda
 import { todayDateString } from '../../../shared/utils/date';
 import type { Gifticon } from '../types';
 import type { RootStackParamList } from '../../../app/RootNavigator';
-import { colors } from '../../../shared/theme/colors';
+import type { Palette } from '../../../shared/theme/colors';
+import { useThemedStyles } from '../../../shared/theme/ThemeProvider';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Calendar'>;
 
@@ -21,6 +22,7 @@ const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토'];
  * boundary as the report and CSV export).
  */
 export default function ExpiryCalendarScreen({ navigation }: Props) {
+  const styles = useThemedStyles(makeStyles);
   const { user } = useCurrentUser();
   const { items, loading } = useGifticons(user?.uid);
 
@@ -127,43 +129,50 @@ export default function ExpiryCalendarScreen({ navigation }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background },
-  content: { padding: 16, paddingBottom: 40 },
-  loading: { flex: 1, backgroundColor: colors.background, paddingTop: 24 },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 8,
-    marginBottom: 12,
-  },
-  nav: { fontSize: 26, color: colors.primary, paddingHorizontal: 12, fontWeight: '700' },
-  monthLabel: { fontSize: 16, fontWeight: '800', color: colors.gray900 },
-  weekdayRow: { flexDirection: 'row' },
-  weekday: { flex: 1, textAlign: 'center', fontSize: 12, color: colors.gray500, paddingBottom: 6 },
-  week: { flexDirection: 'row' },
-  cell: {
-    flex: 1,
-    aspectRatio: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 8,
-    gap: 2,
-  },
-  cellSelected: { backgroundColor: colors.surfaceMuted },
-  day: { fontSize: 13, color: colors.gray700 },
-  today: { color: colors.primary, fontWeight: '800' },
-  badge: {
-    minWidth: 16,
-    height: 16,
-    borderRadius: 8,
-    paddingHorizontal: 4,
-    backgroundColor: colors.amber,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  badgeText: { fontSize: 10, color: colors.surface, fontWeight: '700' },
-  list: { marginTop: 16, gap: 0 },
-  empty: { textAlign: 'center', color: colors.gray500, fontSize: 13, paddingVertical: 24 },
-});
+const makeStyles = (colors: Palette) =>
+  StyleSheet.create({
+    container: { flex: 1, backgroundColor: colors.background },
+    content: { padding: 16, paddingBottom: 40 },
+    loading: { flex: 1, backgroundColor: colors.background, paddingTop: 24 },
+    header: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: 8,
+      marginBottom: 12,
+    },
+    nav: { fontSize: 26, color: colors.primary, paddingHorizontal: 12, fontWeight: '700' },
+    monthLabel: { fontSize: 16, fontWeight: '800', color: colors.gray900 },
+    weekdayRow: { flexDirection: 'row' },
+    weekday: {
+      flex: 1,
+      textAlign: 'center',
+      fontSize: 12,
+      color: colors.gray500,
+      paddingBottom: 6,
+    },
+    week: { flexDirection: 'row' },
+    cell: {
+      flex: 1,
+      aspectRatio: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderRadius: 8,
+      gap: 2,
+    },
+    cellSelected: { backgroundColor: colors.surfaceMuted },
+    day: { fontSize: 13, color: colors.gray700 },
+    today: { color: colors.primary, fontWeight: '800' },
+    badge: {
+      minWidth: 16,
+      height: 16,
+      borderRadius: 8,
+      paddingHorizontal: 4,
+      backgroundColor: colors.amber,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    badgeText: { fontSize: 10, color: colors.surface, fontWeight: '700' },
+    list: { marginTop: 16, gap: 0 },
+    empty: { textAlign: 'center', color: colors.gray500, fontSize: 13, paddingVertical: 24 },
+  });

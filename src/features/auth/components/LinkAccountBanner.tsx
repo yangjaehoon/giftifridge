@@ -1,6 +1,7 @@
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { colors } from '../../../shared/theme/colors';
+import type { Palette } from '../../../shared/theme/colors';
+import { useThemedStyles } from '../../../shared/theme/ThemeProvider';
 
 /**
  * A dismissible home-screen nudge for an anonymous user with something to lose:
@@ -14,6 +15,7 @@ export default function LinkAccountBanner({
   onLink: () => void;
   onDismiss: () => void;
 }) {
+  const styles = useThemedStyles(makeStyles);
   return (
     <View style={styles.banner}>
       <Text style={styles.text}>
@@ -40,16 +42,17 @@ export default function LinkAccountBanner({
   );
 }
 
-const styles = StyleSheet.create({
-  banner: {
-    marginHorizontal: 16,
-    marginTop: 12,
-    padding: 14,
-    borderRadius: 10,
-    backgroundColor: colors.surfaceMuted,
-  },
-  text: { fontSize: 13, color: colors.gray700, lineHeight: 19 },
-  actions: { flexDirection: 'row', justifyContent: 'flex-end', gap: 20, marginTop: 10 },
-  link: { fontSize: 13, fontWeight: '700', color: colors.primary },
-  dismiss: { fontSize: 13, fontWeight: '600', color: colors.gray500 },
-});
+const makeStyles = (colors: Palette) =>
+  StyleSheet.create({
+    banner: {
+      marginHorizontal: 16,
+      marginTop: 12,
+      padding: 14,
+      borderRadius: 10,
+      backgroundColor: colors.surfaceMuted,
+    },
+    text: { fontSize: 13, color: colors.gray700, lineHeight: 19 },
+    actions: { flexDirection: 'row', justifyContent: 'flex-end', gap: 20, marginTop: 10 },
+    link: { fontSize: 13, fontWeight: '700', color: colors.primary },
+    dismiss: { fontSize: 13, fontWeight: '600', color: colors.gray500 },
+  });

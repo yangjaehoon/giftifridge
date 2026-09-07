@@ -1,6 +1,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { Animated, StyleSheet, Text } from 'react-native';
-import { colors } from '../theme/colors';
+import type { Palette } from '../theme/colors';
+import { useThemedStyles } from '../theme/ThemeProvider';
 
 const VISIBLE_MS = 2400;
 
@@ -10,6 +11,7 @@ const ToastContext = createContext<ShowToast | undefined>(undefined);
 
 /** Lightweight bottom toast for confirmations ("저장되었어요"). */
 export function ToastProvider({ children }: { children: React.ReactNode }) {
+  const styles = useThemedStyles(makeStyles);
   const [message, setMessage] = useState<string | null>(null);
   const [opacity] = useState(() => new Animated.Value(0));
   const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -61,17 +63,18 @@ export function useToast(): ShowToast {
 
 const noop: ShowToast = () => {};
 
-const styles = StyleSheet.create({
-  toast: {
-    position: 'absolute',
-    left: 24,
-    right: 24,
-    bottom: 48,
-    backgroundColor: colors.surfaceStrong,
-    borderRadius: 12,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    alignItems: 'center',
-  },
-  text: { color: colors.surface, fontSize: 14, fontWeight: '600', textAlign: 'center' },
-});
+const makeStyles = (colors: Palette) =>
+  StyleSheet.create({
+    toast: {
+      position: 'absolute',
+      left: 24,
+      right: 24,
+      bottom: 48,
+      backgroundColor: colors.surfaceStrong,
+      borderRadius: 12,
+      paddingVertical: 12,
+      paddingHorizontal: 16,
+      alignItems: 'center',
+    },
+    text: { color: colors.surface, fontSize: 14, fontWeight: '600', textAlign: 'center' },
+  });

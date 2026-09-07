@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { ActivityIndicator, Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useGifticons } from '../../gifticons/hooks/useGifticons';
 import { exportGifticons } from '../../gifticons/services/gifticonExport';
-import { colors } from '../../../shared/theme/colors';
+import type { Palette } from '../../../shared/theme/colors';
+import { useColors, useThemedStyles } from '../../../shared/theme/ThemeProvider';
 
 /**
  * Settings entry that shares the account's personal gifticons as a CSV via the
@@ -10,6 +11,8 @@ import { colors } from '../../../shared/theme/colors';
  * belong to their space and aren't included.
  */
 export default function ExportDataButton({ uid }: { uid: string | undefined }) {
+  const colors = useColors();
+  const styles = useThemedStyles(makeStyles);
   const { items } = useGifticons(uid);
   const [busy, setBusy] = useState(false);
 
@@ -49,15 +52,16 @@ export default function ExportDataButton({ uid }: { uid: string | undefined }) {
   );
 }
 
-const styles = StyleSheet.create({
-  wrap: { marginTop: 12 },
-  button: {
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 10,
-    paddingVertical: 14,
-    alignItems: 'center',
-  },
-  buttonText: { color: colors.gray700, fontWeight: '700', fontSize: 15 },
-  hint: { fontSize: 12, color: colors.gray500, marginTop: 8, lineHeight: 17 },
-});
+const makeStyles = (colors: Palette) =>
+  StyleSheet.create({
+    wrap: { marginTop: 12 },
+    button: {
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: 10,
+      paddingVertical: 14,
+      alignItems: 'center',
+    },
+    buttonText: { color: colors.gray700, fontWeight: '700', fontSize: 15 },
+    hint: { fontSize: 12, color: colors.gray500, marginTop: 8, lineHeight: 17 },
+  });

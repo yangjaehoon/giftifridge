@@ -1,9 +1,11 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { useNetworkStatus } from '../hooks/useNetworkStatus';
-import { colors } from '../theme/colors';
+import type { Palette } from '../theme/colors';
+import { useThemedStyles } from '../theme/ThemeProvider';
 
 export default function OfflineBanner() {
+  const styles = useThemedStyles(makeStyles);
   const isConnected = useNetworkStatus();
 
   if (isConnected) return null;
@@ -15,11 +17,12 @@ export default function OfflineBanner() {
   );
 }
 
-const styles = StyleSheet.create({
-  banner: {
-    backgroundColor: colors.surfaceStrong,
-    paddingVertical: 6,
-    alignItems: 'center',
-  },
-  text: { color: colors.surface, fontSize: 12, fontWeight: '600' },
-});
+const makeStyles = (colors: Palette) =>
+  StyleSheet.create({
+    banner: {
+      backgroundColor: colors.surfaceStrong,
+      paddingVertical: 6,
+      alignItems: 'center',
+    },
+    text: { color: colors.surface, fontSize: 12, fontWeight: '600' },
+  });

@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { Animated, StyleSheet, type StyleProp, type ViewStyle } from 'react-native';
-import { colors } from '../theme/colors';
+import type { Palette } from '../theme/colors';
+import { useThemedStyles } from '../theme/ThemeProvider';
 
 export default function Skeleton({ style }: { style?: StyleProp<ViewStyle> }) {
+  const styles = useThemedStyles(makeStyles);
   const [opacity] = useState(() => new Animated.Value(0.5));
 
   useEffect(() => {
@@ -19,6 +21,7 @@ export default function Skeleton({ style }: { style?: StyleProp<ViewStyle> }) {
   return <Animated.View style={[styles.base, style, { opacity }]} />;
 }
 
-const styles = StyleSheet.create({
-  base: { backgroundColor: colors.surfaceMuted, borderRadius: 8 },
-});
+const makeStyles = (colors: Palette) =>
+  StyleSheet.create({
+    base: { backgroundColor: colors.surfaceMuted, borderRadius: 8 },
+  });

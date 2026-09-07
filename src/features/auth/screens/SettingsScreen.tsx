@@ -12,15 +12,18 @@ import {
 import { useAuthActions, useCurrentUser } from '../context/AuthContext';
 import { useEmailAuthForm } from '../hooks/useEmailAuthForm';
 import NotificationOffsetSettings from '../components/NotificationOffsetSettings';
+import ThemeSettings from '../components/ThemeSettings';
 import GalleryAutoImportSettings from '../components/GalleryAutoImportSettings';
 import DevSeedButton from '../components/DevSeedButton';
 import ExportDataButton from '../components/ExportDataButton';
 import DeleteAccountButton from '../components/DeleteAccountButton';
 import AppInfo from '../components/AppInfo';
 import Button from '../../../shared/components/Button';
-import { colors } from '../../../shared/theme/colors';
+import type { Palette } from '../../../shared/theme/colors';
+import { useThemedStyles } from '../../../shared/theme/ThemeProvider';
 
 export default function SettingsScreen() {
+  const styles = useThemedStyles(makeStyles);
   const { user, isAnonymous } = useCurrentUser();
   const { signOut } = useAuthActions();
   const form = useEmailAuthForm();
@@ -37,6 +40,7 @@ export default function SettingsScreen() {
     return (
       <ScrollView style={styles.flex} contentContainerStyle={styles.container}>
         <NotificationOffsetSettings />
+        <ThemeSettings />
         <GalleryAutoImportSettings ownerId={user.uid} />
         <Text style={styles.title}>계정</Text>
         <Text style={styles.subtitle}>{user.email}로 로그인되어 있어요.</Text>
@@ -60,6 +64,7 @@ export default function SettingsScreen() {
         keyboardShouldPersistTaps="handled"
       >
         <NotificationOffsetSettings />
+        <ThemeSettings />
         <GalleryAutoImportSettings ownerId={user?.uid} />
         <Text style={styles.title}>계정</Text>
         <Text style={styles.subtitle}>
@@ -106,27 +111,30 @@ export default function SettingsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  flex: { flex: 1 },
-  container: { flexGrow: 1, padding: 24, paddingTop: 32, backgroundColor: colors.surface },
-  title: { fontSize: 22, fontWeight: '800', color: colors.gray900 },
-  subtitle: {
-    fontSize: 14,
-    color: colors.gray500,
-    marginTop: 8,
-    marginBottom: 28,
-    lineHeight: 20,
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    marginBottom: 12,
-    fontSize: 15,
-  },
-  submit: { marginTop: 8 },
-  switchMode: { marginTop: 20, alignItems: 'center' },
-  switchModeText: { color: colors.gray600, fontSize: 13 },
-});
+const makeStyles = (colors: Palette) =>
+  StyleSheet.create({
+    flex: { flex: 1 },
+    container: { flexGrow: 1, padding: 24, paddingTop: 32, backgroundColor: colors.surface },
+    title: { fontSize: 22, fontWeight: '800', color: colors.gray900 },
+    subtitle: {
+      fontSize: 14,
+      color: colors.gray500,
+      marginTop: 8,
+      marginBottom: 28,
+      lineHeight: 20,
+    },
+    input: {
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: 10,
+      paddingHorizontal: 14,
+      paddingVertical: 12,
+      marginBottom: 12,
+      fontSize: 15,
+      color: colors.gray900,
+      backgroundColor: colors.surface,
+    },
+    submit: { marginTop: 8 },
+    switchMode: { marginTop: 20, alignItems: 'center' },
+    switchModeText: { color: colors.gray600, fontSize: 13 },
+  });

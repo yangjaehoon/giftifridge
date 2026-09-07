@@ -6,15 +6,18 @@ import { createSpace, newSpaceId } from '../services/spaceService';
 import { getSpaceWriteErrorMessage } from '../errors';
 import { withTimeout, WRITE_TIMEOUT_MS } from '../../../shared/utils/withTimeout';
 import Button from '../../../shared/components/Button';
-import { formStyles } from '../../../shared/theme/forms';
+import { useFormStyles } from '../../../shared/theme/forms';
 import { useToast } from '../../../shared/components/ToastProvider';
 import { useAsyncAction } from '../../../shared/hooks/useAsyncAction';
 import type { RootStackParamList } from '../../../app/RootNavigator';
-import { colors } from '../../../shared/theme/colors';
+import type { Palette } from '../../../shared/theme/colors';
+import { useThemedStyles } from '../../../shared/theme/ThemeProvider';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'CreateSpace'>;
 
 export default function CreateSpaceScreen({ navigation }: Props) {
+  const styles = useThemedStyles(makeStyles);
+  const formStyles = useFormStyles();
   const { user } = useCurrentUser();
   const showToast = useToast();
   const { busy: saving, run } = useAsyncAction(getSpaceWriteErrorMessage);
@@ -57,9 +60,10 @@ export default function CreateSpaceScreen({ navigation }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, padding: 20, backgroundColor: colors.surface },
-  submit: { marginTop: 28 },
-  joinLink: { alignItems: 'center', marginTop: 20 },
-  joinLinkText: { color: colors.gray600, fontSize: 13 },
-});
+const makeStyles = (colors: Palette) =>
+  StyleSheet.create({
+    container: { flex: 1, padding: 20, backgroundColor: colors.surface },
+    submit: { marginTop: 28 },
+    joinLink: { alignItems: 'center', marginTop: 20 },
+    joinLinkText: { color: colors.gray600, fontSize: 13 },
+  });
