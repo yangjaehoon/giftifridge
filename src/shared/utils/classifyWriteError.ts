@@ -30,3 +30,28 @@ export const WRITE_ERROR_MESSAGES = {
   timeout: '응답이 늦어지고 있어요. 잠시 후 목록에서 확인해주세요.',
   upload: '사진을 업로드하지 못했어요. 잠시 후 다시 시도해주세요.',
 } as const;
+
+/** Every write-error kind that maps to a message (i.e. all but the catch-all
+ *  `other`). A feature's message map must cover these — `timeout`/`upload` come
+ *  from spreading WRITE_ERROR_MESSAGES, `permission` each feature words itself. */
+type MessagedWriteErrorKind = Exclude<WriteErrorKind, 'other'>;
+
+/**
+ * Builds a feature's two error-message lookups from its message map, so each
+ * `errors.ts` doesn't re-hand-roll the identical pair:
+ *   - `get(key)`      — the message for a known action/kind
+ *   - `getWrite(err, fallback)` — classify a thrown write error and return its
+ *     message, falling back to `fallback` for the "other" case
+ */
+export function makeErrorMessages<
+  M extends Record<MessagedWriteErrorKind, string> & Record<string, string>,
+>(messages: M) {
+  const get = (key: keyof M): string => messages[key];
+  return {
+    get,
+    getWrite: (err: unknown, fallback: keyof M): string => {
+      const kind = classifyWriteError(err);
+      return get(kind === 'other' ? fallback : kind);
+    },
+  };
+}
