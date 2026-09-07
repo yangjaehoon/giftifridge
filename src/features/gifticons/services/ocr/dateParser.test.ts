@@ -25,14 +25,40 @@ describe('parseExpiryDateFromText', () => {
     expect(parseExpiryDateFromText(text)).toBe(isoDate(2026, 9, 1));
   });
 
-  it('returns null when multiple dates are ambiguous with no keyword hint', () => {
-    const text = '발행일 2026.01.01\n2026.06.30';
-    expect(parseExpiryDateFromText(text)).toBeNull();
+  it('takes the latest date when several are present and no keyword resolves it', () => {
+    // An expiry is never earlier than the issue date, so the latest wins —
+    // better than giving up and letting the caller invent a default.
+    const text = '발행일 2026.01.01\n안내\n2026.06.30\n2026.03.15';
+    expect(parseExpiryDateFromText(text)).toBe(isoDate(2026, 6, 30));
   });
 
   it('picks the keyword-adjacent date when multiple dates are present', () => {
     const text = '발행일 2026.01.01\n유효기한 2026.06.30까지';
     expect(parseExpiryDateFromText(text)).toBe(isoDate(2026, 6, 30));
+  });
+
+  it('reads a 2-digit year as 20xx', () => {
+    expect(parseExpiryDateFromText('유효기한 26.12.31까지')).toBe(isoDate(2026, 12, 31));
+    expect(parseExpiryDateFromText("유효기간 '27.03.01")).toBe(isoDate(2027, 3, 1));
+  });
+
+  it('tolerates spaces around the separators', () => {
+    expect(parseExpiryDateFromText('유효기간 2026. 12. 31')).toBe(isoDate(2026, 12, 31));
+    expect(parseExpiryDateFromText('유효기간 2026 . 12 . 31')).toBe(isoDate(2026, 12, 31));
+  });
+
+  it('reads a day-less month as the last day of that month, when an expiry keyword is next to it', () => {
+    expect(parseExpiryDateFromText('유효기간 2026.12')).toBe(isoDate(2026, 12, 31));
+    expect(parseExpiryDateFromText('유효기간 2026년 2월')).toBe(isoDate(2026, 2, 28));
+  });
+
+  it('does not read a bare month/year with no expiry keyword as a date', () => {
+    expect(parseExpiryDateFromText('2026.12 신메뉴 출시')).toBeNull();
+    expect(parseExpiryDateFromText('평점 4.5 / 리뷰 39.9만')).toBeNull();
+  });
+
+  it('prefers the full date over a day-less reading of the same text', () => {
+    expect(parseExpiryDateFromText('유효기간 2026.12.05')).toBe(isoDate(2026, 12, 5));
   });
 
   it('returns null when no date-like text is found', () => {

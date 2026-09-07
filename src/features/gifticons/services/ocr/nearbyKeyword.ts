@@ -4,7 +4,7 @@ const KEYWORD_WINDOW = 15;
 // text is the one we want (an expiry date among an issue date, a face value
 // among a discounted one) — shared by the date/amount/barcode parsers so they
 // don't drift on how "nearby" is decided.
-function hasNearbyKeyword(
+export function hasNearbyKeyword(
   text: string,
   index: number,
   length: number,
