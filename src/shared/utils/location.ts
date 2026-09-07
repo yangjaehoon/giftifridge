@@ -23,6 +23,14 @@ interface GetLocationOptions {
 
 let lastFix: { coords: Coordinates; at: number } | null = null;
 
+// Set once the user dismisses the in-app disclosure below. An OS permission
+// denial flips canAskAgain and rate-limits the system dialog, but a dismissed
+// confirmAsync leaves the permission 'undetermined' — so without this latch
+// useNearbyGifticons' focus effect would re-pop the disclosure on every return
+// to the Home screen. Resets on app restart; an explicit retry from Settings
+// still works because a granted status short-circuits before this check.
+let disclosureDismissed = false;
+
 /**
  * Checks/requests foreground location permission, returning whether it's
  * granted. Shared by getCurrentLocation and searchAddress — Android's native
@@ -32,17 +40,24 @@ let lastFix: { coords: Coordinates; at: number } | null = null;
 async function ensureForegroundPermission(): Promise<boolean> {
   const current = await Location.getForegroundPermissionsAsync();
   if (current.status === 'granted') return true;
-  if (!current.canAskAgain) return false;
+  if (!current.canAskAgain || disclosureDismissed) return false;
   // Google Play's prominent-disclosure rule: before the OS permission dialog,
-  // tell the user in-app what location is used for and that it never leaves the
-  // device or runs in the background. Declining here skips the system prompt.
+  // spell out every way the app uses location. Both purposes below run through
+  // this same gate, so the text has to cover the store-location case too — that
+  // one *is* persisted to Firestore and shared with a space, unlike the nearby
+  // check which stays on the device. Dismissing here skips the system prompt.
   const consented = await confirmAsync(
     '위치 접근 안내',
-    '자주 가는 매장 근처에서 아직 쓰지 않은 기프티콘을 알려드리려고 기기의 위치를 사용해요. ' +
-      '위치 정보는 이 기기 안에서만 쓰이고, 서버로 전송되거나 앱이 꺼진 동안 수집되지 않아요.',
+    '위치는 ①자주 가는 매장 근처에서 아직 안 쓴 기프티콘을 알려드릴 때와 ②기프티콘에 매장 ' +
+      '위치를 저장하거나 매장을 검색할 때 사용해요. ①의 위치는 기기에서만 확인하고 저장하지 ' +
+      '않아요. ②에서 저장한 좌표는 해당 기프티콘 정보와 함께 보관되고 스페이스 구성원에게 ' +
+      '공유될 수 있어요. 앱이 꺼진 동안에는 위치를 수집하지 않아요.',
     '계속',
   );
-  if (!consented) return false;
+  if (!consented) {
+    disclosureDismissed = true;
+    return false;
+  }
   const requested = await Location.requestForegroundPermissionsAsync();
   return requested.status === 'granted';
 }

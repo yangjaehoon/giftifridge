@@ -76,6 +76,19 @@ describe('getCurrentLocation', () => {
     expect(Location.getCurrentPositionAsync).not.toHaveBeenCalled();
   });
 
+  it('does not re-show the disclosure after the user dismisses it once', async () => {
+    Location.getForegroundPermissionsAsync.mockResolvedValue({
+      status: 'undetermined',
+      canAskAgain: true,
+    });
+    confirmAsync.mockResolvedValue(false);
+
+    await expect(getCurrentLocation()).resolves.toBeNull();
+    await expect(getCurrentLocation()).resolves.toBeNull();
+
+    expect(confirmAsync).toHaveBeenCalledTimes(1);
+  });
+
   it('returns null when permission is denied and cannot be asked again', async () => {
     Location.getForegroundPermissionsAsync.mockResolvedValue({
       status: 'denied',

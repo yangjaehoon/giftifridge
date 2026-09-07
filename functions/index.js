@@ -10,7 +10,7 @@ const { onCall, HttpsError } = require('firebase-functions/v2/https');
 const logger = require('firebase-functions/logger');
 
 const { isEligibleForCleanup, MAX_IDLE_MS } = require('./eligibility');
-const { deleteAccount } = require('./accountData');
+const { deleteAccount, imagePath, mapWithConcurrency } = require('./accountData');
 
 initializeApp();
 
@@ -26,8 +26,9 @@ const REGION = 'asia-northeast3';
 // cleanup runs live immediately.
 const CLEANUP_DRY_RUN = true;
 
-const imagePath = (gifticonId) => `gifticons/${gifticonId}.jpg`;
-
+// imagePath / mapWithConcurrency are shared with ./accountData so the Storage
+// key scheme and batching can't drift between the scheduled sweep and the
+// user-initiated deletion.
 async function deleteImage(gifticonId) {
   try {
     await getStorage().bucket().file(imagePath(gifticonId)).delete({ ignoreNotFound: true });
@@ -83,14 +84,6 @@ exports.deleteAccount = onCall({ region: REGION }, async (request) => {
 
 const DOC_BATCH_LIMIT = 400;
 const IMAGE_DELETE_CONCURRENCY = 20;
-
-async function mapWithConcurrency(items, limit, fn) {
-  const results = [];
-  for (let i = 0; i < items.length; i += limit) {
-    results.push(...(await Promise.all(items.slice(i, i + limit).map(fn))));
-  }
-  return results;
-}
 
 /**
  * Deletes every gifticon owned by `uid` and its Storage image. Images are
