@@ -27,6 +27,10 @@ jest.mock('../components/GalleryAutoImportSettings', () => ({
   __esModule: true,
   default: () => null,
 }));
+jest.mock('../components/ExportDataButton', () => ({
+  __esModule: true,
+  default: () => null,
+}));
 jest.mock('../components/DeleteAccountButton', () => {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const { Text } = require('react-native');
