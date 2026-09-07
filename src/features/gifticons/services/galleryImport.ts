@@ -12,6 +12,7 @@ import {
   recognizeText,
 } from './ocrService';
 import { recognizeBarcodeFromImage } from './barcodeRecognition';
+import { ocrDebugLog } from './ocr/debugLog';
 import type { GifticonCategory } from '../types';
 
 // Everything about turning "a new photo appeared in the gallery" into a saved
@@ -147,6 +148,7 @@ async function runScan(ownerId: string): Promise<number> {
         // this no-confirmation flow won't guess at) — remember that so it
         // isn't re-OCR'd every scan, but don't mark it done before a create
         // is even tried.
+        ocrDebugLog('gallery-import skip', { textRead: recognized != null, expiresAt });
         importedIds.add(asset.id);
         continue;
       }
@@ -167,6 +169,11 @@ async function runScan(ownerId: string): Promise<number> {
         barcode: barcode ?? undefined,
         amount: parseAmountFromText(recognized.text) ?? undefined,
       };
+      ocrDebugLog('gallery-import create', {
+        ...fields,
+        brandGuessed: brand != null,
+        nameGuessed: name != null,
+      });
       await saveGifticon({ draftId, ownerId, imageUri: uri, imageChanged: true, fields });
       // Only marked done once the create actually went through — if
       // saveGifticon throws, this asset is left off the dedupe set so the

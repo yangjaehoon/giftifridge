@@ -8,6 +8,7 @@ import {
   recognizeText,
 } from '../services/ocrService';
 import { recognizeBarcodeFromImage } from '../services/barcodeRecognition';
+import { ocrDebugLog } from '../services/ocr/debugLog';
 import { parseDate } from '../../../shared/utils/date';
 import { alertPermissionDenied } from '../../../shared/utils/permissionAlert';
 import type { AutofillField } from './useGifticonForm';
@@ -106,24 +107,32 @@ export function useGifticonImage({
       ]);
       if (run !== runRef.current) return; // a newer image was picked meanwhile
 
-      if (recognized != null) {
-        const detectedDate = parseExpiryDateFromText(recognized.text);
-        if (detectedDate) date.detect(parseDate(detectedDate));
-
-        const guessed = guessGifticonFields(recognized);
-        if (guessed.name) name.detect(guessed.name);
-        if (guessed.brand) brand.detect(guessed.brand);
-        if (guessed.category) category.detect(guessed.category);
-
-        const detectedAmount = parseAmountFromText(recognized.text);
-        if (detectedAmount != null) amount.detect(detectedAmount);
-      }
+      const guessed = recognized ? guessGifticonFields(recognized) : null;
+      const detectedDate = recognized ? parseExpiryDateFromText(recognized.text) : null;
+      const detectedAmount = recognized ? parseAmountFromText(recognized.text) : null;
       // The photo's barcode graphic is the primary source; the same number
       // printed as text beneath it is a fallback for when the graphic itself
       // couldn't be read (blur, glare).
       const detectedBarcode =
         scannedBarcode ?? (recognized ? parseBarcodeFromText(recognized.text) : null);
+
+      if (detectedDate) date.detect(parseDate(detectedDate));
+      if (guessed?.name) name.detect(guessed.name);
+      if (guessed?.brand) brand.detect(guessed.brand);
+      if (guessed?.category) category.detect(guessed.category);
+      if (detectedAmount != null) amount.detect(detectedAmount);
       if (detectedBarcode) barcode.detect(detectedBarcode);
+
+      ocrDebugLog('add-form recognized', {
+        textRead: recognized != null,
+        brand: guessed?.brand ?? null,
+        name: guessed?.name ?? null,
+        category: guessed?.category ?? null,
+        expiresAt: detectedDate,
+        amount: detectedAmount,
+        barcode: detectedBarcode,
+        barcodeFrom: scannedBarcode ? 'graphic' : detectedBarcode ? 'text' : null,
+      });
     } finally {
       if (run === runRef.current) setRecognizing(false);
     }
