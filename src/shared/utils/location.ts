@@ -1,4 +1,5 @@
 import * as Location from 'expo-location';
+import { confirmAsync } from './confirmAsync';
 
 export interface Coordinates {
   latitude: number;
@@ -32,6 +33,16 @@ async function ensureForegroundPermission(): Promise<boolean> {
   const current = await Location.getForegroundPermissionsAsync();
   if (current.status === 'granted') return true;
   if (!current.canAskAgain) return false;
+  // Google Play's prominent-disclosure rule: before the OS permission dialog,
+  // tell the user in-app what location is used for and that it never leaves the
+  // device or runs in the background. Declining here skips the system prompt.
+  const consented = await confirmAsync(
+    '위치 접근 안내',
+    '자주 가는 매장 근처에서 아직 쓰지 않은 기프티콘을 알려드리려고 기기의 위치를 사용해요. ' +
+      '위치 정보는 이 기기 안에서만 쓰이고, 서버로 전송되거나 앱이 꺼진 동안 수집되지 않아요.',
+    '계속',
+  );
+  if (!consented) return false;
   const requested = await Location.requestForegroundPermissionsAsync();
   return requested.status === 'granted';
 }

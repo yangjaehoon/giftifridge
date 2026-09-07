@@ -23,6 +23,11 @@ jest.mock('../components/GalleryAutoImportSettings', () => ({
   __esModule: true,
   default: () => null,
 }));
+jest.mock('../components/DeleteAccountButton', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { Text } = require('react-native');
+  return { __esModule: true, default: () => <Text>계정 삭제</Text> };
+});
 
 const mockedUseCurrentUser = useCurrentUser as jest.Mock;
 const mockedUseAuthActions = useAuthActions as jest.Mock;
@@ -86,6 +91,12 @@ describe('SettingsScreen — anonymous user', () => {
     );
   });
 
+  it('offers account deletion to an anonymous user too', async () => {
+    const { getByText } = await render(<SettingsScreen />);
+
+    expect(getByText('계정 삭제')).toBeTruthy();
+  });
+
   it('switches to sign-in mode and calls signIn', async () => {
     authFns.signIn.mockResolvedValue(undefined);
     const { getByText, getByPlaceholderText } = await render(<SettingsScreen />);
@@ -130,6 +141,7 @@ describe('SettingsScreen — signed-in user', () => {
     const { getByText } = await render(<SettingsScreen />);
 
     expect(getByText('me@example.com로 로그인되어 있어요.')).toBeTruthy();
+    expect(getByText('계정 삭제')).toBeTruthy();
     await act(async () => {
       fireEvent.press(getByText('로그아웃'));
     });

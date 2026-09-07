@@ -6,9 +6,11 @@ const { getStorage } = require('firebase-admin/storage');
 const { getAuth } = require('firebase-admin/auth');
 const { onDocumentDeleted } = require('firebase-functions/v2/firestore');
 const { onSchedule } = require('firebase-functions/v2/scheduler');
+const { onCall, HttpsError } = require('firebase-functions/v2/https');
 const logger = require('firebase-functions/logger');
 
 const { isEligibleForCleanup, MAX_IDLE_MS } = require('./eligibility');
+const { deleteAccount } = require('./accountData');
 
 initializeApp();
 
@@ -47,6 +49,37 @@ exports.onGifticonDeleted = onDocumentDeleted(
   { document: 'gifticons/{gifticonId}', region: REGION },
   (event) => deleteImage(event.params.gifticonId),
 );
+
+/**
+ * User-initiated account + data deletion, required by the Play Store / App Store
+ * for any app that lets users create an account. The client calls this and then
+ * signs out. Unlike the scheduled sweep this is never dry-run — the signed-in
+ * user explicitly asked — and it applies to anonymous and linked accounts alike.
+ * The teardown itself lives in ./accountData so it can be unit-tested.
+ */
+exports.deleteAccount = onCall({ region: REGION }, async (request) => {
+  const uid = request.auth && request.auth.uid;
+  if (!uid) {
+    throw new HttpsError('unauthenticated', 'Must be signed in to delete an account.');
+  }
+  try {
+    const summary = await deleteAccount(
+      {
+        db: getFirestore(),
+        auth: getAuth(),
+        storage: getStorage(),
+        onImageError: (gifticonId, err) =>
+          logger.warn('image delete failed', { gifticonId, error: String(err) }),
+      },
+      uid,
+    );
+    logger.info('deleteAccount: done', summary);
+    return { ok: true };
+  } catch (err) {
+    logger.error('deleteAccount: failed', { uid, error: String(err) });
+    throw new HttpsError('internal', 'Account deletion failed.');
+  }
+});
 
 const DOC_BATCH_LIMIT = 400;
 const IMAGE_DELETE_CONCURRENCY = 20;

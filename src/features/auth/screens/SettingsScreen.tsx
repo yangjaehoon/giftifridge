@@ -14,6 +14,7 @@ import { useEmailAuthForm } from '../hooks/useEmailAuthForm';
 import NotificationOffsetSettings from '../components/NotificationOffsetSettings';
 import GalleryAutoImportSettings from '../components/GalleryAutoImportSettings';
 import DevSeedButton from '../components/DevSeedButton';
+import DeleteAccountButton from '../components/DeleteAccountButton';
 import AppInfo from '../components/AppInfo';
 import Button from '../../../shared/components/Button';
 import { colors } from '../../../shared/theme/colors';
@@ -40,6 +41,7 @@ export default function SettingsScreen() {
         <Text style={styles.subtitle}>{user.email}로 로그인되어 있어요.</Text>
         <Button label="로그아웃" onPress={handleSignOut} />
         <DevSeedButton uid={user.uid} />
+        <DeleteAccountButton />
         <AppInfo />
       </ScrollView>
     );
@@ -94,6 +96,7 @@ export default function SettingsScreen() {
         </TouchableOpacity>
 
         {user && <DevSeedButton uid={user.uid} />}
+        {user && <DeleteAccountButton />}
         <AppInfo />
       </ScrollView>
     </KeyboardAvoidingView>

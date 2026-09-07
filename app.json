@@ -69,7 +69,16 @@
           "granularPermissions": ["photo"]
         }
       ],
-      "expo-background-task"
+      "expo-background-task",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 200,
+          "resizeMode": "contain",
+          "backgroundColor": "#F4FAF9"
+        }
+      ]
     ],
     "extra": {
       "eas": {

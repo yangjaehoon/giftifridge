@@ -6,6 +6,7 @@ jest.mock('expo-location', () => ({
   reverseGeocodeAsync: jest.fn(),
   Accuracy: { Balanced: 3 },
 }));
+jest.mock('./confirmAsync', () => ({ confirmAsync: jest.fn() }));
 
 function position(latitude: number, longitude: number) {
   return { coords: { latitude, longitude } };
@@ -20,6 +21,7 @@ type LocationMock = {
 };
 
 let Location: LocationMock;
+let confirmAsync: jest.Mock;
 let getCurrentLocation: typeof import('./location').getCurrentLocation;
 let searchAddress: typeof import('./location').searchAddress;
 
@@ -29,8 +31,12 @@ beforeEach(() => {
   jest.resetModules();
   /* eslint-disable @typescript-eslint/no-require-imports */
   Location = require('expo-location');
+  ({ confirmAsync } = require('./confirmAsync'));
   ({ getCurrentLocation, searchAddress } = require('./location'));
   /* eslint-enable @typescript-eslint/no-require-imports */
+  // The prominent-disclosure prompt only shows when permission isn't granted yet;
+  // default it to "accepted" so the existing request-path tests are unaffected.
+  confirmAsync.mockResolvedValue(true);
 });
 
 describe('getCurrentLocation', () => {
@@ -54,7 +60,20 @@ describe('getCurrentLocation', () => {
     Location.getCurrentPositionAsync.mockResolvedValue(position(1, 2));
 
     await expect(getCurrentLocation()).resolves.toEqual({ latitude: 1, longitude: 2 });
+    expect(confirmAsync).toHaveBeenCalledTimes(1);
     expect(Location.requestForegroundPermissionsAsync).toHaveBeenCalledTimes(1);
+  });
+
+  it('shows the prominent disclosure before the OS prompt and aborts if declined', async () => {
+    Location.getForegroundPermissionsAsync.mockResolvedValue({
+      status: 'undetermined',
+      canAskAgain: true,
+    });
+    confirmAsync.mockResolvedValue(false);
+
+    await expect(getCurrentLocation()).resolves.toBeNull();
+    expect(Location.requestForegroundPermissionsAsync).not.toHaveBeenCalled();
+    expect(Location.getCurrentPositionAsync).not.toHaveBeenCalled();
   });
 
   it('returns null when permission is denied and cannot be asked again', async () => {
