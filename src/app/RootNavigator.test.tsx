@@ -40,6 +40,7 @@ jest.mock('../features/gifticons/screens/HomeScreen', () => () => null);
 jest.mock('../features/gifticons/screens/AddGifticonScreen', () => () => null);
 jest.mock('../features/gifticons/screens/GifticonDetailScreen', () => () => null);
 jest.mock('../features/gifticons/screens/SpendingReportScreen', () => () => null);
+jest.mock('../features/gifticons/screens/ExpiryCalendarScreen', () => () => null);
 jest.mock('../features/auth/screens/SettingsScreen', () => () => null);
 jest.mock('../features/spaces/screens/CreateSpaceScreen', () => () => null);
 jest.mock('../features/spaces/screens/JoinSpaceScreen', () => () => null);

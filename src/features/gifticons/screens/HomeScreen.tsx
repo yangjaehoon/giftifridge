@@ -76,14 +76,24 @@ export default function HomeScreen({ navigation }: Props) {
   useEffect(() => {
     navigation.setOptions({
       headerRight: () => (
-        <TouchableOpacity
-          onPress={() => navigation.navigate('Settings')}
-          hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-          accessibilityRole="button"
-          accessibilityLabel="설정"
-        >
-          <Text style={styles.settingsLink}>설정</Text>
-        </TouchableOpacity>
+        <View style={styles.headerActions}>
+          <TouchableOpacity
+            onPress={() => navigation.navigate('Calendar')}
+            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+            accessibilityRole="button"
+            accessibilityLabel="만료 달력"
+          >
+            <Text style={styles.settingsLink}>달력</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => navigation.navigate('Settings')}
+            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+            accessibilityRole="button"
+            accessibilityLabel="설정"
+          >
+            <Text style={styles.settingsLink}>설정</Text>
+          </TouchableOpacity>
+        </View>
       ),
     });
   }, [navigation]);
@@ -256,7 +266,8 @@ export default function HomeScreen({ navigation }: Props) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
-  settingsLink: { color: colors.primary, fontSize: 13, marginRight: 4 },
+  headerActions: { flexDirection: 'row', gap: 16, marginRight: 4 },
+  settingsLink: { color: colors.primary, fontSize: 13 },
   membersLink: { alignSelf: 'flex-end', marginRight: 16, marginTop: 6 },
   membersLinkText: { color: colors.primary, fontSize: 12, fontWeight: '600' },
   categoryScroll: { flexGrow: 0, flexShrink: 0 },

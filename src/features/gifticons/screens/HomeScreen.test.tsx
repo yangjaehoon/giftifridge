@@ -228,13 +228,17 @@ describe('HomeScreen', () => {
     expect(mockedUseGifticons).toHaveBeenCalledWith('u1');
   });
 
-  it('registers a header settings link', async () => {
+  it('registers header links to settings and the calendar', async () => {
     const { navigation } = await renderScreen();
 
     await waitFor(() => expect(navigation.setOptions).toHaveBeenCalled());
     const { headerRight } = navigation.setOptions.mock.calls.at(-1)[0];
     const { getByText } = await render(headerRight());
+
     fireEvent.press(getByText('설정'));
     expect(navigation.navigate).toHaveBeenCalledWith('Settings');
+
+    fireEvent.press(getByText('달력'));
+    expect(navigation.navigate).toHaveBeenCalledWith('Calendar');
   });
 });

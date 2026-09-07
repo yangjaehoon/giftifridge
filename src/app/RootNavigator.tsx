@@ -8,6 +8,7 @@ import HomeScreen from '../features/gifticons/screens/HomeScreen';
 import AddGifticonScreen from '../features/gifticons/screens/AddGifticonScreen';
 import GifticonDetailScreen from '../features/gifticons/screens/GifticonDetailScreen';
 import SpendingReportScreen from '../features/gifticons/screens/SpendingReportScreen';
+import ExpiryCalendarScreen from '../features/gifticons/screens/ExpiryCalendarScreen';
 import GifticonCardSkeleton from '../features/gifticons/components/GifticonCardSkeleton';
 import SettingsScreen from '../features/auth/screens/SettingsScreen';
 import CreateSpaceScreen from '../features/spaces/screens/CreateSpaceScreen';
@@ -26,6 +27,7 @@ export type RootStackParamList = {
   AddGifticon: { spaceId?: string; gifticonId?: string } | undefined;
   GifticonDetail: { gifticonId: string };
   Report: undefined;
+  Calendar: undefined;
   Settings: undefined;
   CreateSpace: undefined;
   JoinSpace: { spaceId?: string } | undefined;
@@ -79,6 +81,11 @@ export default function RootNavigator() {
             name="Report"
             component={SpendingReportScreen}
             options={{ title: '소비 리포트' }}
+          />
+          <Stack.Screen
+            name="Calendar"
+            component={ExpiryCalendarScreen}
+            options={{ title: '만료 달력' }}
           />
           <Stack.Screen name="Settings" component={SettingsScreen} options={{ title: '설정' }} />
           <Stack.Screen
