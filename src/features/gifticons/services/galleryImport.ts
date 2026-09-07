@@ -3,7 +3,12 @@ import * as MediaLibrary from 'expo-media-library';
 import { newGifticonId } from './gifticonService';
 import { saveGifticon } from './saveGifticon';
 import { syncGifticonReminders } from './gifticonReminders';
-import { assessGifticon, guessGifticonFields, recognizeText } from './ocrService';
+import {
+  assessGifticon,
+  guessGifticonFields,
+  isItemCouponPrice,
+  recognizeText,
+} from './ocrService';
 import { recognizeBarcodeFromImage } from './barcodeRecognition';
 import { ocrDebugLog } from './ocr/debugLog';
 import type { GifticonCategory } from '../types';
@@ -143,6 +148,12 @@ async function runScan(ownerId: string): Promise<number> {
       const scannedBarcode = await recognizeBarcodeFromImage(uri);
       const barcode = scannedBarcode ?? assessment.textBarcode;
       const { brand, name, category } = guessGifticonFields(recognized);
+      // A bare "N원" on a cafe/restaurant coupon is a printed menu price, not a
+      // stored-value amount — drop it rather than make the gifticon look like a
+      // 금액권 with a spend-down balance.
+      const parsedAmount =
+        assessment.amount != null ? { confident: assessment.amountConfident } : null;
+      const amount = isItemCouponPrice(parsedAmount, category) ? null : assessment.amount;
       const draftId = newGifticonId();
       const fields = {
         name: name ?? FALLBACK_NAME,
@@ -150,7 +161,7 @@ async function runScan(ownerId: string): Promise<number> {
         category: category ?? FALLBACK_CATEGORY,
         expiresAt: assessment.expiresAt,
         barcode: barcode ?? undefined,
-        amount: assessment.amount ?? undefined,
+        amount: amount ?? undefined,
       };
       ocrDebugLog('gallery-import create', {
         name: fields.name,

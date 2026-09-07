@@ -1,4 +1,5 @@
 import TextRecognition, { TextRecognitionScript } from '@react-native-ml-kit/text-recognition';
+import { prepareImageForOcr } from './prepareImage';
 
 export interface RecognizedLine {
   text: string;
@@ -19,7 +20,8 @@ export interface RecognizedText {
  * one recognition pass since running OCR twice per photo would be wasteful. */
 export async function recognizeText(imageUri: string): Promise<RecognizedText | null> {
   try {
-    const result = await TextRecognition.recognize(imageUri, TextRecognitionScript.KOREAN);
+    const uri = await prepareImageForOcr(imageUri);
+    const result = await TextRecognition.recognize(uri, TextRecognitionScript.KOREAN);
     // Degrade to an empty line list (not a thrown/null result) if a native
     // build ever returns text without a matching blocks structure — the raw
     // text and its date/amount parsing are still worth having even without

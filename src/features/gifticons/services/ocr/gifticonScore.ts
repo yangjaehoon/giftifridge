@@ -1,5 +1,7 @@
+import { daysUntil } from '../../../../shared/utils/date';
+import type { GifticonCategory } from '../../types';
 import { findKnownBrand } from './brands';
-import { parseAmountFromText } from './amountParser';
+import { parseAmountResult } from './amountParser';
 import { parseBarcodeFromText } from './barcodeParser';
 import { parseExpiryDateResult } from './dateParser';
 import { countCardFooterLabels } from './fieldGuess';
@@ -27,19 +29,27 @@ const RECEIPT_KEYWORDS = [
 const AUTO_IMPORT_THRESHOLD = 6;
 const PROSE_MIN_LINES = 12;
 const PROSE_MIN_AVG_LINE_LENGTH = 22;
+// A confident expiry more than this many days in the past is more likely an OCR
+// year-misread (2026 → 2021) on a just-photographed gifticon than a genuinely
+// long-expired one — so a no-review import won't run on it. The add form keeps
+// such a date (the user sees and corrects it).
+const STALE_EXPIRY_DAYS = 14;
 
 export interface GifticonAssessment {
-  /** Confident expiry ("YYYY-MM-DD"), or null. Auto-import is impossible
-   *  without one — this flow never guesses the date. */
+  /** Confident, non-stale expiry ("YYYY-MM-DD"), or null. Auto-import is
+   *  impossible without one — this flow never guesses or trusts a stale date. */
   expiresAt: string | null;
   /** Parsed once here and handed back so runScan doesn't parse them again. */
   textBarcode: string | null;
   amount: number | null;
+  /** Whether `amount` came from a 금액/₩/만원-style anchor rather than a bare
+   *  "N원" that might be a printed product price. */
+  amountConfident: boolean;
   /** Weighted "how gifticon-like is this text" score. */
   score: number;
   /** Per-signal contributions, for the debug log and the corpus report. */
   signals: Record<string, number>;
-  /** score ≥ threshold AND a confident date. */
+  /** score ≥ threshold AND a confident, non-stale date. */
   create: boolean;
 }
 
@@ -51,6 +61,19 @@ function footerPoints(count: number): number {
 }
 
 /**
+ * A parsed amount with no 금액/₩/만원-style anchor, on a category whose
+ * gifticons are fixed-item coupons rather than stored-value cards, is almost
+ * certainly a printed product price — not a face value. The no-review import
+ * drops it; the add form keeps it as a soft guess for the user to confirm.
+ */
+export function isItemCouponPrice(
+  amount: { confident: boolean } | null,
+  category: GifticonCategory | null,
+): boolean {
+  return amount != null && !amount.confident && (category === 'cafe' || category === 'restaurant');
+}
+
+/**
  * Scores a photo's OCR text for gallery auto-import and parses the fields the
  * caller will reuse. Pure and side-effect-free so the corpus harness can drive
  * it directly.
@@ -58,7 +81,7 @@ function footerPoints(count: number): number {
 export function assessGifticon(text: string): GifticonAssessment {
   const expiry = parseExpiryDateResult(text);
   const textBarcode = parseBarcodeFromText(text);
-  const amount = parseAmountFromText(text);
+  const amountResult = parseAmountResult(text);
   const footerLabels = countCardFooterLabels(text);
   const lower = text.toLowerCase();
   const lines = text.split('\n').filter((line) => line.trim().length > 0);
@@ -69,13 +92,16 @@ export function assessGifticon(text: string): GifticonAssessment {
     if (points !== 0) signals[name] = (signals[name] ?? 0) + points;
   };
 
+  const dateIsStale = expiry?.confident === true && daysUntil(expiry.value) < -STALE_EXPIRY_DAYS;
+
   if (expiry?.confident) add('confidentDate', 3);
+  if (dateIsStale) add('staleExpiry', -3);
   add('footerLabels', footerPoints(footerLabels));
   if (textBarcode != null) add('textBarcode', 2);
   if (findKnownBrand(text) != null) add('knownBrand', 2);
   if (GIFTICON_KEYWORDS.some((keyword) => text.includes(keyword))) add('gifticonKeyword', 2);
   if (PLATFORM_KEYWORDS.some((keyword) => lower.includes(keyword))) add('platform', 1);
-  if (amount != null) add('amount', 1);
+  if (amountResult != null) add('amount', 1);
   if (RECEIPT_KEYWORDS.some((keyword) => text.includes(keyword))) add('receipt', -3);
   // A web article about gifticons rather than one: many long wrapped lines and
   // none of the card's key/value labels.
@@ -88,11 +114,12 @@ export function assessGifticon(text: string): GifticonAssessment {
   }
 
   const score = Object.values(signals).reduce((sum, points) => sum + points, 0);
-  const expiresAt = expiry?.confident ? expiry.value : null;
+  const expiresAt = expiry?.confident && !dateIsStale ? expiry.value : null;
   return {
     expiresAt,
     textBarcode,
-    amount,
+    amount: amountResult?.value ?? null,
+    amountConfident: amountResult?.confident ?? false,
     score,
     signals,
     create: expiresAt != null && score >= AUTO_IMPORT_THRESHOLD,

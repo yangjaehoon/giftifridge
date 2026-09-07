@@ -1,4 +1,12 @@
-import { assessGifticon } from './gifticonScore';
+import { assessGifticon, isItemCouponPrice } from './gifticonScore';
+
+function daysAgoDotted(days: number): string {
+  const d = new Date();
+  d.setDate(d.getDate() - days);
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${d.getFullYear()}.${m}.${day}`;
+}
 
 describe('assessGifticon', () => {
   it('scores a normal gifticon card well above the auto-import threshold', () => {
@@ -61,9 +69,38 @@ describe('assessGifticon', () => {
 
   it('hands back the parsed barcode and amount for the caller to reuse', () => {
     const text =
-      '컬쳐랜드\n문화상품권\n권종 1만원\n유효기간 2026.12.31까지\n바코드 8801234567890123';
+      '컬쳐랜드\n문화상품권\n권종 1만원\n유효기간 2028.12.31까지\n바코드 8801234567890123';
     const a = assessGifticon(text);
     expect(a.textBarcode).toBe('8801234567890123');
     expect(a.amount).toBe(10000);
+    expect(a.amountConfident).toBe(true); // "권종" anchors it
+  });
+
+  it('will not auto-import on a confident date that reads far in the past', () => {
+    const text = [
+      '스타벅스',
+      '카페 라떼 T',
+      '교환처 전국 스타벅스',
+      `유효기간 ${daysAgoDotted(200)} 까지`,
+      '주문번호 1234 5678 9012',
+    ].join('\n');
+    const a = assessGifticon(text);
+    expect(a.expiresAt).toBeNull();
+    expect(a.create).toBe(false);
+    expect(a.signals).toMatchObject({ confidentDate: 3, staleExpiry: -3 });
+  });
+});
+
+describe('isItemCouponPrice', () => {
+  it('flags a keyword-less amount on a cafe/restaurant coupon', () => {
+    expect(isItemCouponPrice({ confident: false }, 'cafe')).toBe(true);
+    expect(isItemCouponPrice({ confident: false }, 'restaurant')).toBe(true);
+  });
+
+  it('keeps a keyword-anchored amount, and any amount on a voucher category', () => {
+    expect(isItemCouponPrice({ confident: true }, 'cafe')).toBe(false);
+    expect(isItemCouponPrice({ confident: false }, 'convenience')).toBe(false);
+    expect(isItemCouponPrice({ confident: false }, 'culture')).toBe(false);
+    expect(isItemCouponPrice(null, 'cafe')).toBe(false);
   });
 });

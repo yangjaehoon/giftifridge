@@ -6,6 +6,11 @@ jest.mock('@react-native-ml-kit/text-recognition', () => ({
   default: { recognize: jest.fn() },
   TextRecognitionScript: { KOREAN: 'korean' },
 }));
+// The pre-OCR upscale step has its own test (prepareImage.test.ts); here it's
+// a pass-through so the recognize assertions stay about recognition.
+jest.mock('./prepareImage', () => ({
+  prepareImageForOcr: jest.fn((uri: string) => Promise.resolve(uri)),
+}));
 
 const mockedRecognize = TextRecognition.recognize as jest.Mock;
 

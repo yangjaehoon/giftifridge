@@ -1,4 +1,4 @@
-import { assessGifticon } from './gifticonScore';
+import { assessGifticon, isItemCouponPrice } from './gifticonScore';
 import { guessGifticonFields } from './fieldGuess';
 import { parseExpiryDateFromText } from './dateParser';
 import type { GifticonCategory } from '../../types';
@@ -16,14 +16,26 @@ import type { RecognizedText } from './recognize';
  * photo a scan sees — paste a real one in here with the fields it *should*
  * have. More negatives (photos that are NOT gifticons) are as valuable as more
  * positives.
+ *
+ * Expiry dates are generated relative to "today" so the corpus doesn't rot as
+ * the clock moves past a hard-coded year.
  */
+function future(daysAhead: number): { iso: string; dotted: string; korean: string } {
+  const d = new Date();
+  d.setDate(d.getDate() + daysAhead);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return { iso: `${y}-${m}-${day}`, dotted: `${y}.${m}.${day}`, korean: `${y}년 ${m}월 ${day}일` };
+}
+
 interface Expected {
   isGifticon: boolean;
   brand?: string;
   category?: GifticonCategory | null;
   expiresAt?: string;
   barcode?: string;
-  amount?: number;
+  amount?: number | null;
 }
 
 interface Case {
@@ -32,6 +44,14 @@ interface Case {
   expect: Expected;
 }
 
+const D1 = future(60);
+const D2 = future(150);
+const D3 = future(240);
+const D4 = future(330);
+const D5 = future(420);
+const D6 = future(510);
+const D7 = future(600);
+
 const CASES: Case[] = [
   {
     id: 'starbucks-clean',
@@ -39,7 +59,7 @@ const CASES: Case[] = [
       '스타벅스',
       '아이스 카페 아메리카노 T',
       '교환처 전국 스타벅스 매장',
-      '유효기간 2026.12.31 까지',
+      `유효기간 ${D1.dotted} 까지`,
       '주문번호 A1B2C3D4',
       '바코드',
       '8012 3456 7890',
@@ -48,8 +68,9 @@ const CASES: Case[] = [
       isGifticon: true,
       brand: '스타벅스',
       category: 'cafe',
-      expiresAt: '2026-12-31',
+      expiresAt: D1.iso,
       barcode: '801234567890',
+      amount: null,
     },
   },
   {
@@ -58,14 +79,14 @@ const CASES: Case[] = [
       'BHC',
       '뿌링클 + 콜라 1.25L',
       '교환처 전국 BHC 매장',
-      '유효기한 2025.09.30 까지',
+      `유효기한 ${D2.dotted} 까지`,
       '주문번호 2226 1288 9031',
     ].join('\n'),
     expect: {
       isGifticon: true,
       brand: 'bhc',
       category: 'restaurant',
-      expiresAt: '2025-09-30',
+      expiresAt: D2.iso,
       barcode: '222612889031',
     },
   },
@@ -75,14 +96,14 @@ const CASES: Case[] = [
       'GS25 모바일 상품권',
       '3,000원권',
       '교환처 전국 GS25',
-      '유효기간 2026.03.15 까지',
+      `유효기간 ${D3.dotted} 까지`,
       '바코드 9412345678901',
     ].join('\n'),
     expect: {
       isGifticon: true,
       brand: 'GS25',
       category: 'convenience',
-      expiresAt: '2026-03-15',
+      expiresAt: D3.iso,
       barcode: '9412345678901',
     },
   },
@@ -92,14 +113,14 @@ const CASES: Case[] = [
       'CGV',
       '영화 관람권 1매',
       '교환처 전국 CGV',
-      '유효기간 2026.06.30 까지',
+      `유효기간 ${D4.dotted} 까지`,
       '주문번호 5555 6666 7777',
     ].join('\n'),
     expect: {
       isGifticon: true,
       brand: 'CGV',
       category: 'culture',
-      expiresAt: '2026-06-30',
+      expiresAt: D4.iso,
     },
   },
   {
@@ -108,12 +129,12 @@ const CASES: Case[] = [
       '컬쳐랜드',
       '문화상품권',
       '권종 5만원',
-      '유효기간 2027.01.31 까지',
+      `유효기간 ${D5.dotted} 까지`,
       '바코드 8801234567890123',
     ].join('\n'),
     expect: {
       isGifticon: true,
-      expiresAt: '2027-01-31',
+      expiresAt: D5.iso,
       barcode: '8801234567890123',
       amount: 50000,
     },
@@ -122,16 +143,18 @@ const CASES: Case[] = [
     id: 'unknown-brand-bakery',
     ocr: [
       '동네빵집',
-      '소금빵 세트',
+      '소금빵 세트 3,800원',
       '교환처 매장',
-      '유효기한 2026.05.20 까지',
+      `유효기한 ${D6.dotted} 까지`,
       '주문번호 1212 3434 5656',
     ].join('\n'),
     expect: {
       isGifticon: true,
       brand: '동네빵집',
       category: 'cafe',
-      expiresAt: '2026-05-20',
+      expiresAt: D6.iso,
+      // "3,800원" is a printed price on a cafe item coupon, not a face value.
+      amount: null,
     },
   },
   {
@@ -144,13 +167,13 @@ const CASES: Case[] = [
       '교환처 전국 메가커피',
       '주문번호 3333 2222 1111',
       '교환수량 1',
-      '2026.11.01',
+      D7.dotted,
     ].join('\n'),
     expect: {
       isGifticon: true,
       brand: '메가커피',
       category: 'cafe',
-      expiresAt: '2026-11-01',
+      expiresAt: D7.iso,
     },
   },
   {
@@ -163,7 +186,7 @@ const CASES: Case[] = [
       '교환처',
       '유효기간',
       '주문번호',
-      '2024년 08월 08일',
+      D3.korean,
       '9939 2100 4549',
       '이디야 기프티콘 사용 후기 블로그',
       '저장',
@@ -173,7 +196,7 @@ const CASES: Case[] = [
       isGifticon: true,
       brand: '이디야',
       category: 'cafe',
-      expiresAt: '2024-08-08',
+      expiresAt: D3.iso,
     },
   },
 
@@ -185,7 +208,7 @@ const CASES: Case[] = [
       (_, i) =>
         `기프티콘 만료일이 지나도 환불받는 방법을 아주 자세하게 설명하는 문단입니다 번호 ${i}`,
     )
-      .concat('카카오톡 선물하기로 받은 기프티콘 만료일 2026.12.31 을 꼭 확인하세요')
+      .concat(`카카오톡 선물하기로 받은 기프티콘 만료일 ${D1.dotted} 을 꼭 확인하세요`)
       .join('\n'),
     expect: { isGifticon: false },
   },
@@ -193,7 +216,7 @@ const CASES: Case[] = [
     id: 'purchase-receipt',
     ocr: [
       '스타벅스 영수증',
-      '2026.01.15 14:20',
+      `${D1.dotted} 14:20`,
       '아이스 아메리카노 T 4,500원',
       '합계 4,500원',
       '카드승인 완료',
@@ -204,9 +227,23 @@ const CASES: Case[] = [
   {
     id: 'movie-showtimes',
     // Names a known brand and carries a date, but nothing else gifticon-like.
-    ocr: ['CGV 강남', '2026.01.20 상영 시간표', '어벤져스 14:30 17:10 20:00', '2관 3관 4관'].join(
+    ocr: [`CGV 강남`, `${D1.dotted} 상영 시간표`, '어벤져스 14:30 17:10 20:00', '2관 3관 4관'].join(
       '\n',
     ),
+    expect: { isGifticon: false },
+  },
+  {
+    id: 'stale-date-misread',
+    // A gifticon-shaped card, but the only date reads two years in the past —
+    // an OCR year-misread far more often than a real long-expired coupon. A
+    // no-review import must decline; the user can still add it by hand.
+    ocr: [
+      '스타벅스',
+      '카페 라떼 T',
+      '교환처 전국 스타벅스',
+      '유효기간 2024.03.15 까지',
+      '주문번호 7777 8888 9999',
+    ].join('\n'),
     expect: { isGifticon: false },
   },
   {
@@ -223,13 +260,19 @@ function toRecognized(text: string): RecognizedText {
 function runPipeline(ocr: string) {
   const a = assessGifticon(ocr);
   const guess = guessGifticonFields(toRecognized(ocr));
+  const amount = isItemCouponPrice(
+    a.amount != null ? { confident: a.amountConfident } : null,
+    guess.category,
+  )
+    ? null
+    : a.amount;
   return {
     create: a.create,
     score: a.score,
     signals: a.signals,
     expiresAt: a.expiresAt ?? parseExpiryDateFromText(ocr),
     barcode: a.textBarcode,
-    amount: a.amount,
+    amount,
     brand: guess.brand,
     name: guess.name,
     category: guess.category,
