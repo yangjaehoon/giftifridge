@@ -25,4 +25,23 @@ describe('parseAmountFromText', () => {
   it('returns null when no amount-like text is found', () => {
     expect(parseAmountFromText('스타벅스 아메리카노 Tall')).toBeNull();
   });
+
+  it('parses a ₩-prefixed amount', () => {
+    expect(parseAmountFromText('충전금액 ₩30,000')).toBe(30000);
+  });
+
+  it('parses Korean-numeral face values (만 / 천)', () => {
+    expect(parseAmountFromText('문화상품권 5만원권')).toBe(50000);
+    expect(parseAmountFromText('금액 1만 5천원')).toBe(15000);
+    expect(parseAmountFromText('커피 교환권 5천원')).toBe(5000);
+  });
+
+  it('does not read a 만/천 count with no 원 as a price', () => {
+    expect(parseAmountFromText('누적 다운로드 5만 돌파')).toBeNull();
+  });
+
+  it('rejects an amount outside the plausible face-value range', () => {
+    expect(parseAmountFromText('경품 100,000,000원')).toBeNull();
+    expect(parseAmountFromText('봉투 50원')).toBeNull();
+  });
 });
