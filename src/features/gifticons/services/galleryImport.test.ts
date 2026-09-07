@@ -232,6 +232,18 @@ describe('scanGalleryForGifticons', () => {
     expect(mockedSaveGifticon).not.toHaveBeenCalled();
   });
 
+  it('skips a photo whose expiry could only be guessed (several dates, no keyword)', async () => {
+    // parseExpiryDateResult falls back to the latest date here; a no-review
+    // create must not run on a guessed expiry, even with a gifticon keyword.
+    mockedExe.mockResolvedValue([fakeAsset('a1', 1_000)]);
+    mockedRecognizeText.mockResolvedValue(
+      ocrResult('기프티콘\n발행 2025.01.01\n행사 종료 2027.12.31'),
+    );
+
+    await expect(scanGalleryForGifticons('u1')).resolves.toBe(0);
+    expect(mockedSaveGifticon).not.toHaveBeenCalled();
+  });
+
   it('skips a photo whose OCR text has no gifticon signal', async () => {
     mockedExe.mockResolvedValue([fakeAsset('a1', 1_000)]);
     mockedRecognizeText.mockResolvedValue(ocrResult('오늘 점심 메뉴 사진'));

@@ -1,5 +1,18 @@
 const KEYWORD_WINDOW = 15;
 
+/**
+ * A parsed value plus whether the pick was *anchored* — a nearby keyword, an
+ * exact-format sole match, a scanned graphic — rather than a heuristic
+ * tie-break among look-alikes (the latest of several undated dates, a lone
+ * "N원" that might be a product price, a checksum guess). Drives the add-form
+ * hint's confident-vs-soft-guess wording, and gates gallery auto-import (which
+ * has no review step) to anchored reads only.
+ */
+export interface ParseResult<T> {
+  value: T;
+  confident: boolean;
+}
+
 // A prefix/suffix keyword nearby is what disambiguates which number in the
 // text is the one we want (an expiry date among an issue date, a face value
 // among a discounted one) — shared by the date/amount/barcode parsers so they

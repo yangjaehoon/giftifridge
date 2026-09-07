@@ -1,4 +1,4 @@
-import { parseExpiryDateFromText } from './dateParser';
+import { parseExpiryDateFromText, parseExpiryDateResult } from './dateParser';
 
 function isoDate(year: number, month: number, day: number): string {
   return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
@@ -75,5 +75,29 @@ describe('parseExpiryDateFromText', () => {
 
   it('accepts a valid leap day', () => {
     expect(parseExpiryDateFromText('유효기한 2028.02.29까지')).toBe(isoDate(2028, 2, 29));
+  });
+
+  describe('parseExpiryDateResult (confidence)', () => {
+    it('is confident when a keyword or a sole match anchors the pick', () => {
+      expect(parseExpiryDateResult('유효기한 2026.03.15')).toEqual({
+        value: isoDate(2026, 3, 15),
+        confident: true,
+      });
+      expect(parseExpiryDateResult('주문번호 12345\n2026.09.01')).toEqual({
+        value: isoDate(2026, 9, 1),
+        confident: true,
+      });
+    });
+
+    it('is not confident when it fell back to the latest of several undated dates', () => {
+      expect(parseExpiryDateResult('발행 2026.01.01\n안내\n2026.06.30')).toEqual({
+        value: isoDate(2026, 6, 30),
+        confident: false,
+      });
+    });
+
+    it('returns null when no date is found', () => {
+      expect(parseExpiryDateResult('스타벅스 아메리카노')).toBeNull();
+    });
   });
 });

@@ -1,4 +1,4 @@
-import { parseAmountFromText } from './amountParser';
+import { parseAmountFromText, parseAmountResult } from './amountParser';
 
 describe('parseAmountFromText', () => {
   it('parses a comma-grouped amount next to a keyword', () => {
@@ -43,5 +43,18 @@ describe('parseAmountFromText', () => {
   it('rejects an amount outside the plausible face-value range', () => {
     expect(parseAmountFromText('경품 100,000,000원')).toBeNull();
     expect(parseAmountFromText('봉투 50원')).toBeNull();
+  });
+
+  describe('parseAmountResult (confidence)', () => {
+    it('is confident only when a 금액/정가/충전 keyword anchors the amount', () => {
+      expect(parseAmountResult('금액 10,000원')).toEqual({ value: 10000, confident: true });
+    });
+
+    it('is not confident for a lone "N원" that could be a product price', () => {
+      expect(parseAmountResult('아메리카노 Tall\n4,500원')).toEqual({
+        value: 4500,
+        confident: false,
+      });
+    });
   });
 });

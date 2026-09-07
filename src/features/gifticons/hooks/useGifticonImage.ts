@@ -3,9 +3,9 @@ import * as ImagePicker from 'expo-image-picker';
 import {
   findKnownBrand,
   guessGifticonFields,
-  parseAmountFromText,
-  parseBarcodeFromText,
-  parseExpiryDateFromText,
+  parseAmountResult,
+  parseBarcodeResult,
+  parseExpiryDateResult,
   recognizeText,
 } from '../services/ocrService';
 import { recognizeBarcodeFromImage } from '../services/barcodeRecognition';
@@ -57,7 +57,10 @@ function useDetectedField<T>(
     setConfident(isConfident);
     setAutoDetected(true);
   };
-  const reset = () => setAutoDetected(false);
+  const reset = () => {
+    setAutoDetected(false);
+    setConfident(true);
+  };
 
   // Once the user edits the field, the "we guessed this, check it" hint no
   // longer applies — they've just checked it. Derived rather than cleared on
@@ -116,20 +119,22 @@ export function useGifticonImage({
       // the position-based fallback (and a category merely inferred from
       // product-name keywords) is a soft guess the hint should flag as such.
       const brandKnown = recognized != null && findKnownBrand(recognized.text) != null;
-      const detectedDate = recognized ? parseExpiryDateFromText(recognized.text) : null;
-      const detectedAmount = recognized ? parseAmountFromText(recognized.text) : null;
-      // The photo's barcode graphic is the primary source; the same number
-      // printed as text beneath it is a fallback for when the graphic itself
-      // couldn't be read (blur, glare).
-      const detectedBarcode =
-        scannedBarcode ?? (recognized ? parseBarcodeFromText(recognized.text) : null);
+      const dateResult = recognized ? parseExpiryDateResult(recognized.text) : null;
+      const amountResult = recognized ? parseAmountResult(recognized.text) : null;
+      // The photo's barcode graphic is the primary source (and a confident
+      // read); the same number printed as text beneath it is a fallback for
+      // when the graphic itself couldn't be read (blur, glare).
+      const textBarcode = recognized ? parseBarcodeResult(recognized.text) : null;
+      const barcodeResult = scannedBarcode
+        ? { value: scannedBarcode, confident: true }
+        : textBarcode;
 
-      if (detectedDate) date.detect(parseDate(detectedDate));
+      if (dateResult) date.detect(parseDate(dateResult.value), dateResult.confident);
       if (guessed?.name) name.detect(guessed.name, brandKnown);
       if (guessed?.brand) brand.detect(guessed.brand, brandKnown);
       if (guessed?.category) category.detect(guessed.category, brandKnown);
-      if (detectedAmount != null) amount.detect(detectedAmount);
-      if (detectedBarcode) barcode.detect(detectedBarcode);
+      if (amountResult) amount.detect(amountResult.value, amountResult.confident);
+      if (barcodeResult) barcode.detect(barcodeResult.value, barcodeResult.confident);
 
       ocrDebugLog('add-form recognized', {
         textRead: recognized != null,
@@ -137,10 +142,11 @@ export function useGifticonImage({
         name: guessed?.name ?? null,
         category: guessed?.category ?? null,
         brandKnown,
-        expiresAt: detectedDate,
-        amount: detectedAmount,
-        barcode: detectedBarcode,
-        barcodeFrom: scannedBarcode ? 'graphic' : detectedBarcode ? 'text' : null,
+        expiresAt: dateResult && `${dateResult.value}${dateResult.confident ? '' : ' (guess)'}`,
+        amount: amountResult && `${amountResult.value}${amountResult.confident ? '' : ' (guess)'}`,
+        // A redeemable code — don't echo it verbatim into the log.
+        barcode: barcodeResult ? `<${barcodeResult.value.length} digits>` : null,
+        barcodeFrom: scannedBarcode ? 'graphic' : textBarcode ? 'text' : null,
       });
     } finally {
       if (run === runRef.current) setRecognizing(false);
@@ -187,11 +193,12 @@ export function useGifticonImage({
     barcodeAutoDetected: barcode.autoDetected,
     categoryAutoDetected: category.autoDetected,
     amountAutoDetected: amount.autoDetected,
-    // Only the OCR-guessed text fields have a soft-guess mode; the format-
-    // anchored reads (date/amount/barcode) are always shown as confident.
     nameConfident: name.confident,
     brandConfident: brand.confident,
     categoryConfident: category.confident,
+    dateConfident: date.confident,
+    amountConfident: amount.confident,
+    barcodeConfident: barcode.confident,
     pickFromLibrary,
     takePhoto,
   };

@@ -1,5 +1,5 @@
 import { toDateString } from '../../../../shared/utils/date';
-import { hasNearbyKeyword, pickUnambiguousMatch } from './nearbyKeyword';
+import { hasNearbyKeyword, pickUnambiguousMatch, type ParseResult } from './nearbyKeyword';
 
 const DATE_PREFIX_KEYWORDS = ['유효기간', '유효기한', '만료'];
 const DATE_SUFFIX_KEYWORDS = ['까지'];
@@ -94,15 +94,7 @@ function toResult(match: DateMatch): string {
   return toDateString(new Date(match.year, match.month - 1, match.day));
 }
 
-/**
- * Finds an expiry-date-looking substring in OCR text and normalizes it to a
- * "YYYY-MM-DD" string. Prefers a date next to an expiry keyword; failing that
- * (several dates, none tagged), takes the latest — an expiry is never earlier
- * than the issue/purchase date printed beside it, and a real value beats
- * leaving the caller to invent a default. Returns null only when no date-like
- * text is found at all.
- */
-export function parseExpiryDateFromText(text: string): string | null {
+function parse(text: string): ParseResult<string> | null {
   const full = collectFullMatches(text);
   const monthOnly =
     full.length > 0
@@ -113,6 +105,27 @@ export function parseExpiryDateFromText(text: string): string | null {
   const matches = full.length > 0 ? full : monthOnly;
   if (matches.length === 0) return null;
 
-  const keyworded = pickUnambiguousMatch(text, matches, DATE_PREFIX_KEYWORDS, DATE_SUFFIX_KEYWORDS);
-  return toResult(keyworded ?? latest(matches));
+  // pickUnambiguousMatch resolves via a keyword or, failing that, returns the
+  // sole match — both count as anchored. Only the several-dates-no-keyword
+  // "latest" fallback is a guess.
+  const picked = pickUnambiguousMatch(text, matches, DATE_PREFIX_KEYWORDS, DATE_SUFFIX_KEYWORDS);
+  if (picked) return { value: toResult(picked), confident: true };
+  return { value: toResult(latest(matches)), confident: false };
+}
+
+/**
+ * Finds an expiry-date-looking substring in OCR text and normalizes it to a
+ * "YYYY-MM-DD" string. Prefers a date next to an expiry keyword; failing that
+ * (several dates, none tagged), takes the latest — an expiry is never earlier
+ * than the issue/purchase date printed beside it, and a real value beats
+ * leaving the caller to invent a default. Returns null only when no date-like
+ * text is found at all.
+ */
+export function parseExpiryDateFromText(text: string): string | null {
+  return parse(text)?.value ?? null;
+}
+
+/** As parseExpiryDateFromText, but keeps the confidence flag (see ParseResult). */
+export function parseExpiryDateResult(text: string): ParseResult<string> | null {
+  return parse(text);
 }

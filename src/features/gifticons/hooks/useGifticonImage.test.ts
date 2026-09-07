@@ -75,10 +75,31 @@ describe('useGifticonImage', () => {
     expect(result.current.barcodeAutoDetected).toBe(true);
     expect(result.current.categoryAutoDetected).toBe(true);
     expect(result.current.amountAutoDetected).toBe(true);
-    // "스타벅스" is a known brand — brand/name/category are confident reads.
+    // "스타벅스" is a known brand — brand/name/category are confident reads;
+    // date has a 유효기간 keyword and amount a 금액 keyword.
     expect(result.current.brandConfident).toBe(true);
     expect(result.current.nameConfident).toBe(true);
     expect(result.current.categoryConfident).toBe(true);
+    expect(result.current.dateConfident).toBe(true);
+    expect(result.current.amountConfident).toBe(true);
+    expect(result.current.barcodeConfident).toBe(true); // from the scanned graphic
+  });
+
+  it('flags a keyword-less amount as a soft guess', async () => {
+    mockedLibrary.mockResolvedValue({ canceled: false, assets: [{ uri: 'file:///a.jpg' }] });
+    mockedRecognizeText.mockResolvedValue(
+      ocrResult('스타벅스\n아메리카노 Tall\n4,500원\n유효기간 2026.12.31까지'),
+    );
+    const callbacks = setup();
+    const { result } = await renderHook(() => useGifticonImage(callbacks));
+
+    await act(async () => {
+      await result.current.pickFromLibrary();
+    });
+
+    await waitFor(() => expect(callbacks.onAmountDetected).toHaveBeenCalledWith(4500));
+    expect(result.current.amountConfident).toBe(false);
+    expect(result.current.dateConfident).toBe(true); // 유효기간 keyword
   });
 
   it('flags the brand/name/category as a soft guess when no known brand is found', async () => {
@@ -98,6 +119,8 @@ describe('useGifticonImage', () => {
     expect(result.current.nameConfident).toBe(false);
     // category here is inferred from "빵", not a known brand — also a guess.
     expect(result.current.categoryConfident).toBe(false);
+    // the date still has its 유효기간 keyword, so it stays confident.
+    expect(result.current.dateConfident).toBe(true);
   });
 
   it('falls back to a barcode number printed in the OCR text when the photo itself has none', async () => {

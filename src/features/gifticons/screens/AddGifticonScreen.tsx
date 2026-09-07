@@ -251,7 +251,11 @@ export default function AddGifticonScreen({ navigation, route }: Props) {
           placeholder="10,000"
           keyboardType="number-pad"
         />
-        <OcrHint show={image.amountAutoDetected} subject="금액을" />
+        <OcrHint
+          show={image.amountAutoDetected}
+          confident={image.amountConfident}
+          subject="금액을"
+        />
         {!form.amount && priceEstimate ? (
           <Text style={styles.ocrHint}>
             참고: 이 상품 예상 가격 약 {formatCurrency(priceEstimate.price)} ({priceEstimate.asOf}{' '}
@@ -290,7 +294,11 @@ export default function AddGifticonScreen({ navigation, route }: Props) {
             <Text style={styles.scanButtonText}>스캔</Text>
           </TouchableOpacity>
         </View>
-        <OcrHint show={image.barcodeAutoDetected} subject="바코드를" />
+        <OcrHint
+          show={image.barcodeAutoDetected}
+          confident={image.barcodeConfident}
+          subject="바코드를"
+        />
 
         <Text style={formStyles.label}>매장 위치 (선택)</Text>
         <TouchableOpacity
@@ -317,7 +325,11 @@ export default function AddGifticonScreen({ navigation, route }: Props) {
         <TouchableOpacity style={formStyles.input} onPress={() => setShowDatePicker(true)}>
           <Text>{formatDate(toDateString(form.expiresAt))}</Text>
         </TouchableOpacity>
-        <OcrHint show={image.dateAutoDetected} subject="유효기한을" />
+        <OcrHint
+          show={image.dateAutoDetected}
+          confident={image.dateConfident}
+          subject="유효기한을"
+        />
         {showDatePicker && (
           <DateTimePicker
             value={form.expiresAt}

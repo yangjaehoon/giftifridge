@@ -1,4 +1,4 @@
-import { pickUnambiguousMatch } from './nearbyKeyword';
+import { hasNearbyKeyword, pickUnambiguousMatch, type ParseResult } from './nearbyKeyword';
 
 const BARCODE_PREFIX_KEYWORDS = ['바코드'];
 // A digit run sitting right after one of these is an order / approval number,
@@ -68,9 +68,11 @@ function isOrderNumber(text: string, index: number): boolean {
   });
 }
 
-// EAN-13 / UPC-A / EAN-8 check digit. Used only to break a tie between
-// keyword-less candidates — a gifticon barcode that isn't an EAN/UPC number
-// (a plain CODE-128 payload) simply won't match, and that's fine.
+// EAN-13 / UPC-A check digit. Used only to break a tie between keyword-less
+// candidates — a gifticon barcode that isn't an EAN/UPC number (a plain
+// CODE-128 payload) simply won't match, and that's fine. (The length-8 arm is
+// dead given MIN_BARCODE_DIGITS = 12, kept only so the formula reads
+// completely; EAN-8 would need the floor lowered to reach it.)
 function hasValidCheckDigit(digits: string): boolean {
   if (digits.length !== 8 && digits.length !== 12 && digits.length !== 13) return false;
   const oddWeight = digits.length === 13 ? 1 : 3;
@@ -82,6 +84,32 @@ function hasValidCheckDigit(digits: string): boolean {
   return (10 - (sum % 10)) % 10 === digits.charCodeAt(digits.length - 1) - 48;
 }
 
+function parse(text: string): ParseResult<string> | null {
+  const all = collectBarcodeMatches(text);
+  const notOrderNumber = all.filter((m) => !isOrderNumber(text, m.index));
+  const pool = notOrderNumber.length > 0 ? notOrderNumber : all;
+
+  const picked = pickUnambiguousMatch(text, pool, BARCODE_PREFIX_KEYWORDS, []);
+  if (picked) {
+    // A "바코드" label next to it is a confident read; a lone candidate with no
+    // label is plausible but unverified.
+    const confident = hasNearbyKeyword(
+      text,
+      picked.index,
+      picked.length,
+      BARCODE_PREFIX_KEYWORDS,
+      [],
+    );
+    return { value: picked.digits, confident };
+  }
+
+  // Tie among keyword-less candidates: a valid EAN/UPC check digit points at
+  // the real one, but an ISBN or a product EAN in the fine print can pass too,
+  // so it's never a confident read.
+  const checksummed = pool.filter((m) => hasValidCheckDigit(m.digits));
+  return checksummed.length === 1 ? { value: checksummed[0].digits, confident: false } : null;
+}
+
 /**
  * Finds a single, unambiguous barcode-number-looking digit run in OCR text —
  * a fallback for when the barcode graphic itself couldn't be read
@@ -89,13 +117,10 @@ function hasValidCheckDigit(digits: string): boolean {
  * the same number is almost always also printed as text beneath it.
  */
 export function parseBarcodeFromText(text: string): string | null {
-  const all = collectBarcodeMatches(text);
-  const notOrderNumber = all.filter((m) => !isOrderNumber(text, m.index));
-  const pool = notOrderNumber.length > 0 ? notOrderNumber : all;
+  return parse(text)?.value ?? null;
+}
 
-  const keyworded = pickUnambiguousMatch(text, pool, BARCODE_PREFIX_KEYWORDS, []);
-  if (keyworded) return keyworded.digits;
-
-  const checksummed = pool.filter((m) => hasValidCheckDigit(m.digits));
-  return checksummed.length === 1 ? checksummed[0].digits : null;
+/** As parseBarcodeFromText, but keeps the confidence flag (see ParseResult). */
+export function parseBarcodeResult(text: string): ParseResult<string> | null {
+  return parse(text);
 }

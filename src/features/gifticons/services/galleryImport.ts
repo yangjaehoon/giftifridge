@@ -8,7 +8,7 @@ import {
   guessGifticonFields,
   parseAmountFromText,
   parseBarcodeFromText,
-  parseExpiryDateFromText,
+  parseExpiryDateResult,
   recognizeText,
 } from './ocrService';
 import { recognizeBarcodeFromImage } from './barcodeRecognition';
@@ -39,17 +39,14 @@ const FALLBACK_BRAND = '미확인 브랜드';
 const FALLBACK_NAME = '새 기프티콘';
 
 /**
- * Whether to auto-create a gifticon from this photo's OCR text. There is no
- * confirmation step, so this leans toward precision: a readable expiry date is
- * required (the create must never invent one — see runScan), plus a second
- * signal that it's a gifticon and not just any dated document — a barcode
- * number, a known brand, or a gifticon keyword. A photo that misses either bar
- * is left for the user to add by hand.
+ * The second bar for an auto-create (the first, in runScan, is a *confident*
+ * expiry date — never a guessed one, since there is no confirmation step): a
+ * signal that this is a gifticon and not just any dated document. `textBarcode`
+ * is passed in so it isn't parsed twice.
  */
-function looksLikeGifticon(text: string): boolean {
-  if (parseExpiryDateFromText(text) == null) return false;
+function looksLikeGifticon(text: string, textBarcode: string | null): boolean {
   return (
-    parseBarcodeFromText(text) != null ||
+    textBarcode != null ||
     findKnownBrand(text) != null ||
     GIFTICON_KEYWORDS.some((keyword) => text.includes(keyword))
   );
@@ -142,35 +139,51 @@ async function runScan(ownerId: string): Promise<number> {
 
       const uri = await asset.getUri();
       const recognized = await recognizeText(uri);
-      const expiresAt = recognized ? parseExpiryDateFromText(recognized.text) : null;
-      if (recognized == null || expiresAt == null || !looksLikeGifticon(recognized.text)) {
-        // Decided it's not a gifticon (or its expiry couldn't be read, which
-        // this no-confirmation flow won't guess at) — remember that so it
-        // isn't re-OCR'd every scan, but don't mark it done before a create
-        // is even tried.
-        ocrDebugLog('gallery-import skip', { textRead: recognized != null, expiresAt });
+      const expiry = recognized ? parseExpiryDateResult(recognized.text) : null;
+      const textBarcode = recognized ? parseBarcodeFromText(recognized.text) : null;
+      // A confident expiry date is mandatory: this flow has no review step, so
+      // it neither invents a date nor trusts the several-dates-no-keyword
+      // "latest" guess.
+      if (
+        recognized == null ||
+        expiry == null ||
+        !expiry.confident ||
+        !looksLikeGifticon(recognized.text, textBarcode)
+      ) {
+        // Remember the decision so it isn't re-OCR'd every scan, but don't mark
+        // it done before a create is even tried.
+        ocrDebugLog('gallery-import skip', {
+          textRead: recognized != null,
+          expiresAt: expiry?.value ?? null,
+          dateConfident: expiry?.confident ?? false,
+        });
         importedIds.add(asset.id);
         continue;
       }
 
-      // Only worth the extra native call for photos already confirmed to
-      // look like a gifticon — no point barcode-scanning everything else.
-      // The graphic is the primary source; the same number printed as text
-      // beneath it is a fallback for when the graphic itself couldn't be read.
+      // Only worth the extra native call for photos already confirmed to look
+      // like a gifticon — no point barcode-scanning everything else. The
+      // graphic is the primary source; textBarcode (already parsed above) is
+      // the fallback for when the graphic itself couldn't be read.
       const scannedBarcode = await recognizeBarcodeFromImage(uri);
-      const barcode = scannedBarcode ?? parseBarcodeFromText(recognized.text);
+      const barcode = scannedBarcode ?? textBarcode;
       const { brand, name, category } = guessGifticonFields(recognized);
       const draftId = newGifticonId();
       const fields = {
         name: name ?? FALLBACK_NAME,
         brand: brand ?? FALLBACK_BRAND,
         category: category ?? FALLBACK_CATEGORY,
-        expiresAt,
+        expiresAt: expiry.value,
         barcode: barcode ?? undefined,
         amount: parseAmountFromText(recognized.text) ?? undefined,
       };
       ocrDebugLog('gallery-import create', {
-        ...fields,
+        name: fields.name,
+        brand: fields.brand,
+        category: fields.category,
+        expiresAt: fields.expiresAt,
+        amount: fields.amount ?? null,
+        barcode: fields.barcode ? `<${fields.barcode.length} digits>` : null,
         brandGuessed: brand != null,
         nameGuessed: name != null,
       });

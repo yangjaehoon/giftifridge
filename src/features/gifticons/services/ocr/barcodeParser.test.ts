@@ -1,4 +1,4 @@
-import { parseBarcodeFromText } from './barcodeParser';
+import { parseBarcodeFromText, parseBarcodeResult } from './barcodeParser';
 
 describe('parseBarcodeFromText', () => {
   it('parses a long digit run next to the 바코드 keyword', () => {
@@ -66,5 +66,28 @@ describe('parseBarcodeFromText', () => {
 
   it('stays null when tied candidates all fail the check digit', () => {
     expect(parseBarcodeFromText('100000000001\n555566667777')).toBeNull();
+  });
+
+  describe('parseBarcodeResult (confidence)', () => {
+    it('is confident when a 바코드 label anchors the run', () => {
+      expect(parseBarcodeResult('바코드 8801234567890123')).toEqual({
+        value: '8801234567890123',
+        confident: true,
+      });
+    });
+
+    it('is not confident for a lone unlabeled run', () => {
+      expect(parseBarcodeResult('스타벅스\n아메리카노 Tall\n8801234567890')).toEqual({
+        value: '8801234567890',
+        confident: false,
+      });
+    });
+
+    it('is not confident when the pick came from a check-digit tie-break', () => {
+      expect(parseBarcodeResult('4006381333931\n1234567890123')).toEqual({
+        value: '4006381333931',
+        confident: false,
+      });
+    });
   });
 });

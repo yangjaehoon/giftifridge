@@ -11,9 +11,10 @@
 // next to their own files.
 export { recognizeText } from './ocr/recognize';
 export type { RecognizedLine, RecognizedText } from './ocr/recognize';
-export { parseExpiryDateFromText } from './ocr/dateParser';
-export { parseAmountFromText } from './ocr/amountParser';
-export { parseBarcodeFromText } from './ocr/barcodeParser';
+export type { ParseResult } from './ocr/nearbyKeyword';
+export { parseExpiryDateFromText, parseExpiryDateResult } from './ocr/dateParser';
+export { parseAmountFromText, parseAmountResult } from './ocr/amountParser';
+export { parseBarcodeFromText, parseBarcodeResult } from './ocr/barcodeParser';
 export { guessGifticonFields } from './ocr/fieldGuess';
 export type { GuessedGifticonFields } from './ocr/fieldGuess';
 export { findKnownBrand } from './ocr/brands';

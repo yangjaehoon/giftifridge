@@ -1,4 +1,4 @@
-import { pickUnambiguousMatch } from './nearbyKeyword';
+import { hasNearbyKeyword, pickUnambiguousMatch, type ParseResult } from './nearbyKeyword';
 
 const AMOUNT_PREFIX_KEYWORDS = ['금액', '정가', '권면가액', '권종', '충전'];
 // Plausible face-value bounds for a 금액권. Rejects an OCR misread that
@@ -49,6 +49,17 @@ function collectAmountMatches(text: string): AmountMatch[] {
   return matches;
 }
 
+function parse(text: string): ParseResult<number> | null {
+  const matches = collectAmountMatches(text);
+  const match = pickUnambiguousMatch(text, matches, AMOUNT_PREFIX_KEYWORDS, []);
+  if (!match) return null;
+  // A lone "N원" with no 금액/정가/충전 label could just as easily be a product
+  // price as a stored-value face value, so it's only a confident read when a
+  // keyword anchors it.
+  const confident = hasNearbyKeyword(text, match.index, match.length, AMOUNT_PREFIX_KEYWORDS, []);
+  return { value: match.amount, confident };
+}
+
 /**
  * Finds a single, unambiguous face-value-looking amount in OCR text — a
  * comma-grouped or plain "N원", a "₩N", or a Korean-numeral "N만/천원". A
@@ -58,7 +69,10 @@ function collectAmountMatches(text: string): AmountMatch[] {
  * guess.
  */
 export function parseAmountFromText(text: string): number | null {
-  const matches = collectAmountMatches(text);
-  const match = pickUnambiguousMatch(text, matches, AMOUNT_PREFIX_KEYWORDS, []);
-  return match?.amount ?? null;
+  return parse(text)?.value ?? null;
+}
+
+/** As parseAmountFromText, but keeps the confidence flag (see ParseResult). */
+export function parseAmountResult(text: string): ParseResult<number> | null {
+  return parse(text);
 }
