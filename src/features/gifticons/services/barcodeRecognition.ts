@@ -17,19 +17,29 @@ const LINEAR_FORMATS = new Set([
   BarcodeFormat.UPC_E,
 ]);
 
+// A gifticon's redeemable code is a number. A QR/2D code on the same image
+// that decodes to a URL or other non-numeric payload is not it, so it's
+// rejected rather than dropped into the barcode field. A few separators are
+// tolerated ("8801-2345-6789").
+function looksLikeBarcodeNumber(value: string): boolean {
+  const digits = value.replace(/\D/g, '');
+  return digits.length >= 8 && digits.length / value.length > 0.8;
+}
+
 /**
  * Reads any barcode already present in a photo — for auto-filling the
  * barcode field from a picked/taken gifticon image. Distinct from
  * useBarcodeScanner, which decodes a live camera feed instead of a photo.
- * Returns null if none is found or recognition fails (e.g. no barcode in
- * frame, blurry photo).
+ * Returns null if none is found, recognition fails (e.g. no barcode in
+ * frame, blurry photo), or the only code found isn't a plain number.
  */
 export async function recognizeBarcodeFromImage(imageUri: string): Promise<string | null> {
   try {
     const results = await BarcodeScanning.scan(imageUri);
     if (results.length === 0) return null;
     const linear = results.find((result) => LINEAR_FORMATS.has(result.format));
-    return (linear ?? results[0]).value;
+    const value = (linear ?? results[0]).value;
+    return value && looksLikeBarcodeNumber(value) ? value : null;
   } catch {
     return null;
   }

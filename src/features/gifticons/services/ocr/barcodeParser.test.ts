@@ -50,4 +50,21 @@ describe('parseBarcodeFromText', () => {
   it('returns null when no barcode-like text is found', () => {
     expect(parseBarcodeFromText('스타벅스 아메리카노 Tall')).toBeNull();
   });
+
+  it('sets aside a run tagged as an order number when another candidate exists', () => {
+    expect(parseBarcodeFromText('주문번호 100000000001\n555566667777')).toBe('555566667777');
+  });
+
+  it('still uses an order-number-tagged run when it is the only candidate', () => {
+    expect(parseBarcodeFromText('주문번호 2226 1288 9031')).toBe('222612889031');
+  });
+
+  it('breaks a keyword-less tie toward the run with a valid EAN/UPC check digit', () => {
+    // 4006381333931 is a valid EAN-13; 1234567890123 is not.
+    expect(parseBarcodeFromText('4006381333931\n1234567890123')).toBe('4006381333931');
+  });
+
+  it('stays null when tied candidates all fail the check digit', () => {
+    expect(parseBarcodeFromText('100000000001\n555566667777')).toBeNull();
+  });
 });

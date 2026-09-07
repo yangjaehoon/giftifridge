@@ -1,6 +1,10 @@
 import { pickUnambiguousMatch } from './nearbyKeyword';
 
 const BARCODE_PREFIX_KEYWORDS = ['바코드'];
+// A digit run sitting right after one of these is an order / approval number,
+// not the redeemable barcode. Such a run is set aside unless it's the only
+// candidate there is.
+const BARCODE_NEGATIVE_KEYWORDS = ['주문번호', '주문 번호', '교환번호', '쿠폰번호', '승인번호'];
 // A barcode number is a long run of digits, but OCR of a printed gifticon just
 // as often reads it in equal 3-6 digit groups split by a single space or
 // hyphen ("2226 1288 9031") as in one unbroken run. Both forms are collected;
@@ -16,14 +20,16 @@ const BARCODE_PREFIX_KEYWORDS = ['바코드'];
 // 3+ equal digit groups totalling 12-20 digits — a spaced order number, a
 // three-item price list bled in from a web-search screenshot, a hyphen-grouped
 // 0504 relay number — is still returned when it is the *only* such candidate
-// in the text. With more than one candidate and no nearby "바코드" label it is
-// left unresolved rather than guessed at (same ambiguity rule as the
-// date/amount parsers), and either way the user reviews the field before save.
+// in the text. With more than one candidate and no nearby "바코드" label, one
+// carrying a valid EAN/UPC check digit is taken; failing that it is left
+// unresolved rather than guessed at (same ambiguity rule as the date/amount
+// parsers), and either way the user reviews the field before save.
 const MIN_BARCODE_DIGITS = 12;
 const MAX_BARCODE_DIGITS = 20;
 
 const UNBROKEN_DIGITS_RE = /\d+/g;
 const GROUPED_DIGITS_RE = /\d{3,6}(?:[ -]\d{3,6}){2,}/g;
+const NEGATIVE_KEYWORD_WINDOW = 12;
 
 interface BarcodeTextMatch {
   index: number;
@@ -52,6 +58,30 @@ function collectBarcodeMatches(text: string): BarcodeTextMatch[] {
   return matches;
 }
 
+// A label like "주문번호" immediately before the run (only separators between
+// it and the first digit) marks it as not-the-barcode.
+function isOrderNumber(text: string, index: number): boolean {
+  const before = text.slice(Math.max(0, index - NEGATIVE_KEYWORD_WINDOW), index);
+  return BARCODE_NEGATIVE_KEYWORDS.some((keyword) => {
+    const at = before.lastIndexOf(keyword);
+    return at !== -1 && !/\d/.test(before.slice(at + keyword.length));
+  });
+}
+
+// EAN-13 / UPC-A / EAN-8 check digit. Used only to break a tie between
+// keyword-less candidates — a gifticon barcode that isn't an EAN/UPC number
+// (a plain CODE-128 payload) simply won't match, and that's fine.
+function hasValidCheckDigit(digits: string): boolean {
+  if (digits.length !== 8 && digits.length !== 12 && digits.length !== 13) return false;
+  const oddWeight = digits.length === 13 ? 1 : 3;
+  const evenWeight = digits.length === 13 ? 3 : 1;
+  let sum = 0;
+  for (let i = 0; i < digits.length - 1; i += 1) {
+    sum += (digits.charCodeAt(i) - 48) * (i % 2 === 0 ? oddWeight : evenWeight);
+  }
+  return (10 - (sum % 10)) % 10 === digits.charCodeAt(digits.length - 1) - 48;
+}
+
 /**
  * Finds a single, unambiguous barcode-number-looking digit run in OCR text —
  * a fallback for when the barcode graphic itself couldn't be read
@@ -59,7 +89,13 @@ function collectBarcodeMatches(text: string): BarcodeTextMatch[] {
  * the same number is almost always also printed as text beneath it.
  */
 export function parseBarcodeFromText(text: string): string | null {
-  const matches = collectBarcodeMatches(text);
-  const match = pickUnambiguousMatch(text, matches, BARCODE_PREFIX_KEYWORDS, []);
-  return match?.digits ?? null;
+  const all = collectBarcodeMatches(text);
+  const notOrderNumber = all.filter((m) => !isOrderNumber(text, m.index));
+  const pool = notOrderNumber.length > 0 ? notOrderNumber : all;
+
+  const keyworded = pickUnambiguousMatch(text, pool, BARCODE_PREFIX_KEYWORDS, []);
+  if (keyworded) return keyworded.digits;
+
+  const checksummed = pool.filter((m) => hasValidCheckDigit(m.digits));
+  return checksummed.length === 1 ? checksummed[0].digits : null;
 }

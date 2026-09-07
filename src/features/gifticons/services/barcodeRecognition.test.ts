@@ -47,10 +47,18 @@ describe('recognizeBarcodeFromImage', () => {
     await expect(recognizeBarcodeFromImage('file:///gifticon.jpg')).resolves.toBe('8801234567890');
   });
 
-  it('falls back to a QR/2D code when no linear barcode was found', async () => {
+  it('falls back to a numeric QR/2D code when no linear barcode was found', async () => {
     mockedScan.mockResolvedValue([{ format: BarcodeFormat.QR_CODE, value: '8801234567890' }]);
 
     await expect(recognizeBarcodeFromImage('file:///gifticon.jpg')).resolves.toBe('8801234567890');
+  });
+
+  it('returns null when the only code found is a non-numeric QR payload', async () => {
+    mockedScan.mockResolvedValue([
+      { format: BarcodeFormat.QR_CODE, value: 'https://example.com/redeem?x=1' },
+    ]);
+
+    await expect(recognizeBarcodeFromImage('file:///gifticon.jpg')).resolves.toBeNull();
   });
 
   it('returns null when no barcode is found', async () => {
