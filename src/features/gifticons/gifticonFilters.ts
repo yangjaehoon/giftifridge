@@ -1,10 +1,11 @@
 import type { Gifticon, GifticonCategory } from './types';
 import { CATEGORY_LABELS } from './types';
+import { remainingAmount } from './usage';
 import { daysUntil } from '../../shared/utils/date';
 
 export type FilterTab = 'active' | 'expired' | 'used';
 export type CategoryFilter = GifticonCategory | 'all';
-export type SortKey = 'name' | 'createdAt' | 'expiresAt' | 'usedAt';
+export type SortKey = 'name' | 'createdAt' | 'expiresAt' | 'usedAt' | 'amount';
 export type SortDir = 'asc' | 'desc';
 
 export interface ListCriteria {
@@ -20,6 +21,7 @@ export const SORT_LABELS: Record<SortKey, string> = {
   createdAt: '등록일',
   expiresAt: '만료일',
   usedAt: '사용완료일',
+  amount: '금액',
 };
 export const SORT_KEYS = Object.keys(SORT_LABELS) as SortKey[];
 
@@ -62,6 +64,12 @@ const byField =
     return x < y ? -1 : x > y ? 1 : 0;
   };
 
+// Spendable value for the 금액 sort: a 금액권's remaining balance, or 0 for a
+// product voucher that carries no amount at all. Item vouchers therefore sort
+// together at the bottom under descending order, which is what a user reaching
+// for "금액순" wants to see first.
+const amountValue = (g: Gifticon): number => remainingAmount(g) ?? 0;
+
 const SORT_COMPARATORS: Record<SortKey, (a: Gifticon, b: Gifticon) => number> = {
   name: (a, b) => a.name.localeCompare(b.name, 'ko'),
   createdAt: byField((g) => g.createdAt),
@@ -69,6 +77,7 @@ const SORT_COMPARATORS: Record<SortKey, (a: Gifticon, b: Gifticon) => number> = 
   // Unused items have no usedAt; sorting by it only makes sense within the
   // 사용완료 tab anyway, where every item has one.
   usedAt: byField((g) => g.usedAt ?? ''),
+  amount: (a, b) => amountValue(a) - amountValue(b),
 };
 
 export function filterAndSortGifticons(items: Gifticon[], c: ListCriteria): Gifticon[] {

@@ -113,6 +113,26 @@ describe('filterAndSortGifticons', () => {
     expect(out.map((x) => x.id)).toEqual(['u1', 'u2']);
   });
 
+  it('sorts by amount using the remaining balance, product vouchers last', () => {
+    const withAmounts = [
+      g({ id: 'm1', name: '5천원권', amount: 5000, expiresAt: daysFromNow(10) }),
+      g({
+        id: 'm2',
+        name: '만원권 절반쓴것',
+        amount: 10000,
+        expiresAt: daysFromNow(10),
+        usageHistory: [{ id: 'r1', amount: 6000, usedAt: '2026-01-02T00:00:00.000Z' }],
+      }),
+      g({ id: 'p1', name: '아메리카노', expiresAt: daysFromNow(10) }),
+    ];
+    const out = filterAndSortGifticons(
+      withAmounts,
+      criteria({ tab: 'active', sortKey: 'amount', sortDir: 'desc' }),
+    );
+    // 5000 remaining, then 4000 remaining, then the amount-less voucher (0).
+    expect(out.map((x) => x.id)).toEqual(['m1', 'm2', 'p1']);
+  });
+
   it('sortDir desc reverses the order', () => {
     const asc = filterAndSortGifticons(items, criteria({ tab: 'active', sortKey: 'expiresAt' }));
     const desc = filterAndSortGifticons(
