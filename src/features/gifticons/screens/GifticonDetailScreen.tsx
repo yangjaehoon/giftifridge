@@ -8,6 +8,7 @@ import { useGifticon } from '../hooks/useGifticon';
 import { useGifticonUsage } from '../hooks/useGifticonUsage';
 import Button from '../../../shared/components/Button';
 import { useToast } from '../../../shared/components/ToastProvider';
+import { useAsyncAction } from '../../../shared/hooks/useAsyncAction';
 import { useMaxBrightnessWhileFocused } from '../../../shared/hooks/useMaxBrightnessWhileFocused';
 import GifticonDetailSkeleton from '../components/GifticonDetailSkeleton';
 import GifticonBarcode from '../components/GifticonBarcode';
@@ -35,7 +36,7 @@ export default function GifticonDetailScreen({ route, navigation }: Props) {
   const { gifticon, loading, error, refresh } = useGifticon(gifticonId);
   useMaxBrightnessWhileFocused(Boolean(gifticon?.barcode));
   const usage = useGifticonUsage(gifticon, user?.uid);
-  const [busy, setBusy] = useState(false);
+  const { busy, run } = useAsyncAction(getGifticonWriteErrorMessage);
   const [copied, setCopied] = useState(false);
   const [barcodeZoomed, setBarcodeZoomed] = useState(false);
   const [imageZoomed, setImageZoomed] = useState(false);
@@ -72,21 +73,18 @@ export default function GifticonDetailScreen({ route, navigation }: Props) {
     });
   }, [navigation, gifticon]);
 
-  const toggleUsed = async () => {
+  const toggleUsed = () => {
     if (!gifticon) return;
     const nextUsed = !gifticon.isUsed;
-    setBusy(true);
-    try {
-      await setGifticonUsed(gifticon, nextUsed, user?.uid);
-      // Stay on the screen — the realtime doc flips isUsed and the user can
-      // see the new state (and undo it) without navigating.
-      haptics.success();
-      showToast(nextUsed ? '사용완료로 표시했어요' : '다시 사용가능으로 바꿨어요');
-    } catch (err) {
-      Alert.alert('오류', getGifticonWriteErrorMessage(err, 'update'));
-    } finally {
-      setBusy(false);
-    }
+    return run(() => setGifticonUsed(gifticon, nextUsed, user?.uid), {
+      fallback: 'update',
+      onSuccess: () => {
+        // Stay on the screen — the realtime doc flips isUsed and the user can
+        // see the new state (and undo it) without navigating.
+        haptics.success();
+        showToast(nextUsed ? '사용완료로 표시했어요' : '다시 사용가능으로 바꿨어요');
+      },
+    });
   };
 
   // Closing the enlarged barcode usually means it was just scanned. Nudge once
@@ -108,16 +106,11 @@ export default function GifticonDetailScreen({ route, navigation }: Props) {
       {
         text: '삭제',
         style: 'destructive',
-        onPress: async () => {
-          setBusy(true);
-          try {
-            await removeGifticon(gifticon);
-            navigation.goBack();
-          } catch (err) {
-            Alert.alert('오류', getGifticonWriteErrorMessage(err, 'delete'));
-          } finally {
-            setBusy(false);
-          }
+        onPress: () => {
+          run(() => removeGifticon(gifticon), {
+            fallback: 'delete',
+            onSuccess: () => navigation.goBack(),
+          });
         },
       },
     ]);

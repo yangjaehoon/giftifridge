@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Alert, FlatList, Share, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useCurrentUser } from '../../auth/context/AuthContext';
@@ -11,6 +11,7 @@ import { formatDate } from '../../../shared/utils/date';
 import { withTimeout, WRITE_TIMEOUT_MS } from '../../../shared/utils/withTimeout';
 import Button from '../../../shared/components/Button';
 import { useToast } from '../../../shared/components/ToastProvider';
+import { useAsyncAction } from '../../../shared/hooks/useAsyncAction';
 import type { RootStackParamList } from '../../../app/RootNavigator';
 import { colors } from '../../../shared/theme/colors';
 
@@ -23,7 +24,7 @@ export default function SpaceMembersScreen({ route, navigation }: Props) {
   const { user } = useCurrentUser();
   const { space, members, loading, error, refresh } = useSpace(spaceId);
   const showToast = useToast();
-  const [busy, setBusy] = useState(false);
+  const { busy, run } = useAsyncAction(getSpaceWriteErrorMessage);
 
   const isOwner = space?.ownerId === user?.uid;
 
@@ -50,17 +51,14 @@ export default function SpaceMembersScreen({ route, navigation }: Props) {
       {
         text: '나가기',
         style: 'destructive',
-        onPress: async () => {
-          setBusy(true);
-          try {
-            await withTimeout(leaveSpace(spaceId, user.uid), WRITE_TIMEOUT_MS);
-            showToast('스페이스에서 나갔어요');
-            navigation.navigate('Home');
-          } catch (err) {
-            Alert.alert('오류', getSpaceWriteErrorMessage(err, 'leave'));
-          } finally {
-            setBusy(false);
-          }
+        onPress: () => {
+          run(() => withTimeout(leaveSpace(spaceId, user.uid), WRITE_TIMEOUT_MS), {
+            fallback: 'leave',
+            onSuccess: () => {
+              showToast('스페이스에서 나갔어요');
+              navigation.navigate('Home');
+            },
+          });
         },
       },
     ]);
@@ -72,23 +70,24 @@ export default function SpaceMembersScreen({ route, navigation }: Props) {
       {
         text: '삭제',
         style: 'destructive',
-        onPress: async () => {
-          setBusy(true);
-          try {
-            await withTimeout(
-              deleteSpace(
-                spaceId,
-                members.map((m) => m.uid),
+        onPress: () => {
+          run(
+            () =>
+              withTimeout(
+                deleteSpace(
+                  spaceId,
+                  members.map((m) => m.uid),
+                ),
+                WRITE_TIMEOUT_MS,
               ),
-              WRITE_TIMEOUT_MS,
-            );
-            showToast('스페이스를 삭제했어요');
-            navigation.navigate('Home');
-          } catch (err) {
-            Alert.alert('오류', getSpaceWriteErrorMessage(err, 'delete'));
-          } finally {
-            setBusy(false);
-          }
+            {
+              fallback: 'delete',
+              onSuccess: () => {
+                showToast('스페이스를 삭제했어요');
+                navigation.navigate('Home');
+              },
+            },
+          );
         },
       },
     ]);

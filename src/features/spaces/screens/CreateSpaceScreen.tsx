@@ -7,6 +7,7 @@ import { getSpaceWriteErrorMessage } from '../errors';
 import { withTimeout, WRITE_TIMEOUT_MS } from '../../../shared/utils/withTimeout';
 import Button from '../../../shared/components/Button';
 import { useToast } from '../../../shared/components/ToastProvider';
+import { useAsyncAction } from '../../../shared/hooks/useAsyncAction';
 import type { RootStackParamList } from '../../../app/RootNavigator';
 import { colors } from '../../../shared/theme/colors';
 
@@ -15,31 +16,25 @@ type Props = NativeStackScreenProps<RootStackParamList, 'CreateSpace'>;
 export default function CreateSpaceScreen({ navigation }: Props) {
   const { user } = useCurrentUser();
   const showToast = useToast();
+  const { busy: saving, run } = useAsyncAction(getSpaceWriteErrorMessage);
   const [name, setName] = useState('');
-  const [saving, setSaving] = useState(false);
   // Fixed for the life of the screen so a retry after a timeout targets the
   // same doc instead of creating a second space.
   const [draftId] = useState(newSpaceId);
 
-  const save = async () => {
+  const save = () => {
     if (!user) return;
     if (!name.trim()) {
       Alert.alert('알림', '스페이스 이름을 입력해주세요.');
       return;
     }
-    setSaving(true);
-    try {
-      const spaceId = await withTimeout(
-        createSpace(draftId, user.uid, name.trim()),
-        WRITE_TIMEOUT_MS,
-      );
-      showToast('스페이스를 만들었어요');
-      navigation.replace('SpaceMembers', { spaceId });
-    } catch (err) {
-      Alert.alert('오류', getSpaceWriteErrorMessage(err, 'create'));
-    } finally {
-      setSaving(false);
-    }
+    run(() => withTimeout(createSpace(draftId, user.uid, name.trim()), WRITE_TIMEOUT_MS), {
+      fallback: 'create',
+      onSuccess: (spaceId) => {
+        showToast('스페이스를 만들었어요');
+        navigation.replace('SpaceMembers', { spaceId });
+      },
+    });
   };
 
   return (

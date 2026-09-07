@@ -26,6 +26,7 @@ import { useBarcodeScanner } from '../hooks/useBarcodeScanner';
 import { useLocationSearch } from '../hooks/useLocationSearch';
 import Button from '../../../shared/components/Button';
 import { useToast } from '../../../shared/components/ToastProvider';
+import { useAsyncAction } from '../../../shared/hooks/useAsyncAction';
 import GifticonDetailSkeleton from '../components/GifticonDetailSkeleton';
 import BarcodeScannerModal from '../components/BarcodeScannerModal';
 import LocationSearchModal from '../components/LocationSearchModal';
@@ -83,7 +84,7 @@ export default function AddGifticonScreen({ navigation, route }: Props) {
   const scanner = useBarcodeScanner(form.setBarcode);
   const locationSearch = useLocationSearch(form.setLocation);
   const [showDatePicker, setShowDatePicker] = useState(false);
-  const [saving, setSaving] = useState(false);
+  const { busy: saving, run } = useAsyncAction(getGifticonWriteErrorMessage);
   const [locationSaving, setLocationSaving] = useState(false);
   const brandRef = useRef<TextInput>(null);
   const amountRef = useRef<TextInput>(null);
@@ -114,7 +115,7 @@ export default function AddGifticonScreen({ navigation, route }: Props) {
     }
   };
 
-  const save = async () => {
+  const save = () => {
     if (!user) {
       Alert.alert('오류', '로그인 정보를 확인하지 못했어요. 앱을 다시 시작해주세요.');
       return;
@@ -122,31 +123,35 @@ export default function AddGifticonScreen({ navigation, route }: Props) {
     const imageUri = form.imageUri;
     if (!form.validate() || !imageUri) return;
 
-    setSaving(true);
-    try {
-      const result = await submitGifticon({
-        existing: existing ?? null,
-        draftId,
-        ownerId: user.uid,
-        spaceId,
-        imageUri,
-        imageChanged: imageUri !== form.originalImageUrl,
-        fields: form.buildFields(),
-        siblings: contextGifticons,
-      });
-      if (result.status === 'saved') {
-        haptics.success();
-        showToast(isEditing ? '수정되었어요' : '저장되었어요');
-        navigation.goBack();
-      }
-    } catch (err) {
-      if (__DEV__) {
-        console.warn('[AddGifticon] save failed', (err as { code?: unknown })?.code ?? err);
-      }
-      Alert.alert('오류', getGifticonWriteErrorMessage(err, 'save'));
-    } finally {
-      setSaving(false);
-    }
+    run(
+      () =>
+        submitGifticon({
+          existing: existing ?? null,
+          draftId,
+          ownerId: user.uid,
+          spaceId,
+          imageUri,
+          imageChanged: imageUri !== form.originalImageUrl,
+          fields: form.buildFields(),
+          siblings: contextGifticons,
+        }),
+      {
+        fallback: 'save',
+        onSuccess: (result) => {
+          // A duplicate-barcode prompt the user declined returns 'cancelled' —
+          // not an error and not a save, so nothing to do.
+          if (result.status !== 'saved') return;
+          haptics.success();
+          showToast(isEditing ? '수정되었어요' : '저장되었어요');
+          navigation.goBack();
+        },
+        onError: (err) => {
+          if (__DEV__) {
+            console.warn('[AddGifticon] save failed', (err as { code?: unknown })?.code ?? err);
+          }
+        },
+      },
+    );
   };
 
   if (isEditing && loadingExisting) {

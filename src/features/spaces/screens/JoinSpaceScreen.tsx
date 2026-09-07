@@ -9,6 +9,7 @@ import type { Space } from '../types';
 import { withTimeout, WRITE_TIMEOUT_MS } from '../../../shared/utils/withTimeout';
 import Button from '../../../shared/components/Button';
 import { useToast } from '../../../shared/components/ToastProvider';
+import { useAsyncAction } from '../../../shared/hooks/useAsyncAction';
 import type { RootStackParamList } from '../../../app/RootNavigator';
 import { colors } from '../../../shared/theme/colors';
 
@@ -17,10 +18,10 @@ type Props = NativeStackScreenProps<RootStackParamList, 'JoinSpace'>;
 export default function JoinSpaceScreen({ route, navigation }: Props) {
   const { user } = useCurrentUser();
   const showToast = useToast();
+  const { busy: joining, run } = useAsyncAction(getSpaceWriteErrorMessage);
   const [code, setCode] = useState(route.params?.spaceId ?? '');
   const [preview, setPreview] = useState<Space | null>(null);
   const [loading, setLoading] = useState(false);
-  const [joining, setJoining] = useState(false);
 
   const lookup = async (spaceId: string) => {
     setLoading(true);
@@ -48,18 +49,15 @@ export default function JoinSpaceScreen({ route, navigation }: Props) {
     });
   }, [route.params?.spaceId]);
 
-  const join = async () => {
+  const join = () => {
     if (!user || !preview) return;
-    setJoining(true);
-    try {
-      await withTimeout(joinSpace(preview.id, user.uid), WRITE_TIMEOUT_MS);
-      showToast('스페이스에 참여했어요');
-      navigation.replace('SpaceMembers', { spaceId: preview.id });
-    } catch (err) {
-      Alert.alert('오류', getSpaceWriteErrorMessage(err, 'join'));
-    } finally {
-      setJoining(false);
-    }
+    run(() => withTimeout(joinSpace(preview.id, user.uid), WRITE_TIMEOUT_MS), {
+      fallback: 'join',
+      onSuccess: () => {
+        showToast('스페이스에 참여했어요');
+        navigation.replace('SpaceMembers', { spaceId: preview.id });
+      },
+    });
   };
 
   return (
