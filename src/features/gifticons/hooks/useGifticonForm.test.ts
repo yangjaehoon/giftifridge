@@ -96,4 +96,80 @@ describe('useGifticonForm', () => {
     expect(fields.expiresAt).toMatch(/^\d{4}-\d{2}-\d{2}$/);
     expect(fields.barcode).toBeUndefined();
   });
+
+  describe('field-claim tracking (isFieldEdited / setX vs detectX)', () => {
+    it('claims nothing on the create path until the user edits', async () => {
+      const { result } = await renderHook(() => useGifticonForm(undefined, false));
+
+      for (const field of [
+        'name',
+        'brand',
+        'amount',
+        'category',
+        'barcode',
+        'expiresAt',
+      ] as const) {
+        expect(result.current.isFieldEdited(field)).toBe(false);
+      }
+    });
+
+    it('setX claims the field; detectX writes the same value without claiming it', async () => {
+      const { result } = await renderHook(() => useGifticonForm(undefined, false));
+
+      await act(async () => result.current.detectName('아메리카노'));
+      expect(result.current.name).toBe('아메리카노');
+      expect(result.current.isFieldEdited('name')).toBe(false);
+
+      await act(async () => result.current.setName('내가 입력'));
+      expect(result.current.name).toBe('내가 입력');
+      expect(result.current.isFieldEdited('name')).toBe(true);
+    });
+
+    it('detectExpiresAt vs setExpiresAt track the claim the same way', async () => {
+      const { result } = await renderHook(() => useGifticonForm(undefined, false));
+
+      await act(async () => result.current.detectExpiresAt(new Date(2027, 0, 2)));
+      expect(result.current.isFieldEdited('expiresAt')).toBe(false);
+
+      await act(async () => result.current.setExpiresAt(new Date(2027, 5, 6)));
+      expect(result.current.expiresAt.getFullYear()).toBe(2027);
+      expect(result.current.isFieldEdited('expiresAt')).toBe(true);
+    });
+
+    it('detectName still clears a standing inline error', async () => {
+      const { result } = await renderHook(() => useGifticonForm(undefined, false));
+      await act(async () => result.current.validate());
+      expect(result.current.fieldErrors.name).toBeDefined();
+
+      await act(async () => result.current.detectName('아메리카노'));
+      expect(result.current.fieldErrors.name).toBeUndefined();
+    });
+
+    it('editing an existing gifticon pre-claims name/brand/category/expiry', async () => {
+      const { result } = await renderHook(() => useGifticonForm(existing, true));
+      await waitFor(() => expect(result.current.hydrated).toBe(true));
+
+      expect(result.current.isFieldEdited('name')).toBe(true);
+      expect(result.current.isFieldEdited('brand')).toBe(true);
+      expect(result.current.isFieldEdited('category')).toBe(true);
+      expect(result.current.isFieldEdited('expiresAt')).toBe(true);
+    });
+
+    it('pre-claims barcode/amount only when the gifticon actually has one', async () => {
+      const { result } = await renderHook(() =>
+        useGifticonForm({ ...existing, barcode: undefined, amount: undefined }, true),
+      );
+      await waitFor(() => expect(result.current.hydrated).toBe(true));
+
+      expect(result.current.isFieldEdited('barcode')).toBe(false);
+      expect(result.current.isFieldEdited('amount')).toBe(false);
+    });
+
+    it('pre-claims a real saved amount of 0 (not just a truthy one)', async () => {
+      const { result } = await renderHook(() => useGifticonForm({ ...existing, amount: 0 }, true));
+      await waitFor(() => expect(result.current.hydrated).toBe(true));
+
+      expect(result.current.isFieldEdited('amount')).toBe(true);
+    });
+  });
 });

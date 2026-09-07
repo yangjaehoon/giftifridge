@@ -29,6 +29,7 @@ import { useToast } from '../../../shared/components/ToastProvider';
 import GifticonDetailSkeleton from '../components/GifticonDetailSkeleton';
 import BarcodeScannerModal from '../components/BarcodeScannerModal';
 import LocationSearchModal from '../components/LocationSearchModal';
+import OcrHint from '../components/OcrHint';
 import type { GifticonCategory } from '../types';
 import { CATEGORY_LABELS } from '../types';
 import Chip from '../../../shared/components/Chip';
@@ -66,36 +67,20 @@ export default function AddGifticonScreen({ navigation, route }: Props) {
   // the same doc id instead of creating a duplicate. Unused when editing.
   const [draftId] = useState(newGifticonId);
   const form = useGifticonForm(existing, isEditing);
+  // form owns the "user claimed this field" state: setX marks it, detectX
+  // (the OCR pass) doesn't, and isFieldEdited lets an auto-fill skip a field
+  // the user — or the edit-mode hydration — has already committed a value to.
   const image = useGifticonImage({
     onImageChosen: form.setImage,
-    onExpiryDetected: form.setExpiresAt,
-    onNameDetected: form.setName,
-    onBrandDetected: form.setBrand,
-    onBarcodeDetected: form.setBarcode,
-    onCategoryDetected: form.setCategory,
-    onAmountDetected: (amount) => form.setAmount(String(amount)),
+    onExpiryDetected: form.detectExpiresAt,
+    onNameDetected: form.detectName,
+    onBrandDetected: form.detectBrand,
+    onBarcodeDetected: form.detectBarcode,
+    onCategoryDetected: form.detectCategory,
+    onAmountDetected: (amount) => form.detectAmount(String(amount)),
+    isFieldEdited: form.isFieldEdited,
   });
-  const setName = (v: string) => {
-    form.setName(v);
-    image.markNameManuallyEdited();
-  };
-  const setBrand = (v: string) => {
-    form.setBrand(v);
-    image.markBrandManuallyEdited();
-  };
-  const setBarcode = (v: string) => {
-    form.setBarcode(v);
-    image.markBarcodeManuallyEdited();
-  };
-  const setCategory = (c: GifticonCategory) => {
-    form.setCategory(c);
-    image.markCategoryManuallyEdited();
-  };
-  const setAmount = (v: string) => {
-    form.setAmount(v);
-    image.markAmountManuallyEdited();
-  };
-  const scanner = useBarcodeScanner(setBarcode);
+  const scanner = useBarcodeScanner(form.setBarcode);
   const locationSearch = useLocationSearch(form.setLocation);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -112,26 +97,6 @@ export default function AddGifticonScreen({ navigation, route }: Props) {
   useEffect(() => {
     navigation.setOptions({ title: isEditing ? '기프티콘 수정' : '기프티콘 등록' });
   }, [navigation, isEditing]);
-
-  // An existing gifticon's saved name/brand/category/expiry are real data,
-  // not an OCR guess — protect them up front so attaching a new photo while
-  // editing can't silently overwrite them (barcode/amount are optional, so
-  // they're only protected when the gifticon actually has one; an empty one
-  // is still fair game for auto-fill).
-  useEffect(() => {
-    if (!existing) return;
-    image.markNameManuallyEdited();
-    image.markBrandManuallyEdited();
-    image.markDateManuallyEdited();
-    image.markCategoryManuallyEdited();
-    if (existing.barcode) image.markBarcodeManuallyEdited();
-    // != null (not truthy): unlike an empty barcode string, a saved amount of
-    // 0 is a real value distinct from "no amount" and must stay protected.
-    if (existing.amount != null) image.markAmountManuallyEdited();
-    // mark* are recreated every render but always do the same thing; only
-    // re-run this effect when a (different) existing gifticon loads.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [existing]);
 
   const saveCurrentLocation = async () => {
     setLocationSaving(true);
@@ -242,43 +207,37 @@ export default function AddGifticonScreen({ navigation, route }: Props) {
         <TextInput
           style={[styles.input, form.fieldErrors.name && styles.inputError]}
           value={form.name}
-          onChangeText={setName}
+          onChangeText={form.setName}
           placeholder="아메리카노 Tall"
           returnKeyType="next"
           onSubmitEditing={() => brandRef.current?.focus()}
         />
         {form.fieldErrors.name && <Text style={styles.errorText}>{form.fieldErrors.name}</Text>}
-        {image.nameAutoDetected && (
-          <Text style={styles.ocrHint}>사진에서 상품명을 자동으로 인식했어요. 확인해주세요.</Text>
-        )}
+        <OcrHint show={image.nameAutoDetected} subject="상품명을" />
 
         <Text style={styles.label}>브랜드</Text>
         <TextInput
           ref={brandRef}
           style={[styles.input, form.fieldErrors.brand && styles.inputError]}
           value={form.brand}
-          onChangeText={setBrand}
+          onChangeText={form.setBrand}
           placeholder="스타벅스"
           returnKeyType="next"
           onSubmitEditing={() => amountRef.current?.focus()}
         />
         {form.fieldErrors.brand && <Text style={styles.errorText}>{form.fieldErrors.brand}</Text>}
-        {image.brandAutoDetected && (
-          <Text style={styles.ocrHint}>사진에서 브랜드를 자동으로 인식했어요. 확인해주세요.</Text>
-        )}
+        <OcrHint show={image.brandAutoDetected} subject="브랜드를" />
 
         <Text style={styles.label}>금액 (선택)</Text>
         <TextInput
           ref={amountRef}
           style={styles.input}
           value={groupDigits(form.amount)}
-          onChangeText={(t) => setAmount(t.replace(/[^0-9]/g, ''))}
+          onChangeText={(t) => form.setAmount(t.replace(/[^0-9]/g, ''))}
           placeholder="10,000"
           keyboardType="number-pad"
         />
-        {image.amountAutoDetected && (
-          <Text style={styles.ocrHint}>사진에서 금액을 자동으로 인식했어요. 확인해주세요.</Text>
-        )}
+        <OcrHint show={image.amountAutoDetected} subject="금액을" />
         {!form.amount && priceEstimate ? (
           <Text style={styles.ocrHint}>
             참고: 이 상품 예상 가격 약 {formatCurrency(priceEstimate.price)} ({priceEstimate.asOf}{' '}
@@ -293,22 +252,21 @@ export default function AddGifticonScreen({ navigation, route }: Props) {
               key={c}
               label={CATEGORY_LABELS[c]}
               active={form.category === c}
-              onPress={() => setCategory(c)}
+              onPress={() => form.setCategory(c)}
             />
           ))}
         </View>
-        {image.categoryAutoDetected && (
-          <Text style={styles.ocrHint}>
-            브랜드를 보고 카테고리를 자동으로 선택했어요. 확인해주세요.
-          </Text>
-        )}
+        <OcrHint
+          show={image.categoryAutoDetected}
+          message="브랜드를 보고 카테고리를 자동으로 선택했어요. 확인해주세요."
+        />
 
         <Text style={styles.label}>바코드 번호 (선택)</Text>
         <View style={styles.barcodeRow}>
           <TextInput
             style={[styles.input, styles.barcodeInput]}
             value={form.barcode}
-            onChangeText={setBarcode}
+            onChangeText={form.setBarcode}
             placeholder="숫자 직접 입력 또는 스캔"
             keyboardType="number-pad"
           />
@@ -316,9 +274,7 @@ export default function AddGifticonScreen({ navigation, route }: Props) {
             <Text style={styles.scanButtonText}>스캔</Text>
           </TouchableOpacity>
         </View>
-        {image.barcodeAutoDetected && (
-          <Text style={styles.ocrHint}>사진에서 바코드를 자동으로 인식했어요. 확인해주세요.</Text>
-        )}
+        <OcrHint show={image.barcodeAutoDetected} subject="바코드를" />
 
         <Text style={styles.label}>매장 위치 (선택)</Text>
         <TouchableOpacity
@@ -345,9 +301,7 @@ export default function AddGifticonScreen({ navigation, route }: Props) {
         <TouchableOpacity style={styles.input} onPress={() => setShowDatePicker(true)}>
           <Text>{formatDate(toDateString(form.expiresAt))}</Text>
         </TouchableOpacity>
-        {image.dateAutoDetected && (
-          <Text style={styles.ocrHint}>사진에서 유효기한을 자동으로 인식했어요. 확인해주세요.</Text>
-        )}
+        <OcrHint show={image.dateAutoDetected} subject="유효기한을" />
         {showDatePicker && (
           <DateTimePicker
             value={form.expiresAt}
@@ -356,10 +310,7 @@ export default function AddGifticonScreen({ navigation, route }: Props) {
             minimumDate={new Date()}
             onChange={(_, selected) => {
               setShowDatePicker(false);
-              if (selected) {
-                form.setExpiresAt(selected);
-                image.markDateManuallyEdited();
-              }
+              if (selected) form.setExpiresAt(selected);
             }}
           />
         )}

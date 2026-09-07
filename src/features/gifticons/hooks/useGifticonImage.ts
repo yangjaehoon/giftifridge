@@ -10,56 +10,62 @@ import {
 import { recognizeBarcodeFromImage } from '../services/barcodeRecognition';
 import { parseDate } from '../../../shared/utils/date';
 import { alertPermissionDenied } from '../../../shared/utils/permissionAlert';
+import type { AutofillField } from './useGifticonForm';
 import type { GifticonCategory } from '../types';
 
 interface Options {
   /** Store the chosen local uri (form.setImage). */
   onImageChosen: (uri: string) => void;
-  /** Apply an OCR-detected expiry date (form.setExpiresAt). */
+  /** Apply an OCR-detected expiry date (form.detectExpiresAt). */
   onExpiryDetected: (date: Date) => void;
-  /** Apply an OCR-guessed product name (form.setName). */
+  /** Apply an OCR-guessed product name (form.detectName). */
   onNameDetected: (name: string) => void;
-  /** Apply an OCR-guessed brand (form.setBrand). */
+  /** Apply an OCR-guessed brand (form.detectBrand). */
   onBrandDetected: (brand: string) => void;
-  /** Apply a barcode read from the photo itself (form.setBarcode). */
+  /** Apply a barcode read from the photo itself (form.detectBarcode). */
   onBarcodeDetected: (barcode: string) => void;
-  /** Apply a category inferred from a recognized known brand (form.setCategory). */
+  /** Apply a category inferred from a recognized known brand (form.detectCategory). */
   onCategoryDetected: (category: GifticonCategory) => void;
-  /** Apply an OCR-detected face value (form.setAmount). */
+  /** Apply an OCR-detected face value (form.detectAmount). */
   onAmountDetected: (amount: number) => void;
+  /** Whether the user has already committed a value to this field by hand
+   *  (typed/scanned it, or it was hydrated from an existing gifticon) — an
+   *  auto-fill never overwrites such a field. Owned by useGifticonForm and
+   *  read here at detect time, i.e. after a slow recognition pass resolves, so
+   *  it must reflect edits made while that pass was still running. */
+  isFieldEdited: (field: AutofillField) => boolean;
 }
 
-// One auto-fillable field's "was it just auto-filled" flag and "did the user
-// override it by hand" guard, reused for each of the six fields
-// recognizeFields can fill in — so adding another detected field later is one
-// line here instead of a hand-copied state/ref/setter trio.
-function useDetectedField<T>(apply: (value: T) => void) {
+// One auto-fillable field's "was it just auto-filled" flag. The "did the user
+// override it by hand" guard lives in useGifticonForm (isFieldEdited) so the
+// screen doesn't have to keep two copies in sync; adding another detected
+// field here is still one line.
+function useDetectedField<T>(
+  key: AutofillField,
+  apply: (value: T) => void,
+  isFieldEdited: (field: AutofillField) => boolean,
+) {
   const [autoDetected, setAutoDetected] = useState(false);
-  const manuallyEditedRef = useRef(false);
 
   const detect = (value: T) => {
-    if (manuallyEditedRef.current) return;
+    if (isFieldEdited(key)) return;
     apply(value);
     setAutoDetected(true);
   };
   const reset = () => setAutoDetected(false);
-  const markManuallyEdited = () => {
-    manuallyEditedRef.current = true;
-    setAutoDetected(false);
-  };
 
-  return { autoDetected, detect, reset, markManuallyEdited };
+  return { autoDetected, detect, reset };
 }
 
 /**
  * Owns picking a gifticon photo (library or camera) and everything that gets
  * read from it afterward: expiry date, a best-effort brand/name/category
  * guess (OCR), a face-value amount, and any barcode already visible in the
- * photo. Each field has its own run token guard (a slow recognition pass for
- * an earlier image can't overwrite a newer one) and "user edited this by
- * hand" guard (an auto-fill never clobbers something the user already
- * typed/scanned/picked themselves, and picking a different photo afterward
- * can't silently undo that — see useDetectedField).
+ * photo. A single run token guards every field (a slow recognition pass for an
+ * earlier image can't overwrite a newer one); the "user edited this by hand"
+ * guard — an auto-fill never clobbers something the user typed/scanned/picked
+ * themselves, and picking a different photo afterward can't undo that — is
+ * `isFieldEdited`, owned by useGifticonForm.
  */
 export function useGifticonImage({
   onImageChosen,
@@ -69,14 +75,15 @@ export function useGifticonImage({
   onBarcodeDetected,
   onCategoryDetected,
   onAmountDetected,
+  isFieldEdited,
 }: Options) {
   const [recognizing, setRecognizing] = useState(false);
-  const date = useDetectedField(onExpiryDetected);
-  const name = useDetectedField(onNameDetected);
-  const brand = useDetectedField(onBrandDetected);
-  const barcode = useDetectedField(onBarcodeDetected);
-  const category = useDetectedField(onCategoryDetected);
-  const amount = useDetectedField(onAmountDetected);
+  const date = useDetectedField('expiresAt', onExpiryDetected, isFieldEdited);
+  const name = useDetectedField('name', onNameDetected, isFieldEdited);
+  const brand = useDetectedField('brand', onBrandDetected, isFieldEdited);
+  const barcode = useDetectedField('barcode', onBarcodeDetected, isFieldEdited);
+  const category = useDetectedField('category', onCategoryDetected, isFieldEdited);
+  const amount = useDetectedField('amount', onAmountDetected, isFieldEdited);
   const runRef = useRef(0);
 
   const recognizeFields = async (uri: string) => {
@@ -118,12 +125,12 @@ export function useGifticonImage({
     }
   };
 
-  // Deliberately does NOT reset the manually-edited guards: once a field holds
-  // real content — typed by the user, hydrated from an existing gifticon (see
-  // AddGifticonScreen's edit-mode effect), or a still-standing OCR guess from
-  // an earlier photo the user chose to keep — picking a different photo must
-  // not silently clobber it. A field only becomes overwritable again by the
-  // user clearing/editing it (which flips its guard) or if it was never set.
+  // recognizeFields only resets the "just auto-filled" flags, never the
+  // edited-by-hand guards (those live in useGifticonForm): once a field holds
+  // real content — typed by the user, hydrated from an existing gifticon, or a
+  // still-standing OCR guess from an earlier photo the user chose to keep —
+  // picking a different photo must not silently clobber it. A field becomes
+  // overwritable again only if it was never claimed.
   const handlePicked = (uri: string) => {
     onImageChosen(uri);
     recognizeFields(uri);
@@ -160,11 +167,5 @@ export function useGifticonImage({
     amountAutoDetected: amount.autoDetected,
     pickFromLibrary,
     takePhoto,
-    markDateManuallyEdited: date.markManuallyEdited,
-    markNameManuallyEdited: name.markManuallyEdited,
-    markBrandManuallyEdited: brand.markManuallyEdited,
-    markBarcodeManuallyEdited: barcode.markManuallyEdited,
-    markCategoryManuallyEdited: category.markManuallyEdited,
-    markAmountManuallyEdited: amount.markManuallyEdited,
   };
 }

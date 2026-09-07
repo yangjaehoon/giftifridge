@@ -36,6 +36,9 @@ function setup() {
     onBarcodeDetected: jest.fn(),
     onCategoryDetected: jest.fn(),
     onAmountDetected: jest.fn(),
+    // useGifticonForm owns this in the real app; a mock here lets a test say
+    // "the user has claimed field X" without a form.
+    isFieldEdited: jest.fn((_field: string) => false),
   };
 }
 
@@ -162,7 +165,7 @@ describe('useGifticonImage', () => {
     expect(callbacks.onExpiryDetected.mock.calls[0][0].getFullYear()).toBe(2027);
   });
 
-  it('marking a field edited while its recognition is still in flight suppresses only that field', async () => {
+  it('a field the user claims while its recognition is still in flight is left alone', async () => {
     const resolvers: ((v: RecognizedText | null) => void)[] = [];
     mockedRecognizeText.mockImplementation(
       () => new Promise<RecognizedText | null>((r) => resolvers.push(r)),
@@ -174,18 +177,20 @@ describe('useGifticonImage', () => {
     await act(async () => {
       await result.current.pickFromLibrary();
     });
-    // The user edits the date field by hand before OCR resolves.
-    await act(() => result.current.markDateManuallyEdited());
+    // The user edits the date field by hand before OCR resolves — the form now
+    // reports it as claimed. isFieldEdited is read at detect time (after the
+    // await), so this still takes effect.
+    callbacks.isFieldEdited.mockImplementation((field: string) => field === 'expiresAt');
     await act(async () => resolvers[0](ocrResult(GIFTICON_TEXT)));
 
     expect(callbacks.onExpiryDetected).not.toHaveBeenCalled();
     expect(result.current.dateAutoDetected).toBe(false);
-    // Name/brand aren't guarded by the same ref, so they still auto-fill.
+    // Only the date was claimed, so name/brand still auto-fill.
     expect(callbacks.onNameDetected).toHaveBeenCalledWith('아메리카노 Tall');
     expect(callbacks.onBrandDetected).toHaveBeenCalledWith('스타벅스');
   });
 
-  it('a manually-edited guard survives picking a different photo afterward', async () => {
+  it('a claimed field stays claimed when a different photo is picked afterward', async () => {
     const resolvers: ((v: RecognizedText | null) => void)[] = [];
     mockedRecognizeText.mockImplementation(
       () => new Promise<RecognizedText | null>((r) => resolvers.push(r)),
@@ -197,14 +202,14 @@ describe('useGifticonImage', () => {
     await act(async () => {
       await result.current.pickFromLibrary();
     });
-    await act(() => result.current.markNameManuallyEdited());
+    callbacks.isFieldEdited.mockImplementation((field: string) => field === 'name');
     await act(async () => resolvers[0](ocrResult(GIFTICON_TEXT)));
     expect(callbacks.onNameDetected).not.toHaveBeenCalled();
 
     // Picking a different photo afterward must not silently overwrite a name
-    // the user has already committed to (typed, or protected by the screen
-    // because it came from an existing gifticon) — see AddGifticonScreen's
-    // edit-mode effect, which relies on exactly this to hold.
+    // the user has already committed to (typed, or claimed by useGifticonForm's
+    // hydration because it came from an existing gifticon). The hook never
+    // clears the claim on its own; only the form does, when the user edits.
     await act(async () => {
       await result.current.pickFromLibrary();
     });
@@ -212,14 +217,15 @@ describe('useGifticonImage', () => {
     expect(callbacks.onNameDetected).not.toHaveBeenCalled();
   });
 
-  it('markCategoryManuallyEdited/markAmountManuallyEdited guard those two fields the same way', async () => {
+  it('leaves category and amount alone once the form reports them claimed', async () => {
     mockedRecognizeText.mockResolvedValue(ocrResult(GIFTICON_TEXT));
     mockedLibrary.mockResolvedValue({ canceled: false, assets: [{ uri: 'file:///a.jpg' }] });
     const callbacks = setup();
+    callbacks.isFieldEdited.mockImplementation(
+      (field: string) => field === 'category' || field === 'amount',
+    );
     const { result } = await renderHook(() => useGifticonImage(callbacks));
 
-    await act(() => result.current.markCategoryManuallyEdited());
-    await act(() => result.current.markAmountManuallyEdited());
     await act(async () => {
       await result.current.pickFromLibrary();
     });
