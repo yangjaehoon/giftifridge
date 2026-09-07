@@ -5,7 +5,9 @@ import SettingsScreen from './SettingsScreen';
 import { useAuthActions, useCurrentUser } from '../context/AuthContext';
 import { seedDummyGifticons } from '../../gifticons/services/devSeed';
 import {
+  getNotificationHour,
   getNotificationOffsets,
+  setNotificationHour,
   setNotificationOffsets,
 } from '../../../shared/utils/notificationPrefs';
 
@@ -17,6 +19,8 @@ jest.mock('../../gifticons/services/devSeed', () => ({ seedDummyGifticons: jest.
 jest.mock('../../../shared/utils/notificationPrefs', () => ({
   getNotificationOffsets: jest.fn(),
   setNotificationOffsets: jest.fn(),
+  getNotificationHour: jest.fn(),
+  setNotificationHour: jest.fn(),
 }));
 jest.mock('../errors', () => ({ getAuthErrorMessage: () => '로그인에 실패했어요.' }));
 jest.mock('../components/GalleryAutoImportSettings', () => ({
@@ -34,6 +38,8 @@ const mockedUseAuthActions = useAuthActions as jest.Mock;
 const mockedSeed = seedDummyGifticons as jest.Mock;
 const mockedGetOffsets = getNotificationOffsets as jest.Mock;
 const mockedSetOffsets = setNotificationOffsets as jest.Mock;
+const mockedGetHour = getNotificationHour as jest.Mock;
+const mockedSetHour = setNotificationHour as jest.Mock;
 
 const authFns = {
   signIn: jest.fn(),
@@ -55,6 +61,8 @@ beforeEach(() => {
   mockedUseAuthActions.mockReturnValue(authFns);
   mockedGetOffsets.mockResolvedValue([7, 3]);
   mockedSetOffsets.mockResolvedValue(undefined);
+  mockedGetHour.mockResolvedValue(9);
+  mockedSetHour.mockResolvedValue(undefined);
   setAuth();
 });
 

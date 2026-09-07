@@ -3,6 +3,7 @@ import * as Device from 'expo-device';
 import { Platform } from 'react-native';
 import type { Gifticon } from '../types';
 import { parseDate } from '../../../shared/utils/date';
+import { DEFAULT_NOTIFICATION_HOUR } from '../../../shared/utils/notificationPrefs';
 
 let initialized = false;
 
@@ -56,13 +57,16 @@ function offsetBody(brand: string, name: string, daysBefore: number): string {
 const IOS_PENDING_LIMIT = 60;
 
 /**
- * Schedules one local notification per offset (days before expiry, 9am),
- * soonest first. Offsets whose trigger time has already passed are skipped, and
- * on iOS scheduling stops once the app is at the pending-notification limit.
+ * Schedules one local notification per offset (days before expiry), soonest
+ * first, each firing at `hour` (0–23, local; defaults to 9am — what it was
+ * before this became configurable). Offsets whose trigger time has already
+ * passed are skipped, and on iOS scheduling stops once the app is at the
+ * pending-notification limit.
  */
 export async function scheduleExpiryNotifications(
   gifticon: Pick<Gifticon, 'id' | 'name' | 'brand' | 'expiresAt'>,
   offsets: number[],
+  hour: number = DEFAULT_NOTIFICATION_HOUR,
 ): Promise<string[]> {
   const granted = await ensureNotificationPermission();
   if (!granted) return [];
@@ -71,7 +75,7 @@ export async function scheduleExpiryNotifications(
     .map((daysBefore) => {
       const date = parseDate(gifticon.expiresAt);
       date.setDate(date.getDate() - daysBefore);
-      date.setHours(9, 0, 0, 0);
+      date.setHours(hour, 0, 0, 0);
       return { daysBefore, date };
     })
     .filter((trigger) => trigger.date.getTime() > Date.now())

@@ -19,7 +19,10 @@ import { recognizeText } from '../services/ocrService';
 import type { RecognizedText } from '../services/ocrService';
 import { recognizeBarcodeFromImage } from '../services/barcodeRecognition';
 import { getCurrentLocation, searchAddress } from '../../../shared/utils/location';
-import { getNotificationOffsets } from '../../../shared/utils/notificationPrefs';
+import {
+  getNotificationHour,
+  getNotificationOffsets,
+} from '../../../shared/utils/notificationPrefs';
 import { TimeoutError } from '../../../shared/utils/withTimeout';
 import type { Gifticon } from '../types';
 
@@ -55,7 +58,10 @@ jest.mock('../../../shared/utils/location', () => ({
   getCurrentLocation: jest.fn(),
   searchAddress: jest.fn(),
 }));
-jest.mock('../../../shared/utils/notificationPrefs', () => ({ getNotificationOffsets: jest.fn() }));
+jest.mock('../../../shared/utils/notificationPrefs', () => ({
+  getNotificationOffsets: jest.fn(),
+  getNotificationHour: jest.fn(),
+}));
 jest.mock('expo-image-picker', () => ({
   launchImageLibraryAsync: jest.fn(),
   launchCameraAsync: jest.fn(),
@@ -81,6 +87,7 @@ const mockedRecognizeBarcode = recognizeBarcodeFromImage as jest.Mock;
 const mockedGetLocation = getCurrentLocation as jest.Mock;
 const mockedSearchAddress = searchAddress as jest.Mock;
 const mockedGetOffsets = getNotificationOffsets as jest.Mock;
+const mockedGetHour = getNotificationHour as jest.Mock;
 const mockedLibrary = ImagePicker.launchImageLibraryAsync as jest.Mock;
 
 function makeNavigation() {
@@ -136,6 +143,7 @@ beforeEach(() => {
   mockedGetLocation.mockResolvedValue(null);
   mockedSearchAddress.mockResolvedValue([]);
   mockedGetOffsets.mockResolvedValue([7, 3]);
+  mockedGetHour.mockResolvedValue(9);
 });
 
 type Screen = Awaited<ReturnType<typeof renderScreen>>;

@@ -8,6 +8,11 @@ import {
   initNotifications,
 } from './notificationService';
 
+// notificationService pulls in notificationPrefs (for the default hour), which
+// imports AsyncStorage — give it the standard in-memory mock.
+jest.mock('@react-native-async-storage/async-storage', () =>
+  jest.requireActual('@react-native-async-storage/async-storage/jest/async-storage-mock'),
+);
 jest.mock('expo-device', () => ({ isDevice: true }));
 jest.mock('expo-notifications', () => ({
   setNotificationHandler: jest.fn(),
@@ -158,6 +163,32 @@ describe('scheduleExpiryNotifications', () => {
     expectedSoonest.setDate(expectedSoonest.getDate() - 7);
     expectedSoonest.setHours(9, 0, 0, 0);
     expect(trigger.date.getTime()).toBe(expectedSoonest.getTime());
+  });
+
+  it('fires each trigger at the given hour of day', async () => {
+    await scheduleExpiryNotifications(
+      { id: 'g1', name: '아메리카노', brand: '스타벅스', expiresAt: daysFromNow(30) },
+      [7],
+      20,
+    );
+
+    const [{ trigger }] = mockedNotifications.scheduleNotificationAsync.mock.calls[0] as [
+      { trigger: { date: Date } },
+    ];
+    expect(trigger.date.getHours()).toBe(20);
+    expect(trigger.date.getMinutes()).toBe(0);
+  });
+
+  it('defaults to 9am when no hour is passed', async () => {
+    await scheduleExpiryNotifications(
+      { id: 'g1', name: '아메리카노', brand: '스타벅스', expiresAt: daysFromNow(30) },
+      [7],
+    );
+
+    const [{ trigger }] = mockedNotifications.scheduleNotificationAsync.mock.calls[0] as [
+      { trigger: { date: Date } },
+    ];
+    expect(trigger.date.getHours()).toBe(9);
   });
 
   it('returns an empty array when notification permission is not granted', async () => {

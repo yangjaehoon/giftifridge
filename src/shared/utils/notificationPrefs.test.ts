@@ -1,5 +1,11 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { getNotificationOffsets, setNotificationOffsets } from './notificationPrefs';
+import {
+  DEFAULT_NOTIFICATION_HOUR,
+  getNotificationHour,
+  getNotificationOffsets,
+  setNotificationHour,
+  setNotificationOffsets,
+} from './notificationPrefs';
 
 jest.mock('@react-native-async-storage/async-storage', () =>
   jest.requireActual('@react-native-async-storage/async-storage/jest/async-storage-mock'),
@@ -27,5 +33,24 @@ describe('notificationPrefs', () => {
   it('falls back to the default on invalid JSON', async () => {
     await AsyncStorage.setItem('notificationOffsets', '{not valid json');
     expect(await getNotificationOffsets()).toEqual([3]);
+  });
+
+  it('returns the default hour (9) when nothing has been saved', async () => {
+    expect(await getNotificationHour()).toBe(DEFAULT_NOTIFICATION_HOUR);
+    expect(DEFAULT_NOTIFICATION_HOUR).toBe(9);
+  });
+
+  it('round-trips a saved hour', async () => {
+    await setNotificationHour(21);
+    expect(await getNotificationHour()).toBe(21);
+  });
+
+  it('falls back to the default hour for an out-of-range or non-integer value', async () => {
+    await AsyncStorage.setItem('notificationHour', JSON.stringify(25));
+    expect(await getNotificationHour()).toBe(9);
+    await AsyncStorage.setItem('notificationHour', JSON.stringify(9.5));
+    expect(await getNotificationHour()).toBe(9);
+    await AsyncStorage.setItem('notificationHour', '{not valid json');
+    expect(await getNotificationHour()).toBe(9);
   });
 });

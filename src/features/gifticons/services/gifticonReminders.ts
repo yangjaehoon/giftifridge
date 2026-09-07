@@ -1,6 +1,9 @@
 import { setGifticonNotificationIds } from './gifticonService';
 import { cancelNotifications, scheduleExpiryNotifications } from './notificationService';
-import { getNotificationOffsets } from '../../../shared/utils/notificationPrefs';
+import {
+  getNotificationHour,
+  getNotificationOffsets,
+} from '../../../shared/utils/notificationPrefs';
 import { withTimeout, WRITE_TIMEOUT_MS } from '../../../shared/utils/withTimeout';
 
 interface SyncParams {
@@ -38,8 +41,8 @@ export async function syncGifticonReminders({
     if (isEditing && previousNotificationIds?.length) {
       await cancelNotifications(previousNotificationIds);
     }
-    const offsets = await getNotificationOffsets();
-    const notificationIds = await scheduleExpiryNotifications(gifticon, offsets);
+    const [offsets, hour] = await Promise.all([getNotificationOffsets(), getNotificationHour()]);
+    const notificationIds = await scheduleExpiryNotifications(gifticon, offsets, hour);
     // On edit, always write back (possibly []) so a shrink from N reminders to
     // none is persisted; on create, skip the extra write when nothing scheduled.
     if (notificationIds.length > 0 || isEditing) {
