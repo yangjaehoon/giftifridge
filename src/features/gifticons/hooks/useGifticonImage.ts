@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 import * as ImagePicker from 'expo-image-picker';
 import {
+  findKnownBrand,
   guessGifticonFields,
   parseAmountFromText,
   parseBarcodeFromText,
@@ -37,20 +38,23 @@ interface Options {
   isFieldEdited: (field: AutofillField) => boolean;
 }
 
-// One auto-fillable field's "was it just auto-filled" flag. The "did the user
-// override it by hand" guard lives in useGifticonForm (isFieldEdited) so the
-// screen doesn't have to keep two copies in sync; adding another detected
-// field here is still one line.
+// One auto-fillable field's "was it just auto-filled" flag, plus whether that
+// fill was a confident read or a soft guess (drives the hint's wording/colour).
+// The "did the user override it by hand" guard lives in useGifticonForm
+// (isFieldEdited) so the screen doesn't have to keep two copies in sync;
+// adding another detected field here is still one line.
 function useDetectedField<T>(
   key: AutofillField,
   apply: (value: T) => void,
   isFieldEdited: (field: AutofillField) => boolean,
 ) {
   const [autoDetected, setAutoDetected] = useState(false);
+  const [confident, setConfident] = useState(true);
 
-  const detect = (value: T) => {
+  const detect = (value: T, isConfident = true) => {
     if (isFieldEdited(key)) return;
     apply(value);
+    setConfident(isConfident);
     setAutoDetected(true);
   };
   const reset = () => setAutoDetected(false);
@@ -59,7 +63,7 @@ function useDetectedField<T>(
   // longer applies — they've just checked it. Derived rather than cleared on
   // edit so the two hooks don't have to talk (the edit re-renders the screen,
   // which recomputes this).
-  return { autoDetected: autoDetected && !isFieldEdited(key), detect, reset };
+  return { autoDetected: autoDetected && !isFieldEdited(key), confident, detect, reset };
 }
 
 /**
@@ -108,6 +112,10 @@ export function useGifticonImage({
       if (run !== runRef.current) return; // a newer image was picked meanwhile
 
       const guessed = recognized ? guessGifticonFields(recognized) : null;
+      // A brand/name/category anchored on a known brand is a confident read;
+      // the position-based fallback (and a category merely inferred from
+      // product-name keywords) is a soft guess the hint should flag as such.
+      const brandKnown = recognized != null && findKnownBrand(recognized.text) != null;
       const detectedDate = recognized ? parseExpiryDateFromText(recognized.text) : null;
       const detectedAmount = recognized ? parseAmountFromText(recognized.text) : null;
       // The photo's barcode graphic is the primary source; the same number
@@ -117,9 +125,9 @@ export function useGifticonImage({
         scannedBarcode ?? (recognized ? parseBarcodeFromText(recognized.text) : null);
 
       if (detectedDate) date.detect(parseDate(detectedDate));
-      if (guessed?.name) name.detect(guessed.name);
-      if (guessed?.brand) brand.detect(guessed.brand);
-      if (guessed?.category) category.detect(guessed.category);
+      if (guessed?.name) name.detect(guessed.name, brandKnown);
+      if (guessed?.brand) brand.detect(guessed.brand, brandKnown);
+      if (guessed?.category) category.detect(guessed.category, brandKnown);
       if (detectedAmount != null) amount.detect(detectedAmount);
       if (detectedBarcode) barcode.detect(detectedBarcode);
 
@@ -128,6 +136,7 @@ export function useGifticonImage({
         brand: guessed?.brand ?? null,
         name: guessed?.name ?? null,
         category: guessed?.category ?? null,
+        brandKnown,
         expiresAt: detectedDate,
         amount: detectedAmount,
         barcode: detectedBarcode,
@@ -178,6 +187,11 @@ export function useGifticonImage({
     barcodeAutoDetected: barcode.autoDetected,
     categoryAutoDetected: category.autoDetected,
     amountAutoDetected: amount.autoDetected,
+    // Only the OCR-guessed text fields have a soft-guess mode; the format-
+    // anchored reads (date/amount/barcode) are always shown as confident.
+    nameConfident: name.confident,
+    brandConfident: brand.confident,
+    categoryConfident: category.confident,
     pickFromLibrary,
     takePhoto,
   };

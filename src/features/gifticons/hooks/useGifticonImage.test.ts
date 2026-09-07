@@ -75,6 +75,29 @@ describe('useGifticonImage', () => {
     expect(result.current.barcodeAutoDetected).toBe(true);
     expect(result.current.categoryAutoDetected).toBe(true);
     expect(result.current.amountAutoDetected).toBe(true);
+    // "스타벅스" is a known brand — brand/name/category are confident reads.
+    expect(result.current.brandConfident).toBe(true);
+    expect(result.current.nameConfident).toBe(true);
+    expect(result.current.categoryConfident).toBe(true);
+  });
+
+  it('flags the brand/name/category as a soft guess when no known brand is found', async () => {
+    mockedLibrary.mockResolvedValue({ canceled: false, assets: [{ uri: 'file:///a.jpg' }] });
+    mockedRecognizeText.mockResolvedValue(
+      ocrResult('동네빵집\n소금빵 세트\n유효기간 2026.12.31까지'),
+    );
+    const callbacks = setup();
+    const { result } = await renderHook(() => useGifticonImage(callbacks));
+
+    await act(async () => {
+      await result.current.pickFromLibrary();
+    });
+
+    await waitFor(() => expect(callbacks.onBrandDetected).toHaveBeenCalledWith('동네빵집'));
+    expect(result.current.brandConfident).toBe(false);
+    expect(result.current.nameConfident).toBe(false);
+    // category here is inferred from "빵", not a known brand — also a guess.
+    expect(result.current.categoryConfident).toBe(false);
   });
 
   it('falls back to a barcode number printed in the OCR text when the photo itself has none', async () => {

@@ -22,4 +22,16 @@ describe('OcrHint', () => {
     );
     expect(getByText('브랜드를 보고 카테고리를 자동으로 선택했어요. 확인해주세요.')).toBeTruthy();
   });
+
+  it('uses softer wording for a low-confidence guess', async () => {
+    const { getByText } = await render(<OcrHint show subject="브랜드를" confident={false} />);
+    expect(getByText('브랜드를 추측해서 넣었어요. 꼭 확인해주세요.')).toBeTruthy();
+  });
+
+  it('uses guessMessage for the low-confidence case when provided', async () => {
+    const { getByText } = await render(
+      <OcrHint show confident={false} message="확실할 때 문구" guessMessage="추측일 때 문구" />,
+    );
+    expect(getByText('추측일 때 문구')).toBeTruthy();
+  });
 });

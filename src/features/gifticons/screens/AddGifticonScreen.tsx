@@ -221,7 +221,7 @@ export default function AddGifticonScreen({ navigation, route }: Props) {
           onSubmitEditing={() => brandRef.current?.focus()}
         />
         {form.fieldErrors.name && <Text style={formStyles.errorText}>{form.fieldErrors.name}</Text>}
-        <OcrHint show={image.nameAutoDetected} subject="상품명을" />
+        <OcrHint show={image.nameAutoDetected} confident={image.nameConfident} subject="상품명을" />
 
         <Text style={formStyles.label}>브랜드</Text>
         <TextInput
@@ -236,7 +236,11 @@ export default function AddGifticonScreen({ navigation, route }: Props) {
         {form.fieldErrors.brand && (
           <Text style={formStyles.errorText}>{form.fieldErrors.brand}</Text>
         )}
-        <OcrHint show={image.brandAutoDetected} subject="브랜드를" />
+        <OcrHint
+          show={image.brandAutoDetected}
+          confident={image.brandConfident}
+          subject="브랜드를"
+        />
 
         <Text style={formStyles.label}>금액 (선택)</Text>
         <TextInput
@@ -268,7 +272,9 @@ export default function AddGifticonScreen({ navigation, route }: Props) {
         </View>
         <OcrHint
           show={image.categoryAutoDetected}
+          confident={image.categoryConfident}
           message="브랜드를 보고 카테고리를 자동으로 선택했어요. 확인해주세요."
+          guessMessage="상품명 키워드로 카테고리를 추측했어요. 꼭 확인해주세요."
         />
 
         <Text style={formStyles.label}>바코드 번호 (선택)</Text>
