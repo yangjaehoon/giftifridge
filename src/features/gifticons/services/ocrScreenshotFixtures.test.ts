@@ -1,4 +1,4 @@
-import { guessGifticonFields, parseExpiryDateFromText } from './ocrService';
+import { guessGifticonFields, parseBarcodeFromText, parseExpiryDateFromText } from './ocrService';
 import type { RecognizedText } from './ocrService';
 
 // Real @react-native-ml-kit/text-recognition output, captured on an Android
@@ -45,6 +45,7 @@ describe('guessGifticonFields on real OCR of web-search-result screenshots', () 
       category: 'cafe',
     });
     expect(parseExpiryDateFromText(recognized.text)).toBe('2022-05-04');
+    expect(parseBarcodeFromText(recognized.text)).toBe('956235334665');
   });
 
   it('IMG_0007 — 뚜레쥬르 행복한 플라워 하트 케이크 (result-title fragment "있을까?" bleeds in)', () => {
@@ -74,6 +75,7 @@ describe('guessGifticonFields on real OCR of web-search-result screenshots', () 
       category: 'cafe',
     });
     expect(parseExpiryDateFromText(recognized.text)).toBe('2022-04-19');
+    expect(parseBarcodeFromText(recognized.text)).toBe('993921004549');
   });
 
   it('IMG_0008 — bhc 뿌링클 (ASCII brand with no whitespace boundary: "...Blog\\nBHC")', () => {
@@ -107,6 +109,10 @@ describe('guessGifticonFields on real OCR of web-search-result screenshots', () 
       category: 'restaurant',
     });
     expect(parseExpiryDateFromText(recognized.text)).toBe('2024-08-08');
+    // The barcode number OCR read as three space-separated 4-digit groups;
+    // "2183702679" (10 digits) is below the barcode-length floor, so this is
+    // the one unambiguous candidate.
+    expect(parseBarcodeFromText(recognized.text)).toBe('222612889031');
   });
 
   it('IMG_0009 — old syrup layout: oversized "syrup gifticon" logo, brand only in footer', () => {
@@ -137,5 +143,6 @@ describe('guessGifticonFields on real OCR of web-search-result screenshots', () 
       category: 'cafe',
     });
     expect(parseExpiryDateFromText(recognized.text)).toBe('2016-09-11');
+    expect(parseBarcodeFromText(recognized.text)).toBe('999967256650');
   });
 });

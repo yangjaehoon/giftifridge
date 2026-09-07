@@ -9,6 +9,22 @@ describe('parseBarcodeFromText', () => {
     expect(parseBarcodeFromText('스타벅스\n아메리카노 Tall\n8801234567890')).toBe('8801234567890');
   });
 
+  it('joins a space-grouped barcode number OCR read in 4-digit chunks', () => {
+    expect(parseBarcodeFromText('주문번호\n2226 1288 9031\n공유')).toBe('222612889031');
+  });
+
+  it('joins a hyphen-grouped barcode number', () => {
+    expect(parseBarcodeFromText('8801-2345-6789-0123')).toBe('8801234567890123');
+  });
+
+  it('does not treat a Korean-style spaced date as a barcode', () => {
+    expect(parseBarcodeFromText('유효기간 2024 08 08 까지')).toBeNull();
+  });
+
+  it('treats the same number printed twice on the card as one candidate', () => {
+    expect(parseBarcodeFromText('8801234567890\n스타벅스\n8801234567890')).toBe('8801234567890');
+  });
+
   it('does not mistake a comma-grouped amount for a barcode', () => {
     expect(parseBarcodeFromText('금액 10,000원')).toBeNull();
   });
