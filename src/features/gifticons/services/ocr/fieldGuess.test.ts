@@ -135,6 +135,27 @@ describe('guessGifticonFields', () => {
     });
   });
 
+  it('drops a "gifticon" platform word wedged between the brand and the real name', () => {
+    // A logo band / watermark on syrup-style layouts; the Latin spelling slips
+    // past the Hangul NOISE_KEYWORDS, and it must not be taken as the name.
+    const text = '스타벅스\ngifticon\n아메리카노 T\n유효기간 2026.12.31까지';
+    expect(guessGifticonFields(ocrResult(text))).toEqual({
+      brand: '스타벅스',
+      name: '아메리카노 T',
+      category: 'cafe',
+    });
+  });
+
+  it('drops a "syrup gifticon" / "kakaotalk 선물하기" caption on the position path too', () => {
+    const text =
+      '무명카페\nSYRUP gifticon\nkakaotalk 선물하기\n바닐라 라떼\n유효기간 2026.12.31까지';
+    expect(guessGifticonFields(ocrResult(text))).toEqual({
+      brand: '무명카페',
+      name: '바닐라 라떼',
+      category: 'cafe',
+    });
+  });
+
   it('keeps a genuinely short product name after the brand', () => {
     const text = '설빙\n빙수\n유효기간 2026.12.31까지';
     expect(guessGifticonFields(ocrResult(text))).toMatchObject({ brand: '설빙', name: '빙수' });

@@ -18,6 +18,14 @@ const NOISE_KEYWORDS = [
   '전국',
   '점',
 ];
+
+// The gifticon platform / wrapper the coupon was issued through — a logo band
+// ("syrup gifticon"), an app-name caption ("kakaotalk 선물하기"), a stray
+// "gifticon" watermark. Never a product name, but the Latin spellings slip
+// past NOISE_KEYWORDS (which is Hangul and matched case-sensitively), and the
+// Korean 기프티콘 there won't catch "gifticon"/"Gifticon"/"GIFTICON". Kept
+// lowercase and tested against line.toLowerCase() so OCR casing doesn't matter.
+const PLATFORM_NAMES = ['gifticon', 'giftishow', 'syrup', 'kakaotalk', '카카오톡', '선물하기'];
 const MIN_LINE_LENGTH = 2;
 const MAX_LINE_LENGTH = 30;
 // A line this digit-dense reads as a barcode number or price, not text — but
@@ -41,7 +49,9 @@ function isNoiseLine(line: string): boolean {
   const digitCount = (line.match(/\d/g) ?? []).length;
   if (digitCount >= MIN_NOISE_DIGIT_COUNT && digitCount / line.length > MAX_DIGIT_RATIO)
     return true;
-  return NOISE_KEYWORDS.some((keyword) => line.includes(keyword));
+  if (NOISE_KEYWORDS.some((keyword) => line.includes(keyword))) return true;
+  const lower = line.toLowerCase();
+  return PLATFORM_NAMES.some((keyword) => lower.includes(keyword));
 }
 
 export interface GuessedGifticonFields {
