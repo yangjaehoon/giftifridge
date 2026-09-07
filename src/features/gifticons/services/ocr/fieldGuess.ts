@@ -100,6 +100,16 @@ function cardFooterIndex(lines: RecognizedLine[]): number {
   return index === -1 ? lines.length : index;
 }
 
+/**
+ * How many distinct labels from the fixed key/value block every gifticon card
+ * carries (교환처 / 유효기간 / 주문번호 / 바코드 …) appear in the text. Two or
+ * more is a strong "this is a gifticon card layout" signal — see
+ * ocr/gifticonScore.
+ */
+export function countCardFooterLabels(text: string): number {
+  return CARD_FOOTER_LABELS.filter((label) => text.includes(label)).length;
+}
+
 function keepHeadlineSizedLines(lines: RecognizedLine[]): RecognizedLine[] {
   const heights = lines.map((line) => line.height).filter((h) => h > 0);
   // No line in this whole recognition pass has height data — this platform/

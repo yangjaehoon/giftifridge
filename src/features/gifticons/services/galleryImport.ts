@@ -3,24 +3,16 @@ import * as MediaLibrary from 'expo-media-library';
 import { newGifticonId } from './gifticonService';
 import { saveGifticon } from './saveGifticon';
 import { syncGifticonReminders } from './gifticonReminders';
-import {
-  findKnownBrand,
-  guessGifticonFields,
-  parseAmountFromText,
-  parseBarcodeFromText,
-  parseExpiryDateResult,
-  recognizeText,
-} from './ocrService';
+import { assessGifticon, guessGifticonFields, recognizeText } from './ocrService';
 import { recognizeBarcodeFromImage } from './barcodeRecognition';
 import { ocrDebugLog } from './ocr/debugLog';
 import type { GifticonCategory } from '../types';
 
 // Everything about turning "a new photo appeared in the gallery" into a saved
-// gifticon: the persisted scan cursor / dedupe set, the (best-effort) heuristic
-// for "this looks like a gifticon", and the create. Called both by the
-// foreground listener (useGalleryAutoImport) and the background task
-// (galleryImportTask.ts), so the two can't drift on what counts as "new" or
-// "already handled".
+// gifticon: the persisted scan cursor / dedupe set, the "is this a gifticon"
+// score (see ocr/gifticonScore), and the create. Called both by the foreground
+// listener (useGalleryAutoImport) and the background task (galleryImportTask),
+// so the two can't drift on what counts as "new" or "already handled".
 
 export const ENABLED_KEY = 'galleryImportEnabled';
 const LAST_CHECKED_KEY = 'galleryImportLastCheckedAt';
@@ -33,24 +25,9 @@ const IMPORTED_IDS_CAP = 500;
 // can't run long or drain the battery.
 const BATCH_LIMIT = 20;
 
-const GIFTICON_KEYWORDS = ['기프티콘', '교환권', '모바일교환권', '쿠폰'];
 const FALLBACK_CATEGORY: GifticonCategory = 'etc';
 const FALLBACK_BRAND = '미확인 브랜드';
 const FALLBACK_NAME = '새 기프티콘';
-
-/**
- * The second bar for an auto-create (the first, in runScan, is a *confident*
- * expiry date — never a guessed one, since there is no confirmation step): a
- * signal that this is a gifticon and not just any dated document. `textBarcode`
- * is passed in so it isn't parsed twice.
- */
-function looksLikeGifticon(text: string, textBarcode: string | null): boolean {
-  return (
-    textBarcode != null ||
-    findKnownBrand(text) != null ||
-    GIFTICON_KEYWORDS.some((keyword) => text.includes(keyword))
-  );
-}
 
 async function getLastCheckedAt(): Promise<number> {
   const raw = await AsyncStorage.getItem(LAST_CHECKED_KEY);
@@ -139,43 +116,41 @@ async function runScan(ownerId: string): Promise<number> {
 
       const uri = await asset.getUri();
       const recognized = await recognizeText(uri);
-      const expiry = recognized ? parseExpiryDateResult(recognized.text) : null;
-      const textBarcode = recognized ? parseBarcodeFromText(recognized.text) : null;
-      // A confident expiry date is mandatory: this flow has no review step, so
-      // it neither invents a date nor trusts the several-dates-no-keyword
-      // "latest" guess.
+      const assessment = recognized ? assessGifticon(recognized.text) : null;
+      // A confident expiry date is mandatory (this no-review flow never
+      // invents or guesses one), plus a high enough gifticon-likeness score.
       if (
         recognized == null ||
-        expiry == null ||
-        !expiry.confident ||
-        !looksLikeGifticon(recognized.text, textBarcode)
+        assessment == null ||
+        assessment.expiresAt == null ||
+        !assessment.create
       ) {
         // Remember the decision so it isn't re-OCR'd every scan, but don't mark
         // it done before a create is even tried.
         ocrDebugLog('gallery-import skip', {
           textRead: recognized != null,
-          expiresAt: expiry?.value ?? null,
-          dateConfident: expiry?.confident ?? false,
+          score: assessment?.score ?? null,
+          signals: assessment?.signals ?? null,
+          expiresAt: assessment?.expiresAt ?? null,
         });
         importedIds.add(asset.id);
         continue;
       }
 
-      // Only worth the extra native call for photos already confirmed to look
-      // like a gifticon — no point barcode-scanning everything else. The
-      // graphic is the primary source; textBarcode (already parsed above) is
-      // the fallback for when the graphic itself couldn't be read.
+      // Only worth the extra native call for photos already scored as a
+      // gifticon. The graphic is the primary barcode source; assessment
+      // .textBarcode (already parsed) is the fallback for an unreadable graphic.
       const scannedBarcode = await recognizeBarcodeFromImage(uri);
-      const barcode = scannedBarcode ?? textBarcode;
+      const barcode = scannedBarcode ?? assessment.textBarcode;
       const { brand, name, category } = guessGifticonFields(recognized);
       const draftId = newGifticonId();
       const fields = {
         name: name ?? FALLBACK_NAME,
         brand: brand ?? FALLBACK_BRAND,
         category: category ?? FALLBACK_CATEGORY,
-        expiresAt: expiry.value,
+        expiresAt: assessment.expiresAt,
         barcode: barcode ?? undefined,
-        amount: parseAmountFromText(recognized.text) ?? undefined,
+        amount: assessment.amount ?? undefined,
       };
       ocrDebugLog('gallery-import create', {
         name: fields.name,
@@ -186,6 +161,8 @@ async function runScan(ownerId: string): Promise<number> {
         barcode: fields.barcode ? `<${fields.barcode.length} digits>` : null,
         brandGuessed: brand != null,
         nameGuessed: name != null,
+        score: assessment.score,
+        signals: assessment.signals,
       });
       await saveGifticon({ draftId, ownerId, imageUri: uri, imageChanged: true, fields });
       // Only marked done once the create actually went through — if
