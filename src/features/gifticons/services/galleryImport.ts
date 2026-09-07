@@ -6,8 +6,8 @@ import { syncGifticonReminders } from './gifticonReminders';
 import {
   assessGifticon,
   guessGifticonFields,
-  isItemCouponPrice,
   recognizeText,
+  resolveImportAmount,
 } from './ocrService';
 import { recognizeBarcodeFromImage } from './barcodeRecognition';
 import { ocrDebugLog } from './ocr/debugLog';
@@ -122,8 +122,10 @@ async function runScan(ownerId: string): Promise<number> {
       const uri = await asset.getUri();
       const recognized = await recognizeText(uri);
       const assessment = recognized ? assessGifticon(recognized.text) : null;
-      // A confident expiry date is mandatory (this no-review flow never
-      // invents or guesses one), plus a high enough gifticon-likeness score.
+      // A confident, non-stale expiry date is mandatory (this no-review flow
+      // never invents or guesses one), plus a high enough gifticon-likeness
+      // score. The `expiresAt == null` check is implied by `!create` but kept
+      // so TS narrows `assessment.expiresAt` to `string` past this guard.
       if (
         recognized == null ||
         assessment == null ||
@@ -148,12 +150,10 @@ async function runScan(ownerId: string): Promise<number> {
       const scannedBarcode = await recognizeBarcodeFromImage(uri);
       const barcode = scannedBarcode ?? assessment.textBarcode;
       const { brand, name, category } = guessGifticonFields(recognized);
-      // A bare "N원" on a cafe/restaurant coupon is a printed menu price, not a
-      // stored-value amount — drop it rather than make the gifticon look like a
-      // 금액권 with a spend-down balance.
-      const parsedAmount =
-        assessment.amount != null ? { confident: assessment.amountConfident } : null;
-      const amount = isItemCouponPrice(parsedAmount, category) ? null : assessment.amount;
+      // Drops a bare "N원" that reads as a printed menu price on a cafe/
+      // restaurant coupon, so the gifticon isn't shown as a 금액권 with a
+      // spend-down balance.
+      const amount = resolveImportAmount(assessment, category);
       const draftId = newGifticonId();
       const fields = {
         name: name ?? FALLBACK_NAME,

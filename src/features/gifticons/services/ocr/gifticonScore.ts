@@ -11,15 +11,9 @@ const GIFTICON_KEYWORDS = ['기프티콘', '교환권', '모바일교환권', '�
 const PLATFORM_KEYWORDS = ['선물하기', 'kakaotalk', '카카오톡', '기프티쇼', 'giftishow', 'syrup'];
 // Words that mean this is a purchase receipt, not a gifticon — a receipt can
 // otherwise carry a date and a known brand name and score like a gifticon.
-const RECEIPT_KEYWORDS = [
-  '영수증',
-  '합계',
-  '받으실금액',
-  '받을금액',
-  '거스름돈',
-  '카드승인',
-  '가맹점명',
-];
+// All receipt-specific; "합계" was dropped as too generic (a multi-item gift
+// set can carry it).
+const RECEIPT_KEYWORDS = ['영수증', '받으실금액', '받을금액', '거스름돈', '카드승인', '가맹점명'];
 
 // A no-review auto-import needs BOTH a confident expiry date and enough
 // corroborating signal that this really is a gifticon card — not a dated
@@ -65,6 +59,10 @@ function footerPoints(count: number): number {
  * gifticons are fixed-item coupons rather than stored-value cards, is almost
  * certainly a printed product price — not a face value. The no-review import
  * drops it; the add form keeps it as a soft guess for the user to confirm.
+ *
+ * `culture` is deliberately not covered: 영화관람권 with a printed price would
+ * slip through, but 문화상품권 / 도서상품권 (same category) are genuine
+ * stored-value vouchers and must keep their amount.
  */
 export function isItemCouponPrice(
   amount: { confident: boolean } | null,
@@ -73,10 +71,21 @@ export function isItemCouponPrice(
   return amount != null && !amount.confident && (category === 'cafe' || category === 'restaurant');
 }
 
+/** The amount to actually save: the parsed value, unless it reads as a printed
+ *  item price (see isItemCouponPrice). Shared by runScan and the corpus harness
+ *  so "what amount gets imported" is defined once. */
+export function resolveImportAmount(
+  assessment: Pick<GifticonAssessment, 'amount' | 'amountConfident'>,
+  category: GifticonCategory | null,
+): number | null {
+  const parsed = assessment.amount != null ? { confident: assessment.amountConfident } : null;
+  return isItemCouponPrice(parsed, category) ? null : assessment.amount;
+}
+
 /**
  * Scores a photo's OCR text for gallery auto-import and parses the fields the
- * caller will reuse. Pure and side-effect-free so the corpus harness can drive
- * it directly.
+ * caller will reuse. Side-effect-free, but *not* a pure function of `text`
+ * alone: the staleness check below reads the current date.
  */
 export function assessGifticon(text: string): GifticonAssessment {
   const expiry = parseExpiryDateResult(text);
@@ -95,6 +104,8 @@ export function assessGifticon(text: string): GifticonAssessment {
   const dateIsStale = expiry?.confident === true && daysUntil(expiry.value) < -STALE_EXPIRY_DAYS;
 
   if (expiry?.confident) add('confidentDate', 3);
+  // A stale date already blocks the import via `expiresAt == null` below; this
+  // -3 only keeps the logged/reported score honest about why.
   if (dateIsStale) add('staleExpiry', -3);
   add('footerLabels', footerPoints(footerLabels));
   if (textBarcode != null) add('textBarcode', 2);

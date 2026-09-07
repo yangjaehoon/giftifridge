@@ -4,7 +4,7 @@ import { prepareImageForOcr } from './prepareImage';
 
 jest.mock('expo-image-manipulator', () => ({
   manipulateAsync: jest.fn(),
-  SaveFormat: { JPEG: 'jpeg' },
+  SaveFormat: { PNG: 'png' },
 }));
 
 const mockedGetSize = jest.spyOn(Image, 'getSize');
@@ -12,6 +12,7 @@ const mockedManipulate = ImageManipulator.manipulateAsync as jest.Mock;
 
 beforeEach(() => {
   jest.clearAllMocks();
+  jest.useRealTimers();
 });
 
 describe('prepareImageForOcr', () => {
@@ -22,15 +23,15 @@ describe('prepareImageForOcr', () => {
     expect(mockedManipulate).not.toHaveBeenCalled();
   });
 
-  it('upscales a too-small image and returns the new uri', async () => {
+  it('upscales a too-small image losslessly and returns the new uri', async () => {
     mockedGetSize.mockImplementation((_uri, ok) => ok(600, 900));
-    mockedManipulate.mockResolvedValue({ uri: 'file:///up.jpg', width: 1600, height: 2400 });
+    mockedManipulate.mockResolvedValue({ uri: 'file:///up.png', width: 1600, height: 2400 });
 
-    await expect(prepareImageForOcr('file:///small.jpg')).resolves.toBe('file:///up.jpg');
+    await expect(prepareImageForOcr('file:///small.jpg')).resolves.toBe('file:///up.png');
     expect(mockedManipulate).toHaveBeenCalledWith(
       'file:///small.jpg',
       [{ resize: { width: 1600 } }],
-      { compress: 0.9, format: 'jpeg' },
+      { compress: 1, format: 'png' },
     );
   });
 
@@ -38,6 +39,19 @@ describe('prepareImageForOcr', () => {
     mockedGetSize.mockImplementation((_uri, _ok, fail) => fail?.(new Error('no such file')));
 
     await expect(prepareImageForOcr('file:///gone.jpg')).resolves.toBe('file:///gone.jpg');
+  });
+
+  it('falls back to the original uri when the size lookup hangs', async () => {
+    jest.useFakeTimers();
+    mockedGetSize.mockImplementation(() => {
+      // never invokes either callback — the content:// / ph:// hang
+    });
+
+    const promise = prepareImageForOcr('file:///hangs.jpg');
+    await jest.advanceTimersByTimeAsync(3500);
+
+    await expect(promise).resolves.toBe('file:///hangs.jpg');
+    expect(mockedManipulate).not.toHaveBeenCalled();
   });
 
   it('falls back to the original uri when the resize fails', async () => {

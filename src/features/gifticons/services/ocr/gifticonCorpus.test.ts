@@ -1,4 +1,4 @@
-import { assessGifticon, isItemCouponPrice } from './gifticonScore';
+import { assessGifticon, resolveImportAmount } from './gifticonScore';
 import { guessGifticonFields } from './fieldGuess';
 import { parseExpiryDateFromText } from './dateParser';
 import type { GifticonCategory } from '../../types';
@@ -260,12 +260,7 @@ function toRecognized(text: string): RecognizedText {
 function runPipeline(ocr: string) {
   const a = assessGifticon(ocr);
   const guess = guessGifticonFields(toRecognized(ocr));
-  const amount = isItemCouponPrice(
-    a.amount != null ? { confident: a.amountConfident } : null,
-    guess.category,
-  )
-    ? null
-    : a.amount;
+  const amount = resolveImportAmount(a, guess.category);
   return {
     create: a.create,
     score: a.score,
