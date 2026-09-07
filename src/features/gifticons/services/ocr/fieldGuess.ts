@@ -125,6 +125,20 @@ function looksLikeFragment(line: string): boolean {
   return line.length < 2 || /[?!]$/.test(line);
 }
 
+// OCR frays the ends of a line — a stray bracket from an adjacent logo
+// ("syrup gifticon)"), a leading bullet, a trailing comma from a wrapped
+// sentence, doubled inner spaces. Trims those before the value goes into the
+// form, but leaves meaningful trailing marks alone ("라떼 2잔+", "R/L").
+function tidy(value: string | null): string | null {
+  if (value == null) return null;
+  const cleaned = value
+    .replace(/\s+/g, ' ')
+    .replace(/^[\s\-–—·•*|/\\]+/, '')
+    .replace(/[\s\-–—·|/\\.,;:)\]}>]+$/, '')
+    .trim();
+  return cleaned.length > 0 ? cleaned : null;
+}
+
 /**
  * Best-effort brand/name/category guess from OCR text — there's no format to
  * anchor on the way a date has one, so this is a heuristic the user is
@@ -170,12 +184,12 @@ export function guessGifticonFields(recognized: RecognizedText): GuessedGifticon
       null;
     return {
       brand: known.name,
-      name: nameAfterBrand ?? lastBeforeFooter,
+      name: tidy(nameAfterBrand ?? lastBeforeFooter),
       category: known.category,
     };
   }
 
-  const brand = headlineLines[0] ?? null;
-  const name = headlineLines[1] ?? null;
+  const brand = tidy(headlineLines[0] ?? null);
+  const name = tidy(headlineLines[1] ?? null);
   return { brand, name, category: inferCategoryFromKeywords(`${brand ?? ''} ${name ?? ''}`) };
 }

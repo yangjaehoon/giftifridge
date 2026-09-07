@@ -93,32 +93,39 @@ export function compact(value: string): string {
 
 const ASCII_ONLY_RE = /^[a-z0-9]+$/;
 
-// A plain substring check is fine for Korean brand names (multi-syllable
-// blocks rarely embed inside an unrelated word), but a short Latin/digit
-// token like "CU" or "KFC" would otherwise match inside all sorts of
-// unrelated English text (e.g. "CU" inside "CUP"). For those, require the
-// token to stand alone rather than be embedded in a longer alphanumeric run —
-// checked against both the fully-compacted text and a whitespace-preserving
-// one, since compact() turns "Naver Blog\nBHC" into "naverblogbhc" where the
-// word boundary "bhc" actually had is gone.
-function containsBrandKey(
+// Where `brandKey` first appears in the compacted text, or -1. A plain
+// substring search is fine for Korean brand names (multi-syllable blocks
+// rarely embed inside an unrelated word), but a short Latin/digit token like
+// "CU" or "KFC" would otherwise match inside all sorts of unrelated English
+// text (e.g. "CU" inside "CUP"). For those, require the token to stand alone
+// rather than be embedded in a longer alphanumeric run — checked against both
+// the fully-compacted text and a whitespace-preserving one, since compact()
+// turns "Naver Blog\nBHC" into "naverblogbhc" where the word boundary "bhc"
+// actually had is gone.
+function brandKeyPosition(
   compactHaystack: string,
   spacedHaystack: string,
   brandKey: string,
-): boolean {
-  if (!ASCII_ONLY_RE.test(brandKey)) return compactHaystack.includes(brandKey);
+): number {
+  if (!ASCII_ONLY_RE.test(brandKey)) return compactHaystack.indexOf(brandKey);
   const bounded = new RegExp(`(?:^|[^a-z0-9])${brandKey}(?:[^a-z0-9]|$)`);
-  return bounded.test(compactHaystack) || bounded.test(spacedHaystack);
+  const at = bounded.exec(compactHaystack)?.index ?? bounded.exec(spacedHaystack)?.index;
+  return at ?? -1;
 }
 
+// The real brand sits near the top of a gifticon, so when the text names more
+// than one known brand — a price-comparison blog screenshot, a "vs" post —
+// the earliest one wins rather than whichever happens to come first in the
+// KNOWN_BRANDS array.
 export function findKnownBrand(text: string): KnownBrand | null {
   const compactHaystack = compact(text);
   const spacedHaystack = text.replace(/\s+/g, ' ').toLowerCase();
-  return (
-    KNOWN_BRANDS.find((brand) =>
-      containsBrandKey(compactHaystack, spacedHaystack, compact(brand.name)),
-    ) ?? null
-  );
+  let best: { brand: KnownBrand; at: number } | null = null;
+  for (const brand of KNOWN_BRANDS) {
+    const at = brandKeyPosition(compactHaystack, spacedHaystack, compact(brand.name));
+    if (at !== -1 && (best == null || at < best.at)) best = { brand, at };
+  }
+  return best?.brand ?? null;
 }
 
 // When the brand isn't in KNOWN_BRANDS there's no category from it, but the

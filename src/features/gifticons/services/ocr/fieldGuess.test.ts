@@ -156,6 +156,30 @@ describe('guessGifticonFields', () => {
     });
   });
 
+  it('trims OCR-frayed ends off the guessed brand and name', () => {
+    const text = '무명카페;\n· 아메리카노 Tall,\n유효기간 2026.12.31까지';
+    expect(guessGifticonFields(ocrResult(text))).toEqual({
+      brand: '무명카페',
+      name: '아메리카노 Tall',
+      category: 'cafe',
+    });
+  });
+
+  it('keeps a meaningful trailing mark on the name (e.g. "2잔+")', () => {
+    const text = '스타벅스\n아메리카노 T 2잔+\n유효기간 2026.12.31까지';
+    expect(guessGifticonFields(ocrResult(text))).toMatchObject({ name: '아메리카노 T 2잔+' });
+  });
+
+  it('picks the earliest of several known brands, not the first in the data', () => {
+    // 투썸플레이스 comes before 스타벅스 in the text but after it in KNOWN_BRANDS.
+    const text = '투썸플레이스\n아메리카노\n(스타벅스와 가격 비교)\n유효기간 2026.12.31까지';
+    expect(guessGifticonFields(ocrResult(text))).toEqual({
+      brand: '투썸플레이스',
+      name: '아메리카노',
+      category: 'cafe',
+    });
+  });
+
   it('keeps a genuinely short product name after the brand', () => {
     const text = '설빙\n빙수\n유효기간 2026.12.31까지';
     expect(guessGifticonFields(ocrResult(text))).toMatchObject({ brand: '설빙', name: '빙수' });
