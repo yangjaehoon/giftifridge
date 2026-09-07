@@ -63,6 +63,29 @@ export function gifticonListCache(scope: 'owner' | 'space'): GifticonListCache {
 }
 
 /**
+ * Every barcode across every cached list (personal + spaces). Gallery
+ * auto-import uses it to skip re-photographing a gifticon the user already
+ * has — best-effort: as fresh as the last list view, capped at MAX_CACHED per
+ * list, and an empty set (offline cold start, storage error) just means "don't
+ * dedupe this scan".
+ */
+export async function readCachedBarcodes(): Promise<Set<string>> {
+  const barcodes = new Set<string>();
+  try {
+    const keys = (await AsyncStorage.getAllKeys()).filter((k) => k.startsWith(PREFIX));
+    if (keys.length === 0) return barcodes;
+    for (const [, raw] of await AsyncStorage.multiGet(keys)) {
+      for (const gifticon of parseGifticons(raw) ?? []) {
+        if (gifticon.barcode) barcodes.add(gifticon.barcode);
+      }
+    }
+  } catch {
+    // best-effort
+  }
+  return barcodes;
+}
+
+/**
  * Finds one gifticon by id across every cached list — the detail screen only
  * has the id, not which list it came from. Null on a miss or any storage error.
  */

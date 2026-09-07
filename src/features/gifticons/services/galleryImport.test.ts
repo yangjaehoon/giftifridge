@@ -170,6 +170,33 @@ describe('scanGalleryForGifticons', () => {
     );
   });
 
+  it('skips a photo whose barcode is already in the cached gifticon list', async () => {
+    await AsyncStorage.setItem(
+      'gifticonCache:owner:u1',
+      JSON.stringify([
+        {
+          id: 'existing',
+          ownerId: 'u1',
+          name: '아메리카노',
+          brand: '스타벅스',
+          category: 'cafe',
+          imageUrl: 'https://example/x.jpg',
+          expiresAt: '2028-12-31',
+          isUsed: false,
+          createdAt: '2026-01-01T00:00:00.000Z',
+          barcode: '8801234567890',
+        },
+      ]),
+    );
+    mockedExe.mockResolvedValue([fakeAsset('a1', 1_000)]);
+    mockedRecognizeText.mockResolvedValue(
+      ocrResult('스타벅스\n아메리카노 Tall\n바코드 8801234567890\n유효기간 2028.12.31까지'),
+    );
+
+    await expect(scanGalleryForGifticons('u1')).resolves.toBe(0);
+    expect(mockedSaveGifticon).not.toHaveBeenCalled();
+  });
+
   it('drops a bare "N원" on a cafe/restaurant coupon (a menu price, not a face value)', async () => {
     mockedExe.mockResolvedValue([fakeAsset('a1', 1_000)]);
     mockedRecognizeText.mockResolvedValue(

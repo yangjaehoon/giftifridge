@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { gifticonListCache, readCachedGifticon } from './gifticonCache';
+import { gifticonListCache, readCachedBarcodes, readCachedGifticon } from './gifticonCache';
 import type { Gifticon } from '../types';
 
 jest.mock('@react-native-async-storage/async-storage', () =>
@@ -96,5 +96,23 @@ describe('readCachedGifticon', () => {
 
   it('returns null when nothing has been cached', async () => {
     expect(await readCachedGifticon('anything')).toBeNull();
+  });
+});
+
+describe('readCachedBarcodes', () => {
+  it('collects non-empty barcodes across every cached list', async () => {
+    gifticonListCache('owner').write('o1', [
+      makeGifticon('a', { barcode: '111' }),
+      makeGifticon('b', { barcode: undefined }),
+    ]);
+    gifticonListCache('space').write('s1', [makeGifticon('c', { barcode: '222' })]);
+    await new Promise((r) => setImmediate(r));
+
+    const set = await readCachedBarcodes();
+    expect([...set].sort()).toEqual(['111', '222']);
+  });
+
+  it('returns an empty set when nothing is cached', async () => {
+    expect((await readCachedBarcodes()).size).toBe(0);
   });
 });

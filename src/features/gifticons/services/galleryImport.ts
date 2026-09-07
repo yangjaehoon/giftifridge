@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as MediaLibrary from 'expo-media-library';
 import { newGifticonId } from './gifticonService';
+import { readCachedBarcodes } from './gifticonCache';
 import { saveGifticon } from './saveGifticon';
 import { syncGifticonReminders } from './gifticonReminders';
 import {
@@ -98,6 +99,10 @@ async function runScan(ownerId: string): Promise<number> {
 
   const lastCheckedAt = await getLastCheckedAt();
   const importedIds = await getImportedIds();
+  // Barcodes the user already has (from the offline list mirror) — a re-photo
+  // of an existing gifticon shouldn't become a second entry. Also grows within
+  // this scan so a burst of the same gifticon can't double-create.
+  const knownBarcodes = await readCachedBarcodes();
 
   // >= (not the tighter >) so an asset sharing the exact same creationTime as
   // the persisted cursor — plausible given some devices only record
@@ -166,6 +171,16 @@ async function runScan(ownerId: string): Promise<number> {
       }
 
       const barcode = assessment.barcode;
+      if (barcode != null && knownBarcodes.has(barcode)) {
+        // Already have this gifticon — a re-photo, not a new one.
+        ocrDebugLog('gallery-import skip', {
+          reason: 'duplicate barcode',
+          score: assessment.score,
+        });
+        importedIds.add(asset.id);
+        continue;
+      }
+
       const { brand, name, category } = guessGifticonFields(recognized);
       // Drops a bare "N원" that reads as a printed menu price on a cafe/
       // restaurant coupon, so the gifticon isn't shown as a 금액권 with a
@@ -206,6 +221,7 @@ async function runScan(ownerId: string): Promise<number> {
       // saveGifticon throws, this asset is left off the dedupe set so the
       // next scan retries it instead of silently losing the photo.
       importedIds.add(asset.id);
+      if (barcode != null) knownBarcodes.add(barcode);
       await syncGifticonReminders({
         gifticon: {
           id: draftId,
