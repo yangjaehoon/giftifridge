@@ -2,22 +2,28 @@ import { pickUnambiguousMatch } from './nearbyKeyword';
 
 const BARCODE_PREFIX_KEYWORDS = ['바코드'];
 // A barcode number is a long run of digits, but OCR of a printed gifticon just
-// as often reads it in 3-6 digit groups split by a single space or hyphen
-// ("2226 1288 9031") as in one unbroken run. Both forms are collected; a
-// comma-grouped amount ("10,000") and a dot-separated date ("2016.09.11") are
-// not, since neither separator is joined, and each group of a grouped run must
-// be 3+ digits so a Korean-style date read as "2024 08 08" (2-digit groups) is
-// not mistaken for one. The joined length still has to reach the minimum below,
-// which sits above a Korean mobile number written without dashes (10-11
-// digits); a run that clears the length bar but isn't actually a barcode still
-// needs a nearby "바코드" label to be picked, or — lacking one, and with more
-// than one candidate — is left unresolved rather than guessed at (same
-// ambiguity rule as the date/amount parsers).
+// as often reads it in equal 3-6 digit groups split by a single space or
+// hyphen ("2226 1288 9031") as in one unbroken run. Both forms are collected;
+// a comma-grouped amount ("10,000") and a dot-separated date ("2016.09.11")
+// are not, since neither separator is joined. A grouped run needs 3+ groups of
+// 3+ digits each: 2-digit groups rule out a Korean-style date read as
+// "2024 08 08", and the 3-group floor rules out two unrelated 6-digit numbers
+// that happen to sit a space apart. The joined length must still land in the
+// 12-20 range below, which keeps out a Korean mobile number written without
+// dashes (10-11 digits).
+//
+// This stays a heuristic: a non-barcode number that is nonetheless printed as
+// 3+ equal digit groups totalling 12-20 digits — a spaced order number, a
+// three-item price list bled in from a web-search screenshot, a hyphen-grouped
+// 0504 relay number — is still returned when it is the *only* such candidate
+// in the text. With more than one candidate and no nearby "바코드" label it is
+// left unresolved rather than guessed at (same ambiguity rule as the
+// date/amount parsers), and either way the user reviews the field before save.
 const MIN_BARCODE_DIGITS = 12;
 const MAX_BARCODE_DIGITS = 20;
 
 const UNBROKEN_DIGITS_RE = /\d+/g;
-const GROUPED_DIGITS_RE = /\d{3,6}(?:[ -]\d{3,6})+/g;
+const GROUPED_DIGITS_RE = /\d{3,6}(?:[ -]\d{3,6}){2,}/g;
 
 interface BarcodeTextMatch {
   index: number;

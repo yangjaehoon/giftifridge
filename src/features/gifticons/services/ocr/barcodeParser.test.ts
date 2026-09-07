@@ -21,6 +21,12 @@ describe('parseBarcodeFromText', () => {
     expect(parseBarcodeFromText('유효기간 2024 08 08 까지')).toBeNull();
   });
 
+  it('does not join only two space-separated digit groups', () => {
+    // Two unrelated 6-digit numbers a space apart total 12 digits but are not a
+    // barcode; a real printed barcode number carries 3+ groups (4-4-4 / 4-4-4-4).
+    expect(parseBarcodeFromText('제품코드 123456 789012')).toBeNull();
+  });
+
   it('treats the same number printed twice on the card as one candidate', () => {
     expect(parseBarcodeFromText('8801234567890\n스타벅스\n8801234567890')).toBe('8801234567890');
   });
