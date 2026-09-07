@@ -4,6 +4,7 @@ import { newGifticonId } from './gifticonService';
 import { saveGifticon } from './saveGifticon';
 import { syncGifticonReminders } from './gifticonReminders';
 import {
+  findKnownBrand,
   guessGifticonFields,
   parseAmountFromText,
   parseBarcodeFromText,
@@ -11,7 +12,6 @@ import {
   recognizeText,
 } from './ocrService';
 import { recognizeBarcodeFromImage } from './barcodeRecognition';
-import { defaultExpiryDate, toDateString } from '../../../shared/utils/date';
 import type { GifticonCategory } from '../types';
 
 // Everything about turning "a new photo appeared in the gallery" into a saved
@@ -38,13 +38,18 @@ const FALLBACK_BRAND = '미확인 브랜드';
 const FALLBACK_NAME = '새 기프티콘';
 
 /**
- * A real expiry-date match is the strongest signal (most non-gifticon photos
- * don't contain what looks like a calendar date next to an expiry keyword);
- * the keyword list catches gifticons whose date OCR couldn't parse.
+ * Whether to auto-create a gifticon from this photo's OCR text. There is no
+ * confirmation step, so this leans toward precision: a readable expiry date is
+ * required (the create must never invent one — see runScan), plus a second
+ * signal that it's a gifticon and not just any dated document — a barcode
+ * number, a known brand, or a gifticon keyword. A photo that misses either bar
+ * is left for the user to add by hand.
  */
 function looksLikeGifticon(text: string): boolean {
+  if (parseExpiryDateFromText(text) == null) return false;
   return (
-    parseExpiryDateFromText(text) != null ||
+    parseBarcodeFromText(text) != null ||
+    findKnownBrand(text) != null ||
     GIFTICON_KEYWORDS.some((keyword) => text.includes(keyword))
   );
 }
@@ -136,9 +141,12 @@ async function runScan(ownerId: string): Promise<number> {
 
       const uri = await asset.getUri();
       const recognized = await recognizeText(uri);
-      if (recognized == null || !looksLikeGifticon(recognized.text)) {
-        // Decided it's not a gifticon — remember that so it isn't re-OCR'd
-        // every scan, but don't mark it done before a create is even tried.
+      const expiresAt = recognized ? parseExpiryDateFromText(recognized.text) : null;
+      if (recognized == null || expiresAt == null || !looksLikeGifticon(recognized.text)) {
+        // Decided it's not a gifticon (or its expiry couldn't be read, which
+        // this no-confirmation flow won't guess at) — remember that so it
+        // isn't re-OCR'd every scan, but don't mark it done before a create
+        // is even tried.
         importedIds.add(asset.id);
         continue;
       }
@@ -155,7 +163,7 @@ async function runScan(ownerId: string): Promise<number> {
         name: name ?? FALLBACK_NAME,
         brand: brand ?? FALLBACK_BRAND,
         category: category ?? FALLBACK_CATEGORY,
-        expiresAt: parseExpiryDateFromText(recognized.text) ?? toDateString(defaultExpiryDate()),
+        expiresAt,
         barcode: barcode ?? undefined,
         amount: parseAmountFromText(recognized.text) ?? undefined,
       };

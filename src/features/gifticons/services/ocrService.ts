@@ -16,3 +16,5 @@ export { parseAmountFromText } from './ocr/amountParser';
 export { parseBarcodeFromText } from './ocr/barcodeParser';
 export { guessGifticonFields } from './ocr/fieldGuess';
 export type { GuessedGifticonFields } from './ocr/fieldGuess';
+export { findKnownBrand } from './ocr/brands';
+export type { KnownBrand } from './ocr/brands';

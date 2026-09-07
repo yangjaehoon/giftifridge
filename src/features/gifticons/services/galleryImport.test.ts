@@ -211,12 +211,25 @@ describe('scanGalleryForGifticons', () => {
     expect(mockedRecognizeBarcode).not.toHaveBeenCalled();
   });
 
-  it('creates a gifticon from a keyword match even without a parseable date', async () => {
+  it('skips a keyword match with no readable expiry date (never invents one)', async () => {
+    // No confirmation step downstream, so an auto-create must not guess the
+    // expiry — a photo we cannot date is left for the user to add by hand.
     mockedExe.mockResolvedValue([fakeAsset('a1', 1_000)]);
     mockedRecognizeText.mockResolvedValue(ocrResult('기프티콘 도착!'));
 
-    await expect(scanGalleryForGifticons('u1')).resolves.toBe(1);
-    expect(mockedSaveGifticon).toHaveBeenCalledTimes(1);
+    await expect(scanGalleryForGifticons('u1')).resolves.toBe(0);
+    expect(mockedSaveGifticon).not.toHaveBeenCalled();
+    expect(mockedRecognizeBarcode).not.toHaveBeenCalled();
+  });
+
+  it('skips a dated photo that carries no other gifticon signal', async () => {
+    // A receipt or reservation has a date but no barcode, known brand, or
+    // gifticon keyword — one signal is not enough for a no-review create.
+    mockedExe.mockResolvedValue([fakeAsset('a1', 1_000)]);
+    mockedRecognizeText.mockResolvedValue(ocrResult('예약 확인\n방문일 2026.12.31\n2명'));
+
+    await expect(scanGalleryForGifticons('u1')).resolves.toBe(0);
+    expect(mockedSaveGifticon).not.toHaveBeenCalled();
   });
 
   it('skips a photo whose OCR text has no gifticon signal', async () => {
@@ -289,7 +302,7 @@ describe('scanGalleryForGifticons', () => {
   it('persists progress made before a later asset in the batch fails to save', async () => {
     await AsyncStorage.setItem('galleryImportLastCheckedAt', '500');
     mockedExe.mockResolvedValue([fakeAsset('a1', 1_000), fakeAsset('a2', 2_000)]);
-    mockedRecognizeText.mockResolvedValue(ocrResult('기프티콘 도착!'));
+    mockedRecognizeText.mockResolvedValue(ocrResult('기프티콘\n유효기간 2026.12.31까지'));
     mockedSaveGifticon.mockResolvedValueOnce('draft-1').mockRejectedValueOnce(new Error('timeout'));
 
     await expect(scanGalleryForGifticons('u1')).rejects.toThrow('timeout');
