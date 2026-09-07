@@ -243,6 +243,15 @@ export default function GifticonDetailScreen({ route, navigation }: Props) {
         ) : null}
       </View>
 
+      {gifticon.memo ? (
+        <View style={styles.memoCard}>
+          <Text style={styles.memoLabel}>메모</Text>
+          <Text style={styles.memoText} selectable>
+            {gifticon.memo}
+          </Text>
+        </View>
+      ) : null}
+
       {expired && !gifticon.isUsed ? <ExpiredRefundNotice /> : null}
 
       {isAmountBased(gifticon) && (
@@ -319,6 +328,15 @@ const styles = StyleSheet.create({
     fontVariant: ['tabular-nums'],
   },
   barcodeHint: { fontSize: 12, color: colors.gray500, marginTop: -6 },
+  memoCard: {
+    marginTop: 20,
+    padding: 14,
+    borderRadius: 12,
+    backgroundColor: colors.surfaceMuted,
+    gap: 6,
+  },
+  memoLabel: { fontSize: 12, fontWeight: '700', color: colors.gray500 },
+  memoText: { fontSize: 14, color: colors.gray900, lineHeight: 20 },
   copyButton: {
     paddingHorizontal: 16,
     paddingVertical: 10,

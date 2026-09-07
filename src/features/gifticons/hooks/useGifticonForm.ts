@@ -31,6 +31,9 @@ export function useGifticonForm(existing: Gifticon | null | undefined, isEditing
   const [barcode, setBarcodeRaw] = useState('');
   const [expiresAt, setExpiresAtRaw] = useState<Date>(defaultExpiryDate());
   const [location, setLocation] = useState<Coordinates | null>(null);
+  // A plain note, never OCR-filled and with no inline error — just a controlled
+  // string, so it needs none of the claim/detect machinery the fields above do.
+  const [memo, setMemo] = useState('');
   const [fieldErrors, setFieldErrors] = useState<FieldError>({});
 
   // Ref, not state: nothing renders off it, and the OCR pass reads it after an
@@ -52,6 +55,7 @@ export function useGifticonForm(existing: Gifticon | null | undefined, isEditing
       setBarcodeRaw(existing.barcode ?? '');
       setExpiresAtRaw(parseDate(existing.expiresAt));
       setLocation(existing.location ?? null);
+      setMemo(existing.memo ?? '');
       // A saved gifticon's name/brand/category/expiry are real data, not an OCR
       // guess — pre-claim them so re-attaching a photo can't overwrite them.
       // barcode/amount are optional: an empty one is still fair game for
@@ -163,6 +167,7 @@ export function useGifticonForm(existing: Gifticon | null | undefined, isEditing
     amount: amount.trim() ? Number(amount) : undefined,
     expiresAt: toDateString(expiresAt),
     location: location ?? undefined,
+    memo: memo.trim() || undefined,
   });
 
   return {
@@ -190,6 +195,8 @@ export function useGifticonForm(existing: Gifticon | null | undefined, isEditing
     detectExpiresAt,
     location,
     setLocation,
+    memo,
+    setMemo,
     fieldErrors,
     isFieldEdited,
     validate,

@@ -44,6 +44,12 @@ export interface Gifticon {
   usageHistory?: UsageRecord[];
   notificationIds?: string[];
   location?: { latitude: number; longitude: number };
+  /**
+   * A free-text note the user attaches — who it was a gift from, what it's
+   * earmarked for, a PIN printed alongside the barcode. Never read by any
+   * logic; display-only.
+   */
+  memo?: string;
   spaceId?: string;
   createdAt: string;
 }

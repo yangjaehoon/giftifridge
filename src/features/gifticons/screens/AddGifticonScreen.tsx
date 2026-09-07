@@ -343,6 +343,15 @@ export default function AddGifticonScreen({ navigation, route }: Props) {
           />
         )}
 
+        <Text style={formStyles.label}>메모 (선택)</Text>
+        <TextInput
+          style={[formStyles.input, styles.memoInput]}
+          value={form.memo}
+          onChangeText={form.setMemo}
+          placeholder="받은 사람, 사용처, 함께 적힌 PIN 등"
+          multiline
+        />
+
         <Button
           label={isEditing ? '저장하기' : '등록하기'}
           onPress={save}
@@ -401,6 +410,7 @@ const styles = StyleSheet.create({
   chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   barcodeRow: { flexDirection: 'row', gap: 8, alignItems: 'center' },
   barcodeInput: { flex: 1 },
+  memoInput: { minHeight: 72, textAlignVertical: 'top' },
   scanButton: {
     paddingHorizontal: 16,
     paddingVertical: 12,

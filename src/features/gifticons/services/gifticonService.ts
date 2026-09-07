@@ -61,6 +61,7 @@ export async function updateGifticon(id: string, data: NewGifticon): Promise<voi
     barcode: data.barcode ?? null,
     amount: data.amount ?? null,
     location: data.location ?? null,
+    memo: data.memo ?? null,
   });
 }
 

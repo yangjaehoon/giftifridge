@@ -147,7 +147,15 @@ describe('updateGifticon', () => {
       barcode: null,
       amount: null,
       location: null,
+      memo: null,
     });
+  });
+
+  it('keeps a provided memo', async () => {
+    await updateGifticon('gift-1', makeNewGifticon({ memo: '엄마가 준 것' }));
+
+    const [, update] = mockedUpdateDoc.mock.calls[0];
+    expect(update).toMatchObject({ memo: '엄마가 준 것' });
   });
 
   it('keeps provided optional values', async () => {

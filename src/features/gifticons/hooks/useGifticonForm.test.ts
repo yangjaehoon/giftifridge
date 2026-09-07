@@ -15,6 +15,7 @@ const existing: Gifticon = {
   amount: 5000,
   barcode: '8801234',
   location: { latitude: 1, longitude: 2 },
+  memo: '엄마가 준 것',
 };
 
 describe('useGifticonForm', () => {
@@ -39,6 +40,7 @@ describe('useGifticonForm', () => {
     expect(result.current.imageUri).toBe('https://storage/gifticons/g1.jpg');
     expect(result.current.originalImageUrl).toBe('https://storage/gifticons/g1.jpg');
     expect(result.current.location).toEqual({ latitude: 1, longitude: 2 });
+    expect(result.current.memo).toBe('엄마가 준 것');
   });
 
   it('hydrates a real saved amount of 0, not as blank', async () => {
@@ -83,6 +85,7 @@ describe('useGifticonForm', () => {
       result.current.setBrand('스타벅스');
       result.current.setAmount('4500');
       result.current.setCategory('cafe');
+      result.current.setMemo('  회사 탕비실용  ');
     });
 
     let ok = false;
@@ -95,6 +98,15 @@ describe('useGifticonForm', () => {
     expect(fields).toMatchObject({ name: '아메리카노', brand: '스타벅스', amount: 4500 });
     expect(fields.expiresAt).toMatch(/^\d{4}-\d{2}-\d{2}$/);
     expect(fields.barcode).toBeUndefined();
+    expect(fields.memo).toBe('회사 탕비실용');
+  });
+
+  it('buildFields() omits an empty memo', async () => {
+    const { result } = await renderHook(() => useGifticonForm(undefined, false));
+
+    await act(async () => result.current.setMemo('   '));
+
+    expect(result.current.buildFields().memo).toBeUndefined();
   });
 
   describe('field-claim tracking (isFieldEdited / setX vs detectX)', () => {
