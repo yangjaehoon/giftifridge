@@ -41,6 +41,8 @@ interface Expected {
 interface Case {
   id: string;
   ocr: string;
+  /** A number the barcode-graphic scan would have decoded, if any. */
+  graphicBarcode?: string;
   expect: Expected;
 }
 
@@ -251,14 +253,36 @@ const CASES: Case[] = [
     ocr: '오늘 저녁 노을이 예뻐서 찍은 사진',
     expect: { isGifticon: false },
   },
+
+  // --- barcode-graphic signal (#4) --------------------------------------
+  {
+    // OCR barely worked — a lone expiry line, no brand/keyword/other labels.
+    // Text score falls just short; the decoded barcode graphic carries it.
+    id: 'sparse-ocr-with-barcode-graphic',
+    ocr: `유효기간 ${D1.dotted} 까지`,
+    graphicBarcode: '8801234567890',
+    expect: { isGifticon: true, expiresAt: D1.iso, barcode: '8801234567890' },
+  },
+  {
+    // Same sparse OCR, but the barcode graphic didn't decode — a lone date is
+    // not enough to auto-create.
+    id: 'sparse-ocr-no-barcode',
+    ocr: `유효기간 ${D1.dotted} 까지`,
+    expect: { isGifticon: false },
+  },
 ];
 
 function toRecognized(text: string): RecognizedText {
   return { text, lines: text.split('\n').map((line) => ({ text: line, height: 0 })) };
 }
 
-function runPipeline(ocr: string) {
-  const a = assessGifticon(ocr);
+// Mirrors runScan: score the text, then re-score with the barcode graphic only
+// when it was worth scanning for.
+function runPipeline(ocr: string, graphicBarcode?: string) {
+  const textAssessment = assessGifticon(ocr);
+  const scannedBarcode =
+    textAssessment.worthGraphicScan && graphicBarcode != null ? graphicBarcode : null;
+  const a = scannedBarcode == null ? textAssessment : assessGifticon(ocr, scannedBarcode);
   const guess = guessGifticonFields(toRecognized(ocr));
   const amount = resolveImportAmount(a, guess.category);
   return {
@@ -266,7 +290,7 @@ function runPipeline(ocr: string) {
     score: a.score,
     signals: a.signals,
     expiresAt: a.expiresAt ?? parseExpiryDateFromText(ocr),
-    barcode: a.textBarcode,
+    barcode: a.barcode,
     amount,
     brand: guess.brand,
     name: guess.name,
@@ -275,14 +299,17 @@ function runPipeline(ocr: string) {
 }
 
 describe('gallery auto-import corpus', () => {
-  it.each(CASES)('$id — import decision matches the label', ({ ocr, expect: want }) => {
-    expect(runPipeline(ocr).create).toBe(want.isGifticon);
-  });
+  it.each(CASES)(
+    '$id — import decision matches the label',
+    ({ ocr, graphicBarcode, expect: want }) => {
+      expect(runPipeline(ocr, graphicBarcode).create).toBe(want.isGifticon);
+    },
+  );
 
   it.each(CASES.filter((c) => c.expect.isGifticon))(
     '$id — parses its labelled fields',
-    ({ ocr, expect: want }) => {
-      const got = runPipeline(ocr);
+    ({ ocr, graphicBarcode, expect: want }) => {
+      const got = runPipeline(ocr, graphicBarcode);
       if (want.expiresAt !== undefined) expect(got.expiresAt).toBe(want.expiresAt);
       if (want.brand !== undefined) expect(got.brand).toBe(want.brand);
       if (want.category !== undefined) expect(got.category).toBe(want.category);
@@ -304,7 +331,7 @@ describe('gallery auto-import corpus', () => {
     };
 
     for (const c of CASES) {
-      const got = runPipeline(c.ocr);
+      const got = runPipeline(c.ocr, c.graphicBarcode);
       if (c.expect.isGifticon && got.create) tp += 1;
       else if (c.expect.isGifticon && !got.create) fn += 1;
       else if (!c.expect.isGifticon && got.create) fp += 1;

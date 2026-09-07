@@ -76,6 +76,32 @@ describe('assessGifticon', () => {
     expect(a.amountConfident).toBe(true); // "권종" anchors it
   });
 
+  it('lets a decoded barcode graphic carry a photo whose text fell just short', () => {
+    const daysFromNow = (n: number) => {
+      const d = new Date();
+      d.setDate(d.getDate() + n);
+      return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(
+        d.getDate(),
+      ).padStart(2, '0')}`;
+    };
+    const text = `유효기간 ${daysFromNow(90)} 까지`; // lone date: confidentDate 3 + footer 2 = 5
+
+    const textOnly = assessGifticon(text);
+    expect(textOnly.create).toBe(false);
+    expect(textOnly.worthGraphicScan).toBe(true);
+
+    const withGraphic = assessGifticon(text, '8801234567890');
+    expect(withGraphic.signals.barcodeGraphic).toBe(5);
+    expect(withGraphic.create).toBe(true);
+    expect(withGraphic.barcode).toBe('8801234567890'); // graphic wins over text
+  });
+
+  it('does not bother scanning the graphic when there is no date to save', () => {
+    const a = assessGifticon('스타벅스 기프티콘\n교환처 전국\n바코드 8801234567890');
+    expect(a.expiresAt).toBeNull();
+    expect(a.worthGraphicScan).toBe(false);
+  });
+
   it('will not auto-import on a confident date that reads far in the past', () => {
     const text = [
       '스타벅스',

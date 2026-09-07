@@ -21,6 +21,11 @@ const RECEIPT_KEYWORDS = ['영수증', '받으실금액', '받을금액', '거�
 // threshold are a starting point; tune them against ocr/gifticonCorpus.test.ts,
 // which reports precision/recall as the corpus grows.
 const AUTO_IMPORT_THRESHOLD = 6;
+// A decoded linear barcode graphic is about as close to proof as this gets, so
+// it can lift a photo whose text alone fell short of the threshold. It never
+// rescues a photo with no confident date, though — there is still nothing to
+// put in expiresAt.
+const BARCODE_GRAPHIC_POINTS = 5;
 const PROSE_MIN_LINES = 12;
 const PROSE_MIN_AVG_LINE_LENGTH = 22;
 // A confident expiry more than this many days in the past is more likely an OCR
@@ -33,18 +38,25 @@ export interface GifticonAssessment {
   /** Confident, non-stale expiry ("YYYY-MM-DD"), or null. Auto-import is
    *  impossible without one — this flow never guesses or trusts a stale date. */
   expiresAt: string | null;
-  /** Parsed once here and handed back so runScan doesn't parse them again. */
+  /** The number to save: the decoded barcode graphic if there was one, else
+   *  the number parsed out of the text, else null. */
+  barcode: string | null;
+  /** The text-parsed number specifically — kept for the debug log / corpus. */
   textBarcode: string | null;
   amount: number | null;
   /** Whether `amount` came from a 금액/₩/만원-style anchor rather than a bare
    *  "N원" that might be a printed product price. */
   amountConfident: boolean;
-  /** Weighted "how gifticon-like is this text" score. */
+  /** Weighted "how gifticon-like is this text (+ graphic) is" score. */
   score: number;
   /** Per-signal contributions, for the debug log and the corpus report. */
   signals: Record<string, number>;
   /** score ≥ threshold AND a confident, non-stale date. */
   create: boolean;
+  /** Whether a barcode-graphic scan is worth the native call: there is a
+   *  confident date and the graphic's points could carry the score over (or it
+   *  already is). False when there's no date to save anyway. */
+  worthGraphicScan: boolean;
 }
 
 function footerPoints(count: number): number {
@@ -83,11 +95,12 @@ export function resolveImportAmount(
 }
 
 /**
- * Scores a photo's OCR text for gallery auto-import and parses the fields the
- * caller will reuse. Side-effect-free, but *not* a pure function of `text`
- * alone: the staleness check below reads the current date.
+ * Scores a photo's OCR text (and, when it's been run, the decoded barcode
+ * graphic) for gallery auto-import, and parses the fields the caller will
+ * reuse. Side-effect-free, but *not* a pure function of `text` alone: the
+ * staleness check below reads the current date.
  */
-export function assessGifticon(text: string): GifticonAssessment {
+export function assessGifticon(text: string, scannedBarcode?: string | null): GifticonAssessment {
   const expiry = parseExpiryDateResult(text);
   const textBarcode = parseBarcodeFromText(text);
   const amountResult = parseAmountResult(text);
@@ -108,6 +121,7 @@ export function assessGifticon(text: string): GifticonAssessment {
   // -3 only keeps the logged/reported score honest about why.
   if (dateIsStale) add('staleExpiry', -3);
   add('footerLabels', footerPoints(footerLabels));
+  if (scannedBarcode != null) add('barcodeGraphic', BARCODE_GRAPHIC_POINTS);
   if (textBarcode != null) add('textBarcode', 2);
   if (findKnownBrand(text) != null) add('knownBrand', 2);
   if (GIFTICON_KEYWORDS.some((keyword) => text.includes(keyword))) add('gifticonKeyword', 2);
@@ -128,11 +142,16 @@ export function assessGifticon(text: string): GifticonAssessment {
   const expiresAt = expiry?.confident && !dateIsStale ? expiry.value : null;
   return {
     expiresAt,
+    barcode: scannedBarcode ?? textBarcode,
     textBarcode,
     amount: amountResult?.value ?? null,
     amountConfident: amountResult?.confident ?? false,
     score,
     signals,
     create: expiresAt != null && score >= AUTO_IMPORT_THRESHOLD,
+    worthGraphicScan:
+      expiresAt != null &&
+      scannedBarcode == null &&
+      score + BARCODE_GRAPHIC_POINTS >= AUTO_IMPORT_THRESHOLD,
   };
 }

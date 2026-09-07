@@ -10,7 +10,7 @@ import {
   resolveImportAmount,
 } from './ocrService';
 import { recognizeBarcodeFromImage } from './barcodeRecognition';
-import { ocrDebugLog } from './ocr/debugLog';
+import { captureCorpusCase, ocrDebugLog } from './ocr/debugLog';
 import type { GifticonCategory } from '../types';
 
 // Everything about turning "a new photo appeared in the gallery" into a saved
@@ -121,7 +121,19 @@ async function runScan(ownerId: string): Promise<number> {
 
       const uri = await asset.getUri();
       const recognized = await recognizeText(uri);
-      const assessment = recognized ? assessGifticon(recognized.text) : null;
+      // Text-only score first; then, only if a decoded barcode graphic could
+      // matter (there's a confident date and the +5 could carry a short score
+      // over), spend the native scan and re-score with it folded in.
+      const textAssessment = recognized ? assessGifticon(recognized.text) : null;
+      const scannedBarcode =
+        textAssessment?.worthGraphicScan === true ? await recognizeBarcodeFromImage(uri) : null;
+      const assessment =
+        recognized == null
+          ? null
+          : scannedBarcode == null
+            ? textAssessment
+            : assessGifticon(recognized.text, scannedBarcode);
+
       // A confident, non-stale expiry date is mandatory (this no-review flow
       // never invents or guesses one), plus a high enough gifticon-likeness
       // score. The `expiresAt == null` check is implied by `!create` but kept
@@ -140,15 +152,20 @@ async function runScan(ownerId: string): Promise<number> {
           signals: assessment?.signals ?? null,
           expiresAt: assessment?.expiresAt ?? null,
         });
+        if (recognized != null && assessment != null) {
+          captureCorpusCase({
+            text: recognized.text,
+            isGifticon: false,
+            expiresAt: assessment.expiresAt,
+            barcode: assessment.barcode,
+            amount: assessment.amount,
+          });
+        }
         importedIds.add(asset.id);
         continue;
       }
 
-      // Only worth the extra native call for photos already scored as a
-      // gifticon. The graphic is the primary barcode source; assessment
-      // .textBarcode (already parsed) is the fallback for an unreadable graphic.
-      const scannedBarcode = await recognizeBarcodeFromImage(uri);
-      const barcode = scannedBarcode ?? assessment.textBarcode;
+      const barcode = assessment.barcode;
       const { brand, name, category } = guessGifticonFields(recognized);
       // Drops a bare "N원" that reads as a printed menu price on a cafe/
       // restaurant coupon, so the gifticon isn't shown as a 금액권 with a
@@ -174,6 +191,15 @@ async function runScan(ownerId: string): Promise<number> {
         nameGuessed: name != null,
         score: assessment.score,
         signals: assessment.signals,
+      });
+      captureCorpusCase({
+        text: recognized.text,
+        isGifticon: true,
+        brand,
+        category,
+        expiresAt: fields.expiresAt,
+        barcode,
+        amount,
       });
       await saveGifticon({ draftId, ownerId, imageUri: uri, imageChanged: true, fields });
       // Only marked done once the create actually went through — if
