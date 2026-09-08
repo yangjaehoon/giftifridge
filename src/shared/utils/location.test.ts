@@ -1,6 +1,8 @@
 jest.mock('expo-location', () => ({
   getForegroundPermissionsAsync: jest.fn(),
   requestForegroundPermissionsAsync: jest.fn(),
+  getBackgroundPermissionsAsync: jest.fn(),
+  requestBackgroundPermissionsAsync: jest.fn(),
   getCurrentPositionAsync: jest.fn(),
   geocodeAsync: jest.fn(),
   reverseGeocodeAsync: jest.fn(),
@@ -15,6 +17,8 @@ function position(latitude: number, longitude: number) {
 type LocationMock = {
   getForegroundPermissionsAsync: jest.Mock;
   requestForegroundPermissionsAsync: jest.Mock;
+  getBackgroundPermissionsAsync: jest.Mock;
+  requestBackgroundPermissionsAsync: jest.Mock;
   getCurrentPositionAsync: jest.Mock;
   geocodeAsync: jest.Mock;
   reverseGeocodeAsync: jest.Mock;
@@ -24,6 +28,7 @@ let Location: LocationMock;
 let confirmAsync: jest.Mock;
 let getCurrentLocation: typeof import('./location').getCurrentLocation;
 let searchAddress: typeof import('./location').searchAddress;
+let ensureBackgroundLocationPermission: typeof import('./location').ensureBackgroundLocationPermission;
 
 beforeEach(() => {
   // Reset so location.ts's module-level `lastFix` cache starts empty each test;
@@ -32,7 +37,11 @@ beforeEach(() => {
   /* eslint-disable @typescript-eslint/no-require-imports */
   Location = require('expo-location');
   ({ confirmAsync } = require('./confirmAsync'));
-  ({ getCurrentLocation, searchAddress } = require('./location'));
+  ({
+    getCurrentLocation,
+    searchAddress,
+    ensureBackgroundLocationPermission,
+  } = require('./location'));
   /* eslint-enable @typescript-eslint/no-require-imports */
   // The prominent-disclosure prompt only shows when permission isn't granted yet;
   // default it to "accepted" so the existing request-path tests are unaffected.
@@ -222,5 +231,60 @@ describe('searchAddress', () => {
     await expect(searchAddress('스타벅스 강남점')).resolves.toEqual([
       { coordinates: { latitude: 37.5, longitude: 127 }, label: '스타벅스 강남점' },
     ]);
+  });
+});
+
+describe('ensureBackgroundLocationPermission', () => {
+  it('is false when foreground permission is not granted (OS never shows the dialog)', async () => {
+    Location.getForegroundPermissionsAsync.mockResolvedValue({ status: 'denied' });
+
+    await expect(ensureBackgroundLocationPermission()).resolves.toBe(false);
+    expect(Location.getBackgroundPermissionsAsync).not.toHaveBeenCalled();
+  });
+
+  it('returns true without prompting when background is already granted', async () => {
+    Location.getForegroundPermissionsAsync.mockResolvedValue({ status: 'granted' });
+    Location.getBackgroundPermissionsAsync.mockResolvedValue({ status: 'granted' });
+
+    await expect(ensureBackgroundLocationPermission()).resolves.toBe(true);
+    expect(confirmAsync).not.toHaveBeenCalled();
+  });
+
+  it('shows the disclosure then requests, and reports the grant', async () => {
+    Location.getForegroundPermissionsAsync.mockResolvedValue({ status: 'granted' });
+    Location.getBackgroundPermissionsAsync.mockResolvedValue({
+      status: 'denied',
+      canAskAgain: true,
+    });
+    Location.requestBackgroundPermissionsAsync.mockResolvedValue({ status: 'granted' });
+
+    await expect(ensureBackgroundLocationPermission()).resolves.toBe(true);
+    expect(confirmAsync).toHaveBeenCalled();
+    expect(Location.requestBackgroundPermissionsAsync).toHaveBeenCalled();
+  });
+
+  it('does not re-prompt after the user dismisses the disclosure', async () => {
+    Location.getForegroundPermissionsAsync.mockResolvedValue({ status: 'granted' });
+    Location.getBackgroundPermissionsAsync.mockResolvedValue({
+      status: 'denied',
+      canAskAgain: true,
+    });
+    confirmAsync.mockResolvedValue(false);
+
+    await expect(ensureBackgroundLocationPermission()).resolves.toBe(false);
+    await expect(ensureBackgroundLocationPermission()).resolves.toBe(false);
+    expect(confirmAsync).toHaveBeenCalledTimes(1);
+    expect(Location.requestBackgroundPermissionsAsync).not.toHaveBeenCalled();
+  });
+
+  it('is false when the OS has locked further requests', async () => {
+    Location.getForegroundPermissionsAsync.mockResolvedValue({ status: 'granted' });
+    Location.getBackgroundPermissionsAsync.mockResolvedValue({
+      status: 'denied',
+      canAskAgain: false,
+    });
+
+    await expect(ensureBackgroundLocationPermission()).resolves.toBe(false);
+    expect(confirmAsync).not.toHaveBeenCalled();
   });
 });

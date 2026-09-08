@@ -15,6 +15,7 @@ import { useCurrentUser } from '../../auth/context/AuthContext';
 import { useLinkAccountPrompt } from '../../auth/hooks/useLinkAccountPrompt';
 import LinkAccountBanner from '../../auth/components/LinkAccountBanner';
 import { useNearbyGifticons } from '../hooks/useNearbyGifticons';
+import { useGeofenceSync } from '../hooks/useGeofenceSync';
 import { useGifticonListView } from '../hooks/useGifticonListView';
 import { useGifticonSelection } from '../hooks/useGifticonSelection';
 import { useHomeGifticonContext } from '../hooks/useHomeGifticonContext';
@@ -49,6 +50,7 @@ export default function HomeScreen({ navigation }: Props) {
   const { items, loading, refreshing, error, refresh } = list;
   const nearbyItems = useNearbyGifticons(items);
   const isPersonal = context.type !== 'space';
+  useGeofenceSync(items, isPersonal);
   const linkPrompt = useLinkAccountPrompt(isAnonymous, isPersonal ? items.length : 0);
   const {
     visible,

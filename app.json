@@ -24,7 +24,8 @@
       "permissions": [
         "android.permission.CAMERA",
         "android.permission.ACCESS_COARSE_LOCATION",
-        "android.permission.ACCESS_FINE_LOCATION"
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.ACCESS_BACKGROUND_LOCATION"
       ],
       "blockedPermissions": [
         "android.permission.RECORD_AUDIO",
@@ -58,7 +59,10 @@
       [
         "expo-location",
         {
-          "locationWhenInUsePermission": "자주 가는 매장 근처에서 미사용 기프티콘을 알려드리기 위해 위치 접근 권한이 필요해요."
+          "locationWhenInUsePermission": "자주 가는 매장 근처에서 미사용 기프티콘을 알려드리기 위해 위치 접근 권한이 필요해요.",
+          "locationAlwaysAndWhenInUsePermission": "앱을 열지 않아도 자주 가는 매장 근처에서 미사용 기프티콘을 알려드리기 위해 백그라운드 위치 접근 권한이 필요해요.",
+          "isAndroidBackgroundLocationEnabled": true,
+          "isAndroidForegroundServiceEnabled": true
         }
       ],
       [

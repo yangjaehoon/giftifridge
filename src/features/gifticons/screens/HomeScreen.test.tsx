@@ -14,6 +14,7 @@ jest.mock('../../auth/context/AuthContext', () => ({ useCurrentUser: jest.fn() }
 jest.mock('../hooks/useGifticons', () => ({ useGifticons: jest.fn() }));
 jest.mock('../hooks/useSpaceGifticons', () => ({ useSpaceGifticons: jest.fn() }));
 jest.mock('../hooks/useNearbyGifticons', () => ({ useNearbyGifticons: jest.fn() }));
+jest.mock('../hooks/useGeofenceSync', () => ({ useGeofenceSync: jest.fn() }));
 jest.mock('../../spaces/hooks/useMySpaces', () => ({ useMySpaces: jest.fn() }));
 jest.mock('../services/gifticonLifecycle', () => ({
   markGifticonsUsed: jest.fn(),

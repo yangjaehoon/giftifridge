@@ -4,6 +4,7 @@ import { registerRootComponent } from 'expo';
 // headless one the OS wakes up to run the gallery-import background task —
 // so TaskManager.defineTask has a chance to run before the task fires.
 import './src/features/gifticons/services/galleryImportTask';
+import './src/features/gifticons/services/geofenceTask';
 import App from './App';
 
 // registerRootComponent calls AppRegistry.registerComponent('main', () => App);
