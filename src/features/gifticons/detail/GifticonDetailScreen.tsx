@@ -1,6 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Alert, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import * as Clipboard from 'expo-clipboard';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useCurrentUser } from '../../../shared/auth/AuthContext';
 import { removeGifticon, setGifticonUsed } from '../domain/services/gifticonLifecycle';
@@ -11,17 +10,15 @@ import { useToast } from '../../../shared/components/ToastProvider';
 import { useAsyncAction } from '../../../shared/hooks/useAsyncAction';
 import { useMaxBrightnessWhileFocused } from '../../../shared/hooks/useMaxBrightnessWhileFocused';
 import GifticonDetailSkeleton from '../domain/components/GifticonDetailSkeleton';
-import GifticonBarcode from './GifticonBarcode';
+import BarcodeCard from './BarcodeCard';
 import BarcodeZoomModal from './BarcodeZoomModal';
 import ImageZoomModal from './ImageZoomModal';
 import ExpiredRefundNotice from './ExpiredRefundNotice';
+import GifticonInfoSection from './GifticonInfoSection';
 import GifticonUsagePanel from './GifticonUsagePanel';
 import GifticonStatusOverlay from '../domain/components/GifticonStatusOverlay';
-import { CATEGORY_LABELS } from '../domain/types';
-import { formatRemainingAmount, isAmountBased } from '../domain/usage';
-import { lookupEstimatedPrice } from '../domain/menuPrices';
-import { formatCurrency } from '../../../shared/utils/currency';
-import { daysUntil, formatDate } from '../../../shared/utils/date';
+import { isAmountBased } from '../domain/usage';
+import { daysUntil } from '../../../shared/utils/date';
 import { haptics } from '../../../shared/utils/haptics';
 import type { RootStackParamList } from '../../../app/navigationTypes';
 import { getGifticonErrorMessage, getGifticonWriteErrorMessage } from '../domain/errors';
@@ -39,26 +36,10 @@ export default function GifticonDetailScreen({ route, navigation }: Props) {
   useMaxBrightnessWhileFocused(Boolean(gifticon?.barcode));
   const usage = useGifticonUsage(gifticon, user?.uid);
   const { busy, run } = useAsyncAction(getGifticonWriteErrorMessage);
-  const [copied, setCopied] = useState(false);
   const [barcodeZoomed, setBarcodeZoomed] = useState(false);
   const [imageZoomed, setImageZoomed] = useState(false);
-  const copyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Ask "did you use it?" at most once per visit, when the barcode zoom closes.
   const askedUsedRef = useRef(false);
-
-  useEffect(() => {
-    return () => {
-      if (copyTimeoutRef.current) clearTimeout(copyTimeoutRef.current);
-    };
-  }, []);
-
-  const copyBarcode = async () => {
-    if (!gifticon?.barcode) return;
-    await Clipboard.setStringAsync(gifticon.barcode);
-    haptics.selection();
-    setCopied(true);
-    copyTimeoutRef.current = setTimeout(() => setCopied(false), 1500);
-  };
 
   useEffect(() => {
     if (!gifticon) return;
@@ -146,49 +127,20 @@ export default function GifticonDetailScreen({ route, navigation }: Props) {
     );
   }
 
-  const days = daysUntil(gifticon.expiresAt);
-  const expired = days < 0;
-  const soon = !expired && days <= 7;
+  const expired = daysUntil(gifticon.expiresAt) < 0;
   const overlayLabel = gifticon.isUsed ? '사용완료' : expired ? '기한만료' : null;
-  // A rough retail estimate for a product voucher (no printed price); shown
-  // only when there's no real amount, framed as approximate with its as-of.
-  const estimate = isAmountBased(gifticon)
-    ? null
-    : lookupEstimatedPrice(gifticon.brand, gifticon.name);
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
       {gifticon.barcode ? (
-        <View style={styles.barcodeCard}>
-          <TouchableOpacity
-            onPress={() => setBarcodeZoomed(true)}
-            accessibilityRole="button"
-            accessibilityLabel="바코드 크게 보기"
-          >
-            <GifticonBarcode value={gifticon.barcode} />
-          </TouchableOpacity>
-          <Text style={styles.barcodeNumber} selectable accessibilityLabel={gifticon.barcode}>
-            {gifticon.barcode.replace(/(.{4})/g, '$1 ').trim()}
-          </Text>
-          <Text style={styles.barcodeHint}>탭하면 크게 볼 수 있어요</Text>
-          <TouchableOpacity
-            style={styles.copyButton}
-            onPress={copyBarcode}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-            accessibilityRole="button"
-            accessibilityLabel="바코드 번호 복사"
-          >
-            <Text style={styles.copyButtonText}>{copied ? '복사됨 ✓' : '번호 복사'}</Text>
-          </TouchableOpacity>
-        </View>
-      ) : null}
-
-      {gifticon.barcode ? (
-        <BarcodeZoomModal
-          visible={barcodeZoomed}
-          value={gifticon.barcode}
-          onClose={closeBarcodeZoom}
-        />
+        <>
+          <BarcodeCard value={gifticon.barcode} onZoom={() => setBarcodeZoomed(true)} />
+          <BarcodeZoomModal
+            visible={barcodeZoomed}
+            value={gifticon.barcode}
+            onClose={closeBarcodeZoom}
+          />
+        </>
       ) : null}
 
       <TouchableOpacity
@@ -212,38 +164,7 @@ export default function GifticonDetailScreen({ route, navigation }: Props) {
         onClose={() => setImageZoomed(false)}
       />
 
-      <View style={styles.section}>
-        <Text style={styles.brand}>
-          {gifticon.brand} · {CATEGORY_LABELS[gifticon.category]}
-        </Text>
-        <Text style={styles.name}>{gifticon.name}</Text>
-        {isAmountBased(gifticon) ? (
-          <Text style={styles.amount}>{formatRemainingAmount(gifticon)}</Text>
-        ) : estimate ? (
-          <Text style={styles.estimate}>
-            예상 금액 약 {formatCurrency(estimate.price)} · {estimate.asOf} 기준
-          </Text>
-        ) : null}
-
-        <View style={styles.expiryRow}>
-          <View
-            style={[
-              styles.ddayPill,
-              expired ? styles.ddayExpired : soon ? styles.ddaySoon : styles.ddayOk,
-            ]}
-          >
-            <Text style={[styles.ddayText, soon && !expired && styles.ddayTextOnColor]}>
-              {expired ? '기한만료' : `D-${days}`}
-            </Text>
-          </View>
-          <Text style={styles.expiry}>유효기한 {formatDate(gifticon.expiresAt)}</Text>
-        </View>
-
-        <Text style={styles.meta}>등록일 {formatDate(gifticon.createdAt)}</Text>
-        {gifticon.isUsed && gifticon.usedAt ? (
-          <Text style={styles.meta}>사용일 {formatDate(gifticon.usedAt)}</Text>
-        ) : null}
-      </View>
+      <GifticonInfoSection gifticon={gifticon} />
 
       {gifticon.memo ? (
         <View style={styles.memoCard}>
@@ -301,36 +222,6 @@ const makeStyles = (colors: Palette) =>
     image: { width: '100%', height: '100%' },
     overlayText: { fontSize: 13 },
     imageHint: { fontSize: 12, color: colors.gray500, textAlign: 'center', marginTop: 6 },
-    section: { marginTop: 20, gap: 4 },
-    brand: { fontSize: 13, color: colors.gray500 },
-    name: { fontSize: 20, fontWeight: '700', color: colors.gray900 },
-    amount: { fontSize: 16, fontWeight: '700', color: colors.primary, marginTop: 2 },
-    estimate: { fontSize: 13, color: colors.gray500, marginTop: 4 },
-    expiryRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 10 },
-    ddayPill: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 999 },
-    ddayOk: { backgroundColor: colors.surfaceMuted },
-    ddaySoon: { backgroundColor: colors.amber },
-    ddayExpired: { backgroundColor: colors.border },
-    ddayText: { fontSize: 14, fontWeight: '800', color: colors.gray900 },
-    ddayTextOnColor: { color: colors.surface },
-    expiry: { fontSize: 14, color: colors.gray700 },
-    meta: { fontSize: 12, color: colors.gray500, marginTop: 2 },
-    barcodeCard: {
-      padding: 20,
-      borderRadius: 12,
-      borderWidth: 1,
-      borderColor: colors.border,
-      alignItems: 'center',
-      gap: 10,
-    },
-    barcodeNumber: {
-      fontSize: 24,
-      fontWeight: '700',
-      color: colors.gray900,
-      letterSpacing: 2,
-      fontVariant: ['tabular-nums'],
-    },
-    barcodeHint: { fontSize: 12, color: colors.gray500, marginTop: -6 },
     memoCard: {
       marginTop: 20,
       padding: 14,
@@ -340,13 +231,6 @@ const makeStyles = (colors: Palette) =>
     },
     memoLabel: { fontSize: 12, fontWeight: '700', color: colors.gray500 },
     memoText: { fontSize: 14, color: colors.gray900, lineHeight: 20 },
-    copyButton: {
-      paddingHorizontal: 16,
-      paddingVertical: 10,
-      borderRadius: 10,
-      backgroundColor: colors.surfaceMuted,
-    },
-    copyButtonText: { fontSize: 13, color: colors.gray700, fontWeight: '700' },
     emptyText: { color: colors.gray500, fontSize: 14, textAlign: 'center' },
     primaryAction: { marginTop: 32 },
   });
