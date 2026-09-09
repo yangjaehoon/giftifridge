@@ -29,7 +29,7 @@ jest.mock('../services/gifticonService', () => ({
   newUsageRecordId: jest.fn(() => 'usage-id-1'),
 }));
 jest.mock('expo-clipboard', () => ({ setStringAsync: jest.fn() }));
-jest.mock('../components/GifticonBarcode', () => ({ __esModule: true, default: () => null }));
+jest.mock('./GifticonBarcode', () => ({ __esModule: true, default: () => null }));
 jest.mock('../../../shared/hooks/useMaxBrightnessWhileFocused', () => ({
   useMaxBrightnessWhileFocused: jest.fn(),
 }));

@@ -8,7 +8,7 @@ import { useCurrentUser, useAuthBootstrap } from '../shared/auth/AuthContext';
 import { isFirebaseConfigured } from '../lib/firebase/config';
 import HomeScreen from '../features/gifticons/screens/HomeScreen';
 import AddGifticonScreen from '../features/gifticons/screens/AddGifticonScreen';
-import GifticonDetailScreen from '../features/gifticons/screens/GifticonDetailScreen';
+import GifticonDetailScreen from '../features/gifticons/detail/GifticonDetailScreen';
 import SpendingReportScreen from '../features/gifticons/reporting/SpendingReportScreen';
 import ExpiryCalendarScreen from '../features/gifticons/reporting/ExpiryCalendarScreen';
 import GifticonCardSkeleton from '../features/gifticons/components/GifticonCardSkeleton';
