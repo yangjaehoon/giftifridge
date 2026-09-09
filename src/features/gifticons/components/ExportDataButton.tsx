@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { ActivityIndicator, Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { useGifticons } from '../../gifticons/hooks/useGifticons';
-import { exportGifticons } from '../../gifticons/services/gifticonExport';
+import { useGifticons } from '../hooks/useGifticons';
+import { exportGifticons } from '../services/gifticonExport';
 import type { Palette } from '../../../shared/theme/colors';
 import { useColors, useThemedStyles } from '../../../shared/theme/ThemeProvider';
 

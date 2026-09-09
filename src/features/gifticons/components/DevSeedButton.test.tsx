@@ -2,9 +2,9 @@ import React from 'react';
 import { Alert } from 'react-native';
 import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
 import DevSeedButton from './DevSeedButton';
-import { seedDummyGifticons } from '../../gifticons/services/devSeed';
+import { seedDummyGifticons } from '../services/devSeed';
 
-jest.mock('../../gifticons/services/devSeed', () => ({ seedDummyGifticons: jest.fn() }));
+jest.mock('../services/devSeed', () => ({ seedDummyGifticons: jest.fn() }));
 
 const mockedSeed = seedDummyGifticons as jest.Mock;
 

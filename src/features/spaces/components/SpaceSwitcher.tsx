@@ -1,9 +1,8 @@
 import React from 'react';
 import { ScrollView, StyleSheet } from 'react-native';
 import type { Space } from '../types';
+import type { HomeContext } from '../../../shared/types/homeContext';
 import Chip from '../../../shared/components/Chip';
-
-export type HomeContext = { type: 'personal' } | { type: 'space'; spaceId: string };
 
 export default function SpaceSwitcher({
   spaces,

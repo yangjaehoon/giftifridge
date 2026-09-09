@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect } from 'react';
+import React, { useCallback, useEffect, useMemo } from 'react';
 import {
   Alert,
   FlatList,
@@ -20,6 +20,7 @@ import { useGifticonListView } from '../hooks/useGifticonListView';
 import { useGifticonSelection } from '../hooks/useGifticonSelection';
 import { useHomeGifticonContext } from '../hooks/useHomeGifticonContext';
 import { markGifticonsUsed, removeGifticons } from '../services/gifticonLifecycle';
+import { useMySpaces } from '../../spaces/hooks/useMySpaces';
 import SpaceSwitcher from '../../spaces/components/SpaceSwitcher';
 import Button from '../../../shared/components/Button';
 import Chip from '../../../shared/components/Chip';
@@ -46,7 +47,9 @@ export default function HomeScreen({ navigation }: Props) {
   const colors = useColors();
   const styles = useThemedStyles(makeStyles);
   const { user, isAnonymous } = useCurrentUser();
-  const { context, setContext, spaces, list } = useHomeGifticonContext(user?.uid);
+  const { spaces, loading: spacesLoading } = useMySpaces(user?.uid);
+  const spaceIds = useMemo(() => spaces.map((s) => s.id), [spaces]);
+  const { context, setContext, list } = useHomeGifticonContext(user?.uid, spaceIds, spacesLoading);
   const { items, loading, refreshing, error, refresh } = list;
   const nearbyItems = useNearbyGifticons(items);
   const isPersonal = context.type !== 'space';

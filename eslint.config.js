@@ -14,16 +14,13 @@ module.exports = defineConfig([
   },
   {
     // Architecture boundaries: enforce the layering described in AGENTS.md.
-    //   app     -> may use features, shared, lib
-    //   feature -> may use its own feature, shared, lib (never another feature);
+    //   app     -> anything
+    //   feature -> its own feature, shared, lib (never another feature);
     //              may reference the app route-map only as a `import type`
-    //   shared  -> may use shared, lib
-    //   lib     -> may use lib only
-    //
-    // Currently set to "warn": ~9 pre-existing cross-feature imports remain
-    // (Settings screen buttons that call gifticon services, HomeScreen pulling
-    // in auth/spaces widgets, gifticons -> spaces in useHomeGifticonContext).
-    // Once those are resolved, bump this to "error".
+    //   screen  -> a feature's `screens/**` is the composition layer: it may
+    //              assemble any feature (this is where feature slices meet a route)
+    //   shared  -> shared, lib
+    //   lib     -> lib
     files: ['src/**/*.{ts,tsx}'],
     plugins: { boundaries },
     settings: {
@@ -39,10 +36,11 @@ module.exports = defineConfig([
           capture: ['featureName'],
         },
       ],
+      'boundaries/files': [{ category: 'screen', pattern: 'src/features/*/screens/**/*' }],
     },
     rules: {
       'boundaries/dependencies': [
-        'warn',
+        'error',
         {
           default: 'disallow',
           message:
@@ -83,6 +81,21 @@ module.exports = defineConfig([
               allow: {
                 to: { element: { type: 'app' } },
                 dependency: { kind: 'type' },
+              },
+            },
+            {
+              // A feature's screens/** is the composition layer — it wires
+              // several features' slices into one route, so it may import from
+              // any feature. The layering rule still governs everything else
+              // (components, hooks, services).
+              from: { file: { categories: ['screen'] } },
+              allow: {
+                to: [
+                  { element: { type: 'feature' } },
+                  { element: { type: 'app' } },
+                  { element: { type: 'shared' } },
+                  { element: { type: 'lib' } },
+                ],
               },
             },
             {
