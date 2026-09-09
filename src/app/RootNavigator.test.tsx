@@ -38,7 +38,7 @@ jest.mock('@react-navigation/native-stack', () => ({
   }),
 }));
 
-jest.mock('../features/gifticons/screens/HomeScreen', () => () => null);
+jest.mock('../features/gifticons/browse/HomeScreen', () => () => null);
 jest.mock('../features/gifticons/capture/AddGifticonScreen', () => () => null);
 jest.mock('../features/gifticons/detail/GifticonDetailScreen', () => () => null);
 jest.mock('../features/gifticons/reporting/SpendingReportScreen', () => () => null);
