@@ -7,7 +7,7 @@ import type { Palette } from '../shared/theme/colors';
 import { useCurrentUser, useAuthBootstrap } from '../shared/auth/AuthContext';
 import { isFirebaseConfigured } from '../lib/firebase/config';
 import HomeScreen from '../features/gifticons/screens/HomeScreen';
-import AddGifticonScreen from '../features/gifticons/screens/AddGifticonScreen';
+import AddGifticonScreen from '../features/gifticons/capture/AddGifticonScreen';
 import GifticonDetailScreen from '../features/gifticons/detail/GifticonDetailScreen';
 import SpendingReportScreen from '../features/gifticons/reporting/SpendingReportScreen';
 import ExpiryCalendarScreen from '../features/gifticons/reporting/ExpiryCalendarScreen';
