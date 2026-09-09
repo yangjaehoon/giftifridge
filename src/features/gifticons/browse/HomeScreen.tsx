@@ -1,12 +1,10 @@
-import React, { useCallback, useEffect, useMemo } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import {
-  Alert,
   FlatList,
   RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
@@ -19,22 +17,21 @@ import { useGeofenceSync } from '../geofence/useGeofenceSync';
 import { useGifticonListView } from './useGifticonListView';
 import { useGifticonSelection } from './useGifticonSelection';
 import { useHomeGifticonContext } from './useHomeGifticonContext';
-import { markGifticonsUsed, removeGifticons } from '../domain/services/gifticonLifecycle';
+import { useGifticonBatchActions } from './useGifticonBatchActions';
+import { useHomeHeaderButtons } from './useHomeHeaderButtons';
 import { useMySpaces } from '../../spaces/hooks/useMySpaces';
 import SpaceSwitcher from '../../spaces/components/SpaceSwitcher';
 import Button from '../../../shared/components/Button';
-import Chip from '../../../shared/components/Chip';
 import GifticonCard from '../domain/components/GifticonCard';
 import GifticonCardSkeleton from '../domain/components/GifticonCardSkeleton';
 import GifticonStats from './GifticonStats';
 import NearbyGifticonBanner from '../geofence/NearbyGifticonBanner';
 import StatusTabs from './StatusTabs';
-import { useToast } from '../../../shared/components/ToastProvider';
-import { useAsyncAction } from '../../../shared/hooks/useAsyncAction';
-import { getGifticonErrorMessage, getGifticonWriteErrorMessage } from '../domain/errors';
-import { CATEGORY_LABELS } from '../domain/types';
+import HomeListControls from './HomeListControls';
+import HomeSelectionBar from './HomeSelectionBar';
+import { getGifticonErrorMessage } from '../domain/errors';
+import { EMPTY_TEXT } from '../domain/gifticonFilters';
 import type { Gifticon } from '../domain/types';
-import { CATEGORY_FILTERS, EMPTY_TEXT, SORT_KEYS, SORT_LABELS } from '../domain/gifticonFilters';
 import type { RootStackParamList } from '../../../app/navigationTypes';
 import type { Palette } from '../../../shared/theme/colors';
 import { useColors, useThemedStyles } from '../../../shared/theme/ThemeProvider';
@@ -71,16 +68,21 @@ export default function HomeScreen({ navigation }: Props) {
     isSearching,
   } = useGifticonListView(items);
 
+  useHomeHeaderButtons(navigation);
+
   const openAdd = () =>
     navigation.navigate(
       'AddGifticon',
       context.type === 'space' ? { spaceId: context.spaceId } : undefined,
     );
 
-  const showToast = useToast();
   const selection = useGifticonSelection();
-  const { busy: batchBusy, run: runBatch } = useAsyncAction(getGifticonWriteErrorMessage);
   const selectedItems = visible.filter((g) => selection.selectedIds.has(g.id));
+  const batch = useGifticonBatchActions({
+    selectedItems,
+    uid: user?.uid,
+    onDone: selection.clear,
+  });
 
   const openDetail = useCallback(
     (g: Gifticon) => navigation.navigate('GifticonDetail', { gifticonId: g.id }),
@@ -102,66 +104,6 @@ export default function HomeScreen({ navigation }: Props) {
     ),
     [selecting, selectedIds, toggleSelect, beginSelect, openDetail],
   );
-
-  const batchMarkUsed = () =>
-    runBatch(() => markGifticonsUsed(selectedItems, user?.uid), {
-      fallback: 'update',
-      onSuccess: ({ succeeded, failed }) => {
-        selection.clear();
-        showToast(
-          failed > 0
-            ? `${succeeded}개 완료, ${failed}개는 실패했어요`
-            : `${succeeded}개를 사용완료로 표시했어요`,
-        );
-      },
-    });
-
-  const batchDelete = () => {
-    Alert.alert('삭제', `선택한 ${selection.count}개를 삭제할까요?`, [
-      { text: '취소', style: 'cancel' },
-      {
-        text: '삭제',
-        style: 'destructive',
-        onPress: () =>
-          runBatch(() => removeGifticons(selectedItems), {
-            fallback: 'delete',
-            onSuccess: ({ succeeded, failed }) => {
-              selection.clear();
-              showToast(
-                failed > 0
-                  ? `${succeeded}개 삭제, ${failed}개는 실패했어요`
-                  : `${succeeded}개를 삭제했어요`,
-              );
-            },
-          }),
-      },
-    ]);
-  };
-
-  useEffect(() => {
-    navigation.setOptions({
-      headerRight: () => (
-        <View style={styles.headerActions}>
-          <TouchableOpacity
-            onPress={() => navigation.navigate('Calendar')}
-            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-            accessibilityRole="button"
-            accessibilityLabel="만료 달력"
-          >
-            <Text style={styles.settingsLink}>달력</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            onPress={() => navigation.navigate('Settings')}
-            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-            accessibilityRole="button"
-            accessibilityLabel="설정"
-          >
-            <Text style={styles.settingsLink}>설정</Text>
-          </TouchableOpacity>
-        </View>
-      ),
-    });
-  }, [navigation, styles]);
 
   return (
     <View style={styles.container}>
@@ -195,64 +137,16 @@ export default function HomeScreen({ navigation }: Props) {
 
       <StatusTabs tab={tab} counts={counts} onChange={setTab} />
 
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        style={styles.categoryScroll}
-        contentContainerStyle={styles.categoryRow}
-      >
-        {CATEGORY_FILTERS.map((c) => (
-          <Chip
-            key={c}
-            label={c === 'all' ? '전체' : CATEGORY_LABELS[c]}
-            active={category === c}
-            onPress={() => setCategory(c)}
-          />
-        ))}
-      </ScrollView>
-
-      <View style={styles.searchRow}>
-        <TextInput
-          style={styles.searchInput}
-          value={query}
-          onChangeText={setQuery}
-          placeholder="상품명, 브랜드 검색"
-          placeholderTextColor={colors.gray400}
-          returnKeyType="search"
-        />
-        {query.length > 0 && (
-          <TouchableOpacity
-            style={styles.searchClear}
-            onPress={() => setQuery('')}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-            accessibilityRole="button"
-            accessibilityLabel="검색어 지우기"
-          >
-            <Text style={styles.searchClearText}>×</Text>
-          </TouchableOpacity>
-        )}
-      </View>
-
-      <View style={styles.sortRow}>
-        <Text style={styles.sortLabel}>정렬</Text>
-        {SORT_KEYS.map((key) => (
-          <Chip
-            key={key}
-            label={SORT_LABELS[key]}
-            active={sortKey === key}
-            onPress={() => setSortKey(key)}
-          />
-        ))}
-        <TouchableOpacity
-          style={styles.sortDir}
-          onPress={toggleSortDir}
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          accessibilityRole="button"
-          accessibilityLabel={`정렬 방향 ${sortDir === 'asc' ? '오름차순' : '내림차순'}, 눌러서 전환`}
-        >
-          <Text style={styles.sortDirText}>{sortDir === 'asc' ? '↑ 오름차순' : '↓ 내림차순'}</Text>
-        </TouchableOpacity>
-      </View>
+      <HomeListControls
+        category={category}
+        onCategory={setCategory}
+        query={query}
+        onChangeQuery={setQuery}
+        sortKey={sortKey}
+        onSortKey={setSortKey}
+        sortDir={sortDir}
+        onToggleSortDir={toggleSortDir}
+      />
 
       {loading ? (
         <View style={styles.listContent}>
@@ -318,37 +212,14 @@ export default function HomeScreen({ navigation }: Props) {
       )}
 
       {selection.selecting ? (
-        <View style={styles.selectionBar}>
-          <TouchableOpacity
-            onPress={selection.clear}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-            accessibilityRole="button"
-            accessibilityLabel="선택 취소"
-          >
-            <Text style={styles.selectionCancel}>취소</Text>
-          </TouchableOpacity>
-          <Text style={styles.selectionCount}>{selection.count}개 선택</Text>
-          <View style={styles.selectionActions}>
-            {tab !== 'used' && (
-              <TouchableOpacity
-                onPress={batchMarkUsed}
-                disabled={batchBusy}
-                accessibilityRole="button"
-                accessibilityLabel="선택 항목 사용완료로 표시"
-              >
-                <Text style={styles.selectionAction}>사용완료</Text>
-              </TouchableOpacity>
-            )}
-            <TouchableOpacity
-              onPress={batchDelete}
-              disabled={batchBusy}
-              accessibilityRole="button"
-              accessibilityLabel="선택 항목 삭제"
-            >
-              <Text style={[styles.selectionAction, styles.selectionDelete]}>삭제</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
+        <HomeSelectionBar
+          count={selection.count}
+          showMarkUsed={tab !== 'used'}
+          busy={batch.busy}
+          onCancel={selection.clear}
+          onMarkUsed={batch.markUsed}
+          onDelete={batch.remove}
+        />
       ) : (
         <TouchableOpacity
           style={styles.fab}
@@ -366,44 +237,8 @@ export default function HomeScreen({ navigation }: Props) {
 const makeStyles = (colors: Palette) =>
   StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background },
-    headerActions: { flexDirection: 'row', gap: 16, marginRight: 4 },
-    settingsLink: { color: colors.primary, fontSize: 13 },
     membersLink: { alignSelf: 'flex-end', marginRight: 16, marginTop: 6 },
     membersLinkText: { color: colors.primary, fontSize: 12, fontWeight: '600' },
-    categoryScroll: { flexGrow: 0, flexShrink: 0 },
-    categoryRow: { paddingHorizontal: 16, paddingTop: 10, gap: 8, alignItems: 'center' },
-    searchRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      marginHorizontal: 16,
-      marginTop: 10,
-      paddingHorizontal: 14,
-      borderWidth: 1,
-      borderColor: colors.border,
-      borderRadius: 10,
-      backgroundColor: colors.surface,
-    },
-    searchInput: { flex: 1, paddingVertical: 10, fontSize: 14, color: colors.gray900 },
-    searchClear: { paddingLeft: 8, paddingVertical: 4 },
-    searchClearText: { fontSize: 18, color: colors.gray400, fontWeight: '700' },
-    sortRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      flexWrap: 'wrap',
-      gap: 8,
-      marginHorizontal: 16,
-      marginTop: 10,
-    },
-    sortLabel: { fontSize: 12, fontWeight: '600', color: colors.gray500 },
-    sortDir: {
-      marginLeft: 'auto',
-      paddingHorizontal: 12,
-      paddingVertical: 8,
-      borderRadius: 20,
-      borderWidth: 1,
-      borderColor: colors.border,
-    },
-    sortDirText: { fontSize: 12, fontWeight: '600', color: colors.gray700 },
     listContent: { paddingVertical: 8, paddingBottom: 100, flexGrow: 1 },
     empty: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: 80, gap: 4 },
     emptyText: { color: colors.gray500, fontSize: 14 },
@@ -434,27 +269,4 @@ const makeStyles = (colors: Palette) =>
       elevation: 4,
     },
     fabText: { color: colors.surface, fontSize: 28, fontWeight: '400', marginTop: -2 },
-    selectionBar: {
-      position: 'absolute',
-      left: 16,
-      right: 16,
-      bottom: 24,
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      backgroundColor: colors.surfaceStrong,
-      borderRadius: 14,
-      paddingHorizontal: 18,
-      paddingVertical: 14,
-      shadowColor: colors.shadow,
-      shadowOpacity: 0.2,
-      shadowRadius: 8,
-      shadowOffset: { width: 0, height: 3 },
-      elevation: 5,
-    },
-    selectionCancel: { color: colors.surface, fontSize: 14, opacity: 0.8 },
-    selectionCount: { color: colors.surface, fontSize: 14, fontWeight: '700' },
-    selectionActions: { flexDirection: 'row', gap: 18 },
-    selectionAction: { color: colors.primaryBright, fontSize: 14, fontWeight: '700' },
-    selectionDelete: { color: colors.danger },
   });
