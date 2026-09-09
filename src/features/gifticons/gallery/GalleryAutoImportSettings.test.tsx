@@ -1,9 +1,9 @@
 import React from 'react';
 import { fireEvent, render } from '@testing-library/react-native';
 import GalleryAutoImportSettings from './GalleryAutoImportSettings';
-import { useGalleryAutoImport } from '../hooks/useGalleryAutoImport';
+import { useGalleryAutoImport } from './useGalleryAutoImport';
 
-jest.mock('../hooks/useGalleryAutoImport', () => ({
+jest.mock('./useGalleryAutoImport', () => ({
   useGalleryAutoImport: jest.fn(),
 }));
 

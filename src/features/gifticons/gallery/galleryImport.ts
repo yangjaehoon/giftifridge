@@ -1,9 +1,9 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as MediaLibrary from 'expo-media-library';
-import { newGifticonId } from './gifticonService';
-import { readCachedBarcodes } from './gifticonCache';
-import { saveGifticon } from './saveGifticon';
-import { syncGifticonReminders } from './gifticonReminders';
+import { newGifticonId } from '../services/gifticonService';
+import { readCachedBarcodes } from '../services/gifticonCache';
+import { saveGifticon } from '../services/saveGifticon';
+import { syncGifticonReminders } from '../services/gifticonReminders';
 import {
   assessGifticon,
   guessGifticonFields,

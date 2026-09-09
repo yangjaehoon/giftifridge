@@ -1,6 +1,6 @@
 import React from 'react';
 import { StyleSheet, Switch, Text, View } from 'react-native';
-import { useGalleryAutoImport } from '../hooks/useGalleryAutoImport';
+import { useGalleryAutoImport } from './useGalleryAutoImport';
 import type { Palette } from '../../../shared/theme/colors';
 import { useThemedStyles } from '../../../shared/theme/ThemeProvider';
 

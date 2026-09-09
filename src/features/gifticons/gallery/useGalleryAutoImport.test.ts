@@ -2,23 +2,20 @@ import { act, renderHook, waitFor } from '@testing-library/react-native';
 import { Alert } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as MediaLibrary from 'expo-media-library';
-import { ensureGalleryImportPermission, scanGalleryForGifticons } from '../services/galleryImport';
-import {
-  registerGalleryImportTask,
-  unregisterGalleryImportTask,
-} from '../services/galleryImportTask';
+import { ensureGalleryImportPermission, scanGalleryForGifticons } from './galleryImport';
+import { registerGalleryImportTask, unregisterGalleryImportTask } from './galleryImportTask';
 import { useGalleryAutoImport } from './useGalleryAutoImport';
 
 jest.mock('@react-native-async-storage/async-storage', () =>
   jest.requireActual('@react-native-async-storage/async-storage/jest/async-storage-mock'),
 );
 jest.mock('expo-media-library', () => ({ addListener: jest.fn() }));
-jest.mock('../services/galleryImport', () => ({
+jest.mock('./galleryImport', () => ({
   ENABLED_KEY: 'galleryImportEnabled',
   ensureGalleryImportPermission: jest.fn(),
   scanGalleryForGifticons: jest.fn(),
 }));
-jest.mock('../services/galleryImportTask', () => ({
+jest.mock('./galleryImportTask', () => ({
   registerGalleryImportTask: jest.fn(),
   unregisterGalleryImportTask: jest.fn(),
 }));

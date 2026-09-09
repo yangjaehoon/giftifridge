@@ -3,7 +3,7 @@ import { registerRootComponent } from 'expo';
 // Must run in the JS bundle's global scope on every launch — including a
 // headless one the OS wakes up to run the gallery-import background task —
 // so TaskManager.defineTask has a chance to run before the task fires.
-import './src/features/gifticons/services/galleryImportTask';
+import './src/features/gifticons/gallery/galleryImportTask';
 import './src/features/gifticons/services/geofenceTask';
 import App from './App';
 

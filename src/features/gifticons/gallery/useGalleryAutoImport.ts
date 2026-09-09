@@ -6,11 +6,8 @@ import {
   ENABLED_KEY,
   ensureGalleryImportPermission,
   scanGalleryForGifticons,
-} from '../services/galleryImport';
-import {
-  registerGalleryImportTask,
-  unregisterGalleryImportTask,
-} from '../services/galleryImportTask';
+} from './galleryImport';
+import { registerGalleryImportTask, unregisterGalleryImportTask } from './galleryImportTask';
 import { alertPermissionDenied } from '../../../shared/utils/permissionAlert';
 
 /**

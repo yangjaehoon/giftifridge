@@ -13,7 +13,7 @@ import { useAuthActions, useCurrentUser } from '../../../shared/auth/AuthContext
 import { useEmailAuthForm } from '../hooks/useEmailAuthForm';
 import NotificationOffsetSettings from '../components/NotificationOffsetSettings';
 import ThemeSettings from '../components/ThemeSettings';
-import GalleryAutoImportSettings from '../../gifticons/components/GalleryAutoImportSettings';
+import GalleryAutoImportSettings from '../../gifticons/gallery/GalleryAutoImportSettings';
 import DevSeedButton from '../../gifticons/components/DevSeedButton';
 import ExportDataButton from '../../gifticons/components/ExportDataButton';
 import DeleteAccountButton from '../components/DeleteAccountButton';

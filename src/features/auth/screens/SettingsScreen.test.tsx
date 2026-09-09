@@ -23,7 +23,7 @@ jest.mock('../../../shared/utils/notificationPrefs', () => ({
   setNotificationHour: jest.fn(),
 }));
 jest.mock('../errors', () => ({ getAuthErrorMessage: () => '로그인에 실패했어요.' }));
-jest.mock('../../gifticons/components/GalleryAutoImportSettings', () => ({
+jest.mock('../../gifticons/gallery/GalleryAutoImportSettings', () => ({
   __esModule: true,
   default: () => null,
 }));
