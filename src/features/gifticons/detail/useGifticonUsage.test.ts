@@ -1,10 +1,13 @@
 import { Alert } from 'react-native';
 import { act, renderHook } from '@testing-library/react-native';
 import { useGifticonUsage } from './useGifticonUsage';
-import { deleteGifticonUsageRecord, recordGifticonUsage } from '../services/gifticonLifecycle';
-import type { Gifticon } from '../types';
+import {
+  deleteGifticonUsageRecord,
+  recordGifticonUsage,
+} from '../domain/services/gifticonLifecycle';
+import type { Gifticon } from '../domain/types';
 
-jest.mock('../services/gifticonLifecycle', () => ({
+jest.mock('../domain/services/gifticonLifecycle', () => ({
   recordGifticonUsage: jest.fn(),
   deleteGifticonUsageRecord: jest.fn(),
 }));

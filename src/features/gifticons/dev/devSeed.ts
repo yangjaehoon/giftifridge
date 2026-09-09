@@ -1,6 +1,10 @@
-import { createGifticon, markGifticonUsed, newGifticonId } from '../services/gifticonService';
+import {
+  createGifticon,
+  markGifticonUsed,
+  newGifticonId,
+} from '../domain/services/gifticonService';
 import { toDateString } from '../../../shared/utils/date';
-import type { GifticonCategory, NewGifticon } from '../types';
+import type { GifticonCategory, NewGifticon } from '../domain/types';
 
 function daysFromNow(days: number) {
   const d = new Date();

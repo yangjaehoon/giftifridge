@@ -2,7 +2,7 @@ import * as Location from 'expo-location';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { clearGeofences, geofenceRegionsFor, MAX_GEOFENCES, syncGeofences } from './geofencing';
 import { readGeofenceLabels } from './geofenceTask';
-import type { Gifticon } from '../types';
+import type { Gifticon } from '../domain/types';
 
 jest.mock('expo-task-manager', () => ({ defineTask: jest.fn() }));
 jest.mock('expo-location', () => ({

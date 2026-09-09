@@ -4,19 +4,19 @@ import * as Clipboard from 'expo-clipboard';
 import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
 import GifticonDetailScreen from './GifticonDetailScreen';
 import { useCurrentUser } from '../../../shared/auth/AuthContext';
-import { useGifticon } from '../hooks/useGifticon';
+import { useGifticon } from '../domain/hooks/useGifticon';
 import {
   deleteGifticonUsageRecord,
   recordGifticonUsage,
   removeGifticon,
   setGifticonUsed,
-} from '../services/gifticonLifecycle';
+} from '../domain/services/gifticonLifecycle';
 import { TimeoutError } from '../../../shared/utils/withTimeout';
-import type { Gifticon } from '../types';
+import type { Gifticon } from '../domain/types';
 
 jest.mock('../../../shared/auth/AuthContext', () => ({ useCurrentUser: jest.fn() }));
-jest.mock('../hooks/useGifticon', () => ({ useGifticon: jest.fn() }));
-jest.mock('../services/gifticonLifecycle', () => ({
+jest.mock('../domain/hooks/useGifticon', () => ({ useGifticon: jest.fn() }));
+jest.mock('../domain/services/gifticonLifecycle', () => ({
   removeGifticon: jest.fn(),
   setGifticonUsed: jest.fn(),
   recordGifticonUsage: jest.fn(),
@@ -25,7 +25,7 @@ jest.mock('../services/gifticonLifecycle', () => ({
 // GifticonUsagePanel (not mocked here) pulls this in directly to pin a
 // record id per form session — stub it the same way AddGifticonScreen's test
 // stubs newGifticonId, so the panel doesn't reach for the real Firestore db.
-jest.mock('../services/gifticonService', () => ({
+jest.mock('../domain/services/gifticonService', () => ({
   newUsageRecordId: jest.fn(() => 'usage-id-1'),
 }));
 jest.mock('expo-clipboard', () => ({ setStringAsync: jest.fn() }));

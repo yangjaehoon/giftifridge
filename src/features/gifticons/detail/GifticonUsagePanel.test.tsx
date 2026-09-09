@@ -2,11 +2,11 @@ import React from 'react';
 import { act, fireEvent, render } from '@testing-library/react-native';
 import GifticonUsagePanel from './GifticonUsagePanel';
 import { confirmAsync } from '../../../shared/utils/confirmAsync';
-import { newUsageRecordId } from '../services/gifticonService';
-import type { Gifticon } from '../types';
+import { newUsageRecordId } from '../domain/services/gifticonService';
+import type { Gifticon } from '../domain/types';
 
 jest.mock('../../../shared/utils/confirmAsync', () => ({ confirmAsync: jest.fn() }));
-jest.mock('../services/gifticonService', () => ({
+jest.mock('../domain/services/gifticonService', () => ({
   newUsageRecordId: jest.fn(() => 'usage-id-1'),
 }));
 

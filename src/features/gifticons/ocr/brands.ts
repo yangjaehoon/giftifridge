@@ -1,4 +1,4 @@
-import type { GifticonCategory } from '../types';
+import type { GifticonCategory } from '../domain/types';
 
 export interface KnownBrand {
   name: string;

@@ -1,7 +1,7 @@
 import type { Gifticon, GifticonCategory } from './types';
 import { CATEGORY_LABELS } from './types';
 import { remainingAmount } from './usage';
-import { daysUntil } from '../../shared/utils/date';
+import { daysUntil } from '../../../shared/utils/date';
 
 export type FilterTab = 'active' | 'expired' | 'used';
 export type CategoryFilter = GifticonCategory | 'all';

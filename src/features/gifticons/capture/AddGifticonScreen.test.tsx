@@ -4,17 +4,20 @@ import * as ImagePicker from 'expo-image-picker';
 import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
 import AddGifticonScreen from './AddGifticonScreen';
 import { useCurrentUser } from '../../../shared/auth/AuthContext';
-import { useGifticon } from '../hooks/useGifticon';
-import { useGifticons } from '../hooks/useGifticons';
-import { useSpaceGifticons } from '../hooks/useSpaceGifticons';
+import { useGifticon } from '../domain/hooks/useGifticon';
+import { useGifticons } from '../domain/hooks/useGifticons';
+import { useSpaceGifticons } from '../domain/hooks/useSpaceGifticons';
 import {
   createGifticon,
   newGifticonId,
   setGifticonNotificationIds,
   updateGifticon,
-} from '../services/gifticonService';
-import { uploadGifticonImage } from '../services/gifticonImage';
-import { cancelNotifications, scheduleExpiryNotifications } from '../services/notificationService';
+} from '../domain/services/gifticonService';
+import { uploadGifticonImage } from '../domain/services/gifticonImage';
+import {
+  cancelNotifications,
+  scheduleExpiryNotifications,
+} from '../domain/services/notificationService';
 import { recognizeText } from '../ocr/ocrService';
 import type { RecognizedText } from '../ocr/ocrService';
 import { recognizeBarcodeFromImage } from '../ocr/barcodeRecognition';
@@ -24,7 +27,7 @@ import {
   getNotificationOffsets,
 } from '../../../shared/utils/notificationPrefs';
 import { TimeoutError } from '../../../shared/utils/withTimeout';
-import type { Gifticon } from '../types';
+import type { Gifticon } from '../domain/types';
 
 // This screen mounts several hooks with on-mount effects (form hydration,
 // image auto-detection, location, camera permissions); the first test to
@@ -35,17 +38,17 @@ import type { Gifticon } from '../types';
 jest.setTimeout(15000);
 
 jest.mock('../../../shared/auth/AuthContext', () => ({ useCurrentUser: jest.fn() }));
-jest.mock('../hooks/useGifticon', () => ({ useGifticon: jest.fn() }));
-jest.mock('../hooks/useGifticons', () => ({ useGifticons: jest.fn() }));
-jest.mock('../hooks/useSpaceGifticons', () => ({ useSpaceGifticons: jest.fn() }));
-jest.mock('../services/gifticonService', () => ({
+jest.mock('../domain/hooks/useGifticon', () => ({ useGifticon: jest.fn() }));
+jest.mock('../domain/hooks/useGifticons', () => ({ useGifticons: jest.fn() }));
+jest.mock('../domain/hooks/useSpaceGifticons', () => ({ useSpaceGifticons: jest.fn() }));
+jest.mock('../domain/services/gifticonService', () => ({
   createGifticon: jest.fn(),
   newGifticonId: jest.fn(() => 'draft-id'),
   setGifticonNotificationIds: jest.fn(),
   updateGifticon: jest.fn(),
 }));
-jest.mock('../services/gifticonImage', () => ({ uploadGifticonImage: jest.fn() }));
-jest.mock('../services/notificationService', () => ({
+jest.mock('../domain/services/gifticonImage', () => ({ uploadGifticonImage: jest.fn() }));
+jest.mock('../domain/services/notificationService', () => ({
   cancelNotifications: jest.fn(),
   scheduleExpiryNotifications: jest.fn(),
 }));

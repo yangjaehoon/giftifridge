@@ -4,7 +4,7 @@ import {
   getDownloadURL,
   storageRef,
   uploadBytes,
-} from '../../../lib/firebase/storage';
+} from '../../../../lib/firebase/storage';
 
 // Everything about a gifticon's photo lives here (resize/compress, Storage
 // upload/delete) so the doc-CRUD service in gifticonService.ts stays free of

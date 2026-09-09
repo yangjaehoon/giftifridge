@@ -1,7 +1,7 @@
 import React from 'react';
 import { act, fireEvent, render } from '@testing-library/react-native';
 import NearbyGifticonBanner from './NearbyGifticonBanner';
-import type { Gifticon } from '../types';
+import type { Gifticon } from '../domain/types';
 
 function makeGifticon(id: string, brand: string): Gifticon {
   return {

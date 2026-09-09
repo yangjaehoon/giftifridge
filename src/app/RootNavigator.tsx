@@ -11,7 +11,7 @@ import AddGifticonScreen from '../features/gifticons/capture/AddGifticonScreen';
 import GifticonDetailScreen from '../features/gifticons/detail/GifticonDetailScreen';
 import SpendingReportScreen from '../features/gifticons/reporting/SpendingReportScreen';
 import ExpiryCalendarScreen from '../features/gifticons/reporting/ExpiryCalendarScreen';
-import GifticonCardSkeleton from '../features/gifticons/components/GifticonCardSkeleton';
+import GifticonCardSkeleton from '../features/gifticons/domain/components/GifticonCardSkeleton';
 import SettingsScreen from '../features/auth/screens/SettingsScreen';
 import CreateSpaceScreen from '../features/spaces/screens/CreateSpaceScreen';
 import JoinSpaceScreen from '../features/spaces/screens/JoinSpaceScreen';

@@ -1,12 +1,12 @@
 import { confirmAsync } from '../../../shared/utils/confirmAsync';
-import { saveGifticon } from '../services/saveGifticon';
-import { syncGifticonReminders } from '../services/gifticonReminders';
+import { saveGifticon } from '../domain/services/saveGifticon';
+import { syncGifticonReminders } from '../domain/services/gifticonReminders';
 import { submitGifticon } from './submitGifticon';
-import type { Gifticon } from '../types';
+import type { Gifticon } from '../domain/types';
 
 jest.mock('../../../shared/utils/confirmAsync', () => ({ confirmAsync: jest.fn() }));
-jest.mock('../services/saveGifticon', () => ({ saveGifticon: jest.fn() }));
-jest.mock('../services/gifticonReminders', () => ({ syncGifticonReminders: jest.fn() }));
+jest.mock('../domain/services/saveGifticon', () => ({ saveGifticon: jest.fn() }));
+jest.mock('../domain/services/gifticonReminders', () => ({ syncGifticonReminders: jest.fn() }));
 
 const mockedConfirm = confirmAsync as jest.Mock;
 const mockedSave = saveGifticon as jest.Mock;

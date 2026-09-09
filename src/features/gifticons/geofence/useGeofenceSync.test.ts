@@ -2,7 +2,7 @@ import { renderHook, waitFor } from '@testing-library/react-native';
 import { useGeofenceSync } from './useGeofenceSync';
 import { ensureBackgroundLocationPermission } from '../../../shared/utils/location';
 import { clearGeofences, syncGeofences } from './geofencing';
-import type { Gifticon } from '../types';
+import type { Gifticon } from '../domain/types';
 
 jest.mock('../../../shared/utils/location', () => ({
   ensureBackgroundLocationPermission: jest.fn(),

@@ -1,4 +1,4 @@
-import { makeErrorMessages, WRITE_ERROR_MESSAGES } from '../../shared/utils/classifyWriteError';
+import { makeErrorMessages, WRITE_ERROR_MESSAGES } from '../../../shared/utils/classifyWriteError';
 
 const messages = {
   ...WRITE_ERROR_MESSAGES,

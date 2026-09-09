@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef } from 'react';
-import type { Gifticon } from '../types';
+import type { Gifticon } from '../domain/types';
 import { ensureBackgroundLocationPermission } from '../../../shared/utils/location';
 import { clearGeofences, syncGeofences } from './geofencing';
 

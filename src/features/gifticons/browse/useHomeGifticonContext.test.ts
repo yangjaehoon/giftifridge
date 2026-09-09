@@ -1,10 +1,10 @@
 import { act, renderHook } from '@testing-library/react-native';
 import { useHomeGifticonContext } from './useHomeGifticonContext';
-import { useGifticons } from '../hooks/useGifticons';
-import { useSpaceGifticons } from '../hooks/useSpaceGifticons';
+import { useGifticons } from '../domain/hooks/useGifticons';
+import { useSpaceGifticons } from '../domain/hooks/useSpaceGifticons';
 
-jest.mock('../hooks/useGifticons', () => ({ useGifticons: jest.fn() }));
-jest.mock('../hooks/useSpaceGifticons', () => ({ useSpaceGifticons: jest.fn() }));
+jest.mock('../domain/hooks/useGifticons', () => ({ useGifticons: jest.fn() }));
+jest.mock('../domain/hooks/useSpaceGifticons', () => ({ useSpaceGifticons: jest.fn() }));
 
 const mockedPersonal = useGifticons as jest.Mock;
 const mockedSpace = useSpaceGifticons as jest.Mock;

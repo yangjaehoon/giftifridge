@@ -3,8 +3,8 @@ import { cancelNotifications, scheduleExpiryNotifications } from './notification
 import {
   getNotificationHour,
   getNotificationOffsets,
-} from '../../../shared/utils/notificationPrefs';
-import { withTimeout, WRITE_TIMEOUT_MS } from '../../../shared/utils/withTimeout';
+} from '../../../../shared/utils/notificationPrefs';
+import { withTimeout, WRITE_TIMEOUT_MS } from '../../../../shared/utils/withTimeout';
 
 interface SyncParams {
   gifticon: { id: string; name: string; brand: string; expiresAt: string };

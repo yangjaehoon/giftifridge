@@ -11,7 +11,7 @@ import {
   setDoc,
   updateDoc,
   where,
-} from '../../../lib/firebase/firestore';
+} from '../../../../lib/firebase/firestore';
 import { deleteGifticonImage } from './gifticonImage';
 import { omitUndefined, toGifticon } from './gifticonMapper';
 import type { Gifticon, NewGifticon, UsageRecord } from '../types';

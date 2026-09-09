@@ -1,6 +1,6 @@
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import type { FilterTab } from '../gifticonFilters';
+import type { FilterTab } from '../domain/gifticonFilters';
 import type { Palette } from '../../../shared/theme/colors';
 import { useThemedStyles } from '../../../shared/theme/ThemeProvider';
 

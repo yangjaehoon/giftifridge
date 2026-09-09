@@ -1,6 +1,6 @@
 import { Share } from 'react-native';
 import { buildGifticonCsv, exportGifticons } from './gifticonExport';
-import type { Gifticon } from '../types';
+import type { Gifticon } from '../domain/types';
 
 function g(overrides: Partial<Gifticon> & { id: string }): Gifticon {
   return {

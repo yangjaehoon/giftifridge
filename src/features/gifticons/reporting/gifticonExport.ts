@@ -1,8 +1,8 @@
 import { Share } from 'react-native';
-import type { Gifticon } from '../types';
-import { CATEGORY_LABELS } from '../types';
-import { statusOf } from '../gifticonFilters';
-import { isAmountBased, remainingAmount } from '../usage';
+import type { Gifticon } from '../domain/types';
+import { CATEGORY_LABELS } from '../domain/types';
+import { statusOf } from '../domain/gifticonFilters';
+import { isAmountBased, remainingAmount } from '../domain/usage';
 import { formatDate } from '../../../shared/utils/date';
 
 // Plain-text export of a gifticon collection, so the user has a copy outside

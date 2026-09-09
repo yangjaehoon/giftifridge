@@ -1,5 +1,5 @@
 import { daysUntil } from '../../../shared/utils/date';
-import type { GifticonCategory } from '../types';
+import type { GifticonCategory } from '../domain/types';
 import { findKnownBrand } from './brands';
 import { parseAmountResult } from './amountParser';
 import { parseBarcodeFromText } from './barcodeParser';

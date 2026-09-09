@@ -4,10 +4,10 @@ import type { Gifticon } from '../types';
 import { CATEGORY_LABELS } from '../types';
 import { formatRemainingAmount, isAmountBased } from '../usage';
 import { lookupEstimatedPrice } from '../menuPrices';
-import { formatCurrency } from '../../../shared/utils/currency';
-import { daysUntil, formatDate } from '../../../shared/utils/date';
-import type { Palette } from '../../../shared/theme/colors';
-import { useThemedStyles } from '../../../shared/theme/ThemeProvider';
+import { formatCurrency } from '../../../../shared/utils/currency';
+import { daysUntil, formatDate } from '../../../../shared/utils/date';
+import type { Palette } from '../../../../shared/theme/colors';
+import { useThemedStyles } from '../../../../shared/theme/ThemeProvider';
 import GifticonStatusOverlay from './GifticonStatusOverlay';
 
 function GifticonCard({

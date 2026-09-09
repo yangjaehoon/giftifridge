@@ -1,7 +1,11 @@
-import { createGifticon, markGifticonUsed, newGifticonId } from '../services/gifticonService';
+import {
+  createGifticon,
+  markGifticonUsed,
+  newGifticonId,
+} from '../domain/services/gifticonService';
 import { DUMMY_GIFTICON_COUNT, seedDummyGifticons } from './devSeed';
 
-jest.mock('../services/gifticonService', () => ({
+jest.mock('../domain/services/gifticonService', () => ({
   createGifticon: jest.fn(),
   markGifticonUsed: jest.fn(),
   newGifticonId: jest.fn(),

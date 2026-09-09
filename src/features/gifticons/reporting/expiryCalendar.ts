@@ -1,5 +1,5 @@
-import type { Gifticon } from '../types';
-import { statusOf } from '../gifticonFilters';
+import type { Gifticon } from '../domain/types';
+import { statusOf } from '../domain/gifticonFilters';
 import { parseDate, toDateString } from '../../../shared/utils/date';
 
 // Pure helpers behind the expiry calendar screen: the month's day grid, and

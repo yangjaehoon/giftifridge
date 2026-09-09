@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import type { Gifticon } from '../types';
-import { spendableValue } from '../gifticonValue';
+import type { Gifticon } from '../domain/types';
+import { spendableValue } from '../domain/gifticonValue';
 import { daysUntil } from '../../../shared/utils/date';
 import { formatCurrency } from '../../../shared/utils/currency';
 import type { Palette } from '../../../shared/theme/colors';

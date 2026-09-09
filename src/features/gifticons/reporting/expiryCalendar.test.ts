@@ -1,5 +1,5 @@
 import { gifticonsByExpiryDate, monthMatrix, shiftMonth } from './expiryCalendar';
-import type { Gifticon } from '../types';
+import type { Gifticon } from '../domain/types';
 
 function g(overrides: Partial<Gifticon> & { id: string }): Gifticon {
   return {

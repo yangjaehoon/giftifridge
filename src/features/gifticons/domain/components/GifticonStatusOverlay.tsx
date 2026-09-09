@@ -1,8 +1,8 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import type { StyleProp, TextStyle } from 'react-native';
-import type { Palette } from '../../../shared/theme/colors';
-import { useThemedStyles } from '../../../shared/theme/ThemeProvider';
+import type { Palette } from '../../../../shared/theme/colors';
+import { useThemedStyles } from '../../../../shared/theme/ThemeProvider';
 
 /**
  * Dims a gifticon's image and stamps its status ('사용완료' / '기한만료')

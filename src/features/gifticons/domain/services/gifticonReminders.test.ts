@@ -3,7 +3,7 @@ import { cancelNotifications, scheduleExpiryNotifications } from './notification
 import {
   getNotificationHour,
   getNotificationOffsets,
-} from '../../../shared/utils/notificationPrefs';
+} from '../../../../shared/utils/notificationPrefs';
 import { syncGifticonReminders } from './gifticonReminders';
 
 jest.mock('./gifticonService', () => ({ setGifticonNotificationIds: jest.fn() }));
@@ -11,7 +11,7 @@ jest.mock('./notificationService', () => ({
   cancelNotifications: jest.fn(),
   scheduleExpiryNotifications: jest.fn(),
 }));
-jest.mock('../../../shared/utils/notificationPrefs', () => ({
+jest.mock('../../../../shared/utils/notificationPrefs', () => ({
   getNotificationOffsets: jest.fn(),
   getNotificationHour: jest.fn(),
 }));

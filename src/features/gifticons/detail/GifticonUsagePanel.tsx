@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
-import type { Gifticon, UsageRecord } from '../types';
-import { remainingAmount, sortedUsageHistory } from '../usage';
-import { newUsageRecordId } from '../services/gifticonService';
+import type { Gifticon, UsageRecord } from '../domain/types';
+import { remainingAmount, sortedUsageHistory } from '../domain/usage';
+import { newUsageRecordId } from '../domain/services/gifticonService';
 import { formatCurrency, groupDigits } from '../../../shared/utils/currency';
 import { formatDate } from '../../../shared/utils/date';
 import { confirmAsync } from '../../../shared/utils/confirmAsync';

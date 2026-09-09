@@ -2,12 +2,12 @@ import React from 'react';
 import { act, fireEvent, render } from '@testing-library/react-native';
 import ExpiryCalendarScreen from './ExpiryCalendarScreen';
 import { useCurrentUser } from '../../../shared/auth/AuthContext';
-import { useGifticons } from '../hooks/useGifticons';
+import { useGifticons } from '../domain/hooks/useGifticons';
 import { todayDateString } from '../../../shared/utils/date';
-import type { Gifticon } from '../types';
+import type { Gifticon } from '../domain/types';
 
 jest.mock('../../../shared/auth/AuthContext', () => ({ useCurrentUser: jest.fn() }));
-jest.mock('../hooks/useGifticons', () => ({ useGifticons: jest.fn() }));
+jest.mock('../domain/hooks/useGifticons', () => ({ useGifticons: jest.fn() }));
 
 const mockedUseCurrentUser = useCurrentUser as jest.Mock;
 const mockedUseGifticons = useGifticons as jest.Mock;

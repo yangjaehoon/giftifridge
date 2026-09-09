@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import type { Gifticon } from '../types';
+import type { Gifticon } from '../domain/types';
 import {
   countByStatus,
   filterAndSortGifticons,
@@ -7,7 +7,7 @@ import {
   type FilterTab,
   type SortDir,
   type SortKey,
-} from '../gifticonFilters';
+} from '../domain/gifticonFilters';
 
 /**
  * Owns the Home list's view state (tab / category / search / sort) and derives

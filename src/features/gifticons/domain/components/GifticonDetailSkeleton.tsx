@@ -1,6 +1,6 @@
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
-import Skeleton from '../../../shared/components/Skeleton';
+import Skeleton from '../../../../shared/components/Skeleton';
 
 export default function GifticonDetailSkeleton() {
   return (

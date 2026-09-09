@@ -1,6 +1,6 @@
 import { act, renderHook, waitFor } from '@testing-library/react-native';
 import { useGifticonForm } from './useGifticonForm';
-import type { Gifticon } from '../types';
+import type { Gifticon } from '../domain/types';
 
 const existing: Gifticon = {
   id: 'g1',

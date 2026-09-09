@@ -47,7 +47,7 @@ jest.mock('../features/auth/screens/SettingsScreen', () => () => null);
 jest.mock('../features/spaces/screens/CreateSpaceScreen', () => () => null);
 jest.mock('../features/spaces/screens/JoinSpaceScreen', () => () => null);
 jest.mock('../features/spaces/screens/SpaceMembersScreen', () => () => null);
-jest.mock('../features/gifticons/components/GifticonCardSkeleton', () => {
+jest.mock('../features/gifticons/domain/components/GifticonCardSkeleton', () => {
   const { Text: RNText } = require('react-native');
   const MockSkeleton = () => <RNText>skeleton</RNText>;
   return MockSkeleton;

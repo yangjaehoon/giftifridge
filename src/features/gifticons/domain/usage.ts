@@ -1,4 +1,4 @@
-import { formatCurrency } from '../../shared/utils/currency';
+import { formatCurrency } from '../../../shared/utils/currency';
 import type { Gifticon, UsageRecord } from './types';
 
 // How a partial-spend log combines with the coarse isUsed flag into "how much

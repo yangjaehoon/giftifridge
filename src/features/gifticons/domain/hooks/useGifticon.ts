@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useFirestoreDoc } from '../../../shared/hooks/useFirestoreDoc';
+import { useFirestoreDoc } from '../../../../shared/hooks/useFirestoreDoc';
 import { subscribeToGifticon } from '../services/gifticonService';
 import { readCachedGifticon } from '../services/gifticonCache';
 import type { Gifticon } from '../types';

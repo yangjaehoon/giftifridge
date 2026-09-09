@@ -4,10 +4,10 @@ import {
   getDownloadURL,
   storageRef,
   uploadBytes,
-} from '../../../lib/firebase/storage';
+} from '../../../../lib/firebase/storage';
 import { deleteGifticonImage, uploadGifticonImage } from './gifticonImage';
 
-jest.mock('../../../lib/firebase/storage', () => ({
+jest.mock('../../../../lib/firebase/storage', () => ({
   storageRef: jest.fn((path: string) => `ref:${path}`),
   uploadBytes: jest.fn(),
   getDownloadURL: jest.fn(),

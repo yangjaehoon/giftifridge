@@ -1,7 +1,7 @@
 import { assessGifticon, resolveImportAmount } from './gifticonScore';
 import { guessGifticonFields } from './fieldGuess';
 import { parseExpiryDateFromText } from './dateParser';
-import type { GifticonCategory } from '../types';
+import type { GifticonCategory } from '../domain/types';
 import type { RecognizedText } from './recognize';
 
 /**

@@ -13,7 +13,7 @@ import { ocrDebugLog } from '../ocr/debugLog';
 import { parseDate } from '../../../shared/utils/date';
 import { alertPermissionDenied } from '../../../shared/utils/permissionAlert';
 import type { AutofillField } from './useGifticonForm';
-import type { GifticonCategory } from '../types';
+import type { GifticonCategory } from '../domain/types';
 
 interface Options {
   /** Store the chosen local uri (form.setImage). */

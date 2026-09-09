@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { Gifticon, GifticonCategory, NewGifticon } from '../types';
+import type { Gifticon, GifticonCategory, NewGifticon } from '../domain/types';
 import { defaultExpiryDate, parseDate, toDateString } from '../../../shared/utils/date';
 
 type Coordinates = { latitude: number; longitude: number };

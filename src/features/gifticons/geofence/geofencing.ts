@@ -1,5 +1,5 @@
 import * as Location from 'expo-location';
-import type { Gifticon } from '../types';
+import type { Gifticon } from '../domain/types';
 import { GEOFENCE_TASK_NAME, saveGeofenceLabels, type GeofenceLabel } from './geofenceTask';
 
 // Keeps the OS geofence registration in step with the user's located, unused

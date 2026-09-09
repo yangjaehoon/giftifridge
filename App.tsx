@@ -7,7 +7,7 @@ import { ToastProvider } from './src/shared/components/ToastProvider';
 import { ThemeProvider } from './src/shared/theme/ThemeProvider';
 import ErrorBoundary from './src/app/ErrorBoundary';
 import RootNavigator from './src/app/RootNavigator';
-import { initNotifications } from './src/features/gifticons/services/notificationService';
+import { initNotifications } from './src/features/gifticons/domain/services/notificationService';
 
 export default function App() {
   useEffect(() => {

@@ -1,7 +1,7 @@
 import { renderHook, waitFor } from '@testing-library/react-native';
 import { useNearbyGifticons } from './useNearbyGifticons';
 import { getCurrentLocation } from '../../../shared/utils/location';
-import type { Gifticon } from '../types';
+import type { Gifticon } from '../domain/types';
 
 jest.mock('../../../shared/utils/location', () => ({
   getCurrentLocation: jest.fn(),

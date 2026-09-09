@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { ActivityIndicator, Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { useGifticons } from '../hooks/useGifticons';
+import { useGifticons } from '../domain/hooks/useGifticons';
 import { exportGifticons } from './gifticonExport';
 import type { Palette } from '../../../shared/theme/colors';
 import { useColors, useThemedStyles } from '../../../shared/theme/ThemeProvider';

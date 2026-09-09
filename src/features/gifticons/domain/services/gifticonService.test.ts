@@ -6,7 +6,7 @@ import {
   setDoc,
   updateDoc,
   where,
-} from '../../../lib/firebase/firestore';
+} from '../../../../lib/firebase/firestore';
 import { deleteGifticonImage } from './gifticonImage';
 import {
   addGifticonUsageRecord,
@@ -25,7 +25,7 @@ import {
 } from './gifticonService';
 import type { Gifticon, NewGifticon } from '../types';
 
-jest.mock('../../../lib/firebase/firestore', () => ({
+jest.mock('../../../../lib/firebase/firestore', () => ({
   arrayRemove: jest.fn((record) => `arrayRemove:${JSON.stringify(record)}`),
   arrayUnion: jest.fn((record) => `arrayUnion:${JSON.stringify(record)}`),
   collectionRef: jest.fn((...path: string[]) => `collection:${path.join('/')}`),

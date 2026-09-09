@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useState } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
-import type { Gifticon } from '../types';
+import type { Gifticon } from '../domain/types';
 import { distanceInMeters } from '../../../shared/utils/geo';
 import { getCurrentLocation } from '../../../shared/utils/location';
 

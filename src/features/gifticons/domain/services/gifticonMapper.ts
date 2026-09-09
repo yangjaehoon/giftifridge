@@ -1,4 +1,4 @@
-import type { DocumentData } from '../../../lib/firebase/firestore';
+import type { DocumentData } from '../../../../lib/firebase/firestore';
 import type { Gifticon } from '../types';
 
 // Translation between the raw Firestore doc shape and the domain Gifticon,

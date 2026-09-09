@@ -1,9 +1,9 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as MediaLibrary from 'expo-media-library';
-import { newGifticonId } from '../services/gifticonService';
-import { readCachedBarcodes } from '../services/gifticonCache';
-import { saveGifticon } from '../services/saveGifticon';
-import { syncGifticonReminders } from '../services/gifticonReminders';
+import { newGifticonId } from '../domain/services/gifticonService';
+import { readCachedBarcodes } from '../domain/services/gifticonCache';
+import { saveGifticon } from '../domain/services/saveGifticon';
+import { syncGifticonReminders } from '../domain/services/gifticonReminders';
 import {
   assessGifticon,
   guessGifticonFields,
@@ -13,7 +13,7 @@ import {
 } from '../ocr/ocrService';
 import { recognizeBarcodeFromImage } from '../ocr/barcodeRecognition';
 import { captureCorpusCase, ocrDebugLog } from '../ocr/debugLog';
-import type { GifticonCategory } from '../types';
+import type { GifticonCategory } from '../domain/types';
 
 // Everything about turning "a new photo appeared in the gallery" into a saved
 // gifticon: the persisted scan cursor / dedupe set, the "is this a gifticon"

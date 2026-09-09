@@ -1,8 +1,8 @@
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
-import Skeleton from '../../../shared/components/Skeleton';
-import type { Palette } from '../../../shared/theme/colors';
-import { useThemedStyles } from '../../../shared/theme/ThemeProvider';
+import Skeleton from '../../../../shared/components/Skeleton';
+import type { Palette } from '../../../../shared/theme/colors';
+import { useThemedStyles } from '../../../../shared/theme/ThemeProvider';
 
 export default function GifticonCardSkeleton() {
   const styles = useThemedStyles(makeStyles);

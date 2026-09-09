@@ -1,4 +1,4 @@
-import type { GifticonCategory } from '../types';
+import type { GifticonCategory } from '../domain/types';
 import { parseExpiryDateFromText } from './dateParser';
 import { compact, findKnownBrand, inferCategoryFromKeywords } from './brands';
 import type { RecognizedLine, RecognizedText } from './recognize';

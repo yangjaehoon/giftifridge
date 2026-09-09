@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import type { Gifticon } from '../types';
+import type { Gifticon } from '../domain/types';
 import type { Palette } from '../../../shared/theme/colors';
 import { useThemedStyles } from '../../../shared/theme/ThemeProvider';
 

@@ -2,10 +2,10 @@ import React from 'react';
 import { Alert } from 'react-native';
 import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
 import ExportDataButton from './ExportDataButton';
-import { useGifticons } from '../hooks/useGifticons';
+import { useGifticons } from '../domain/hooks/useGifticons';
 import { exportGifticons } from './gifticonExport';
 
-jest.mock('../hooks/useGifticons', () => ({ useGifticons: jest.fn() }));
+jest.mock('../domain/hooks/useGifticons', () => ({ useGifticons: jest.fn() }));
 jest.mock('./gifticonExport', () => ({ exportGifticons: jest.fn() }));
 
 const mockedUseGifticons = useGifticons as jest.Mock;

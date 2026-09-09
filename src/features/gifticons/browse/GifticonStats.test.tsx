@@ -1,7 +1,7 @@
 import React from 'react';
 import { fireEvent, render } from '@testing-library/react-native';
 import GifticonStats from './GifticonStats';
-import type { Gifticon } from '../types';
+import type { Gifticon } from '../domain/types';
 
 function makeGifticon(overrides: Partial<Gifticon> & { id: string }): Gifticon {
   return {

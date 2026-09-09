@@ -1,6 +1,6 @@
 import { act, renderHook } from '@testing-library/react-native';
 import { useGifticonListView } from './useGifticonListView';
-import type { Gifticon } from '../types';
+import type { Gifticon } from '../domain/types';
 
 function daysFromNow(days: number): string {
   const d = new Date();

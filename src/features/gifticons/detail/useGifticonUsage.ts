@@ -1,9 +1,12 @@
-import { deleteGifticonUsageRecord, recordGifticonUsage } from '../services/gifticonLifecycle';
-import { getGifticonWriteErrorMessage } from '../errors';
+import {
+  deleteGifticonUsageRecord,
+  recordGifticonUsage,
+} from '../domain/services/gifticonLifecycle';
+import { getGifticonWriteErrorMessage } from '../domain/errors';
 import { useToast } from '../../../shared/components/ToastProvider';
 import { useAsyncAction } from '../../../shared/hooks/useAsyncAction';
 import { haptics } from '../../../shared/utils/haptics';
-import type { Gifticon, UsageRecord } from '../types';
+import type { Gifticon, UsageRecord } from '../domain/types';
 
 /**
  * Orchestration for the detail screen's usage-history panel: logs a partial

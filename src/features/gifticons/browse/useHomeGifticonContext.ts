@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { useGifticons } from '../hooks/useGifticons';
-import { useSpaceGifticons } from '../hooks/useSpaceGifticons';
+import { useGifticons } from '../domain/hooks/useGifticons';
+import { useSpaceGifticons } from '../domain/hooks/useSpaceGifticons';
 import type { HomeContext } from '../../../shared/types/homeContext';
 
 /**

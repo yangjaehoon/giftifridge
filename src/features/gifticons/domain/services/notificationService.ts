@@ -2,8 +2,8 @@ import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
 import { Platform } from 'react-native';
 import type { Gifticon } from '../types';
-import { parseDate } from '../../../shared/utils/date';
-import { DEFAULT_NOTIFICATION_HOUR } from '../../../shared/utils/notificationPrefs';
+import { parseDate } from '../../../../shared/utils/date';
+import { DEFAULT_NOTIFICATION_HOUR } from '../../../../shared/utils/notificationPrefs';
 
 let initialized = false;
 

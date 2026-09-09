@@ -1,10 +1,10 @@
 import { renderHook } from '@testing-library/react-native';
 import { useGifticons } from './useGifticons';
 import { useSpaceGifticons } from './useSpaceGifticons';
-import { useFirestoreList } from '../../../shared/hooks/useFirestoreList';
+import { useFirestoreList } from '../../../../shared/hooks/useFirestoreList';
 import { subscribeToGifticons, subscribeToSpaceGifticons } from '../services/gifticonService';
 
-jest.mock('../../../shared/hooks/useFirestoreList', () => ({
+jest.mock('../../../../shared/hooks/useFirestoreList', () => ({
   useFirestoreList: jest.fn(() => ({ items: [], loading: false })),
 }));
 jest.mock('../services/gifticonService', () => ({

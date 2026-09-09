@@ -6,7 +6,7 @@ import {
   removeGifticonUsageRecord,
 } from './gifticonService';
 import { cancelNotifications } from './notificationService';
-import { withTimeout, WRITE_TIMEOUT_MS } from '../../../shared/utils/withTimeout';
+import { withTimeout, WRITE_TIMEOUT_MS } from '../../../../shared/utils/withTimeout';
 import { remainingAmount } from '../usage';
 import type { Gifticon, UsageRecord } from '../types';
 

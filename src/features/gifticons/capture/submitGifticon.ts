@@ -1,7 +1,7 @@
 import { confirmAsync } from '../../../shared/utils/confirmAsync';
-import { saveGifticon } from '../services/saveGifticon';
-import { syncGifticonReminders } from '../services/gifticonReminders';
-import type { Gifticon, NewGifticon } from '../types';
+import { saveGifticon } from '../domain/services/saveGifticon';
+import { syncGifticonReminders } from '../domain/services/gifticonReminders';
+import type { Gifticon, NewGifticon } from '../domain/types';
 
 export interface SubmitGifticonInput {
   /** The gifticon being edited, or null on the create path. */
