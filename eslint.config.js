@@ -39,6 +39,10 @@ module.exports = defineConfig([
       'boundaries/files': [{ category: 'screen', pattern: 'src/features/*/screens/**/*' }],
     },
     rules: {
+      // No import cycles between modules (incl. type-only edges) — keeps the
+      // layering above from being satisfied on paper while modules still knot
+      // together at runtime.
+      'import/no-cycle': ['error', { ignoreExternal: true }],
       'boundaries/dependencies': [
         'error',
         {

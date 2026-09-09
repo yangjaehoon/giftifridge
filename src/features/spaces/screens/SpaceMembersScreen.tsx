@@ -12,7 +12,7 @@ import { withTimeout, WRITE_TIMEOUT_MS } from '../../../shared/utils/withTimeout
 import Button from '../../../shared/components/Button';
 import { useToast } from '../../../shared/components/ToastProvider';
 import { useAsyncAction } from '../../../shared/hooks/useAsyncAction';
-import type { RootStackParamList } from '../../../app/RootNavigator';
+import type { RootStackParamList } from '../../../app/navigationTypes';
 import type { Palette } from '../../../shared/theme/colors';
 import { useThemedStyles } from '../../../shared/theme/ThemeProvider';
 

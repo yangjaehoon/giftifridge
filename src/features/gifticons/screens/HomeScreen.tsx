@@ -35,7 +35,7 @@ import { getGifticonErrorMessage, getGifticonWriteErrorMessage } from '../errors
 import { CATEGORY_LABELS } from '../types';
 import type { Gifticon } from '../types';
 import { CATEGORY_FILTERS, EMPTY_TEXT, SORT_KEYS, SORT_LABELS } from '../gifticonFilters';
-import type { RootStackParamList } from '../../../app/RootNavigator';
+import type { RootStackParamList } from '../../../app/navigationTypes';
 import type { Palette } from '../../../shared/theme/colors';
 import { useColors, useThemedStyles } from '../../../shared/theme/ThemeProvider';
 

@@ -7,7 +7,7 @@ import GifticonCardSkeleton from '../components/GifticonCardSkeleton';
 import { buildSpendingReport } from '../gifticonReport';
 import { CATEGORY_LABELS } from '../types';
 import { formatCurrency } from '../../../shared/utils/currency';
-import type { RootStackParamList } from '../../../app/RootNavigator';
+import type { RootStackParamList } from '../../../app/navigationTypes';
 import type { Palette } from '../../../shared/theme/colors';
 import { useThemedStyles } from '../../../shared/theme/ThemeProvider';
 

@@ -8,7 +8,7 @@ import GifticonCardSkeleton from '../components/GifticonCardSkeleton';
 import { gifticonsByExpiryDate, monthMatrix, shiftMonth } from '../expiryCalendar';
 import { todayDateString } from '../../../shared/utils/date';
 import type { Gifticon } from '../types';
-import type { RootStackParamList } from '../../../app/RootNavigator';
+import type { RootStackParamList } from '../../../app/navigationTypes';
 import type { Palette } from '../../../shared/theme/colors';
 import { useThemedStyles } from '../../../shared/theme/ThemeProvider';
 

@@ -14,6 +14,7 @@ Always commit when a task is finished — don't leave completed work uncommitted
 - **Tests**: colocate as `<name>.test.ts` next to the file under test, not in a separate `__tests__` tree.
 - **Style enforcement**: ESLint (`eslint-config-expo` + `eslint-config-prettier`) and Prettier run via `lint-staged` on every commit; TypeScript `strict` is on — don't add `any` or non-null assertions to route around it.
 - **Import boundaries** (`error`, `boundaries/dependencies` in `eslint.config.js`): `app` → anything; `feature` → its own feature + `shared` + `lib` (+ the `app` route-map as `import type` only); `shared` → `shared`/`lib`; `lib` → `lib`. The one exception: a feature's `screens/**` is the composition layer and may import from any feature — that's where slices from several features are wired into a route. Everything else in a feature (components, hooks, services) stays within its own feature. Shared-but-not-generic vocabulary (e.g. the `HomeContext` view-scope type) goes in `src/shared/types/`.
+- **No import cycles** (`import/no-cycle`, `error`): the root stack's `RootStackParamList` lives in `src/app/navigationTypes.ts` (not `RootNavigator.tsx`) so screens and `navigationRef` can type against it without cycling back through the navigator. Put a shared type in its own module rather than importing it from a file that imports yours.
 
 # Project-specific gotchas
 

@@ -23,18 +23,7 @@ import { navigationRef } from './navigationRef';
 import { flushDeferredNavigations } from './deferredNavigation';
 import { useDeepLinks } from './useDeepLinks';
 import { useFirstRunNotice } from './useFirstRunNotice';
-
-export type RootStackParamList = {
-  Home: undefined;
-  AddGifticon: { spaceId?: string; gifticonId?: string } | undefined;
-  GifticonDetail: { gifticonId: string };
-  Report: undefined;
-  Calendar: undefined;
-  Settings: undefined;
-  CreateSpace: undefined;
-  JoinSpace: { spaceId?: string } | undefined;
-  SpaceMembers: { spaceId: string };
-};
+import type { RootStackParamList } from './navigationTypes';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 

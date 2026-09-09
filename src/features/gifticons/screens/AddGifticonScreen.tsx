@@ -40,7 +40,7 @@ import { lookupEstimatedPrice } from '../menuPrices';
 import { getCurrentLocation } from '../../../shared/utils/location';
 import { haptics } from '../../../shared/utils/haptics';
 import { alertPermissionDenied } from '../../../shared/utils/permissionAlert';
-import type { RootStackParamList } from '../../../app/RootNavigator';
+import type { RootStackParamList } from '../../../app/navigationTypes';
 import { getGifticonErrorMessage, getGifticonWriteErrorMessage } from '../errors';
 import type { Palette } from '../../../shared/theme/colors';
 import { useColors, useThemedStyles } from '../../../shared/theme/ThemeProvider';
