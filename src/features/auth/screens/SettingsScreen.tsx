@@ -14,7 +14,7 @@ import { useEmailAuthForm } from '../hooks/useEmailAuthForm';
 import NotificationOffsetSettings from '../components/NotificationOffsetSettings';
 import ThemeSettings from '../components/ThemeSettings';
 import GalleryAutoImportSettings from '../../gifticons/gallery/GalleryAutoImportSettings';
-import DevSeedButton from '../../gifticons/components/DevSeedButton';
+import DevSeedButton from '../../gifticons/dev/DevSeedButton';
 import ExportDataButton from '../../gifticons/reporting/ExportDataButton';
 import DeleteAccountButton from '../components/DeleteAccountButton';
 import AppInfo from '../components/AppInfo';

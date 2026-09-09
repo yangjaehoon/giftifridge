@@ -1,4 +1,4 @@
-import { createGifticon, markGifticonUsed, newGifticonId } from './gifticonService';
+import { createGifticon, markGifticonUsed, newGifticonId } from '../services/gifticonService';
 import { toDateString } from '../../../shared/utils/date';
 import type { GifticonCategory, NewGifticon } from '../types';
 

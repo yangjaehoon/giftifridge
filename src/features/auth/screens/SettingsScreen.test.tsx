@@ -3,7 +3,7 @@ import { Alert } from 'react-native';
 import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
 import SettingsScreen from './SettingsScreen';
 import { useAuthActions, useCurrentUser } from '../../../shared/auth/AuthContext';
-import { seedDummyGifticons } from '../../gifticons/services/devSeed';
+import { seedDummyGifticons } from '../../gifticons/dev/devSeed';
 import {
   getNotificationHour,
   getNotificationOffsets,
@@ -15,7 +15,7 @@ jest.mock('../../../shared/auth/AuthContext', () => ({
   useCurrentUser: jest.fn(),
   useAuthActions: jest.fn(),
 }));
-jest.mock('../../gifticons/services/devSeed', () => ({ seedDummyGifticons: jest.fn() }));
+jest.mock('../../gifticons/dev/devSeed', () => ({ seedDummyGifticons: jest.fn() }));
 jest.mock('../../../shared/utils/notificationPrefs', () => ({
   getNotificationOffsets: jest.fn(),
   setNotificationOffsets: jest.fn(),
