@@ -10,9 +10,9 @@ import {
   isRetryWorthwhile,
   recognizeText,
   resolveImportAmount,
-} from './ocrService';
-import { recognizeBarcodeFromImage } from './barcodeRecognition';
-import { captureCorpusCase, ocrDebugLog } from './ocr/debugLog';
+} from '../ocr/ocrService';
+import { recognizeBarcodeFromImage } from '../ocr/barcodeRecognition';
+import { captureCorpusCase, ocrDebugLog } from '../ocr/debugLog';
 import type { GifticonCategory } from '../types';
 
 // Everything about turning "a new photo appeared in the gallery" into a saved

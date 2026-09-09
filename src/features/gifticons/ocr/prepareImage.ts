@@ -1,6 +1,6 @@
 import { Image } from 'react-native';
 import * as ImageManipulator from 'expo-image-manipulator';
-import { withTimeout } from '../../../../shared/utils/withTimeout';
+import { withTimeout } from '../../../shared/utils/withTimeout';
 
 // ML Kit's text recogniser needs each character to span roughly 16+ px; below
 // this width a gallery thumbnail, a far-away photo, or a tightly-cropped share

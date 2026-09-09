@@ -15,9 +15,9 @@ import {
 } from '../services/gifticonService';
 import { uploadGifticonImage } from '../services/gifticonImage';
 import { cancelNotifications, scheduleExpiryNotifications } from '../services/notificationService';
-import { recognizeText } from '../services/ocrService';
-import type { RecognizedText } from '../services/ocrService';
-import { recognizeBarcodeFromImage } from '../services/barcodeRecognition';
+import { recognizeText } from '../ocr/ocrService';
+import type { RecognizedText } from '../ocr/ocrService';
+import { recognizeBarcodeFromImage } from '../ocr/barcodeRecognition';
 import { getCurrentLocation, searchAddress } from '../../../shared/utils/location';
 import {
   getNotificationHour,
@@ -49,11 +49,11 @@ jest.mock('../services/notificationService', () => ({
   cancelNotifications: jest.fn(),
   scheduleExpiryNotifications: jest.fn(),
 }));
-jest.mock('../services/ocrService', () => ({
-  ...jest.requireActual('../services/ocrService'),
+jest.mock('../ocr/ocrService', () => ({
+  ...jest.requireActual('../ocr/ocrService'),
   recognizeText: jest.fn(),
 }));
-jest.mock('../services/barcodeRecognition', () => ({ recognizeBarcodeFromImage: jest.fn() }));
+jest.mock('../ocr/barcodeRecognition', () => ({ recognizeBarcodeFromImage: jest.fn() }));
 jest.mock('../../../shared/utils/location', () => ({
   getCurrentLocation: jest.fn(),
   searchAddress: jest.fn(),

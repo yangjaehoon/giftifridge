@@ -9,20 +9,20 @@
 //     the three parsers share
 // This module is the public surface the app imports; the pieces are tested
 // next to their own files.
-export { recognizeText } from './ocr/recognize';
-export type { RecognizedLine, RecognizedText } from './ocr/recognize';
-export type { ParseResult } from './ocr/nearbyKeyword';
-export { parseExpiryDateFromText, parseExpiryDateResult } from './ocr/dateParser';
-export { parseAmountFromText, parseAmountResult } from './ocr/amountParser';
-export { parseBarcodeFromText, parseBarcodeResult } from './ocr/barcodeParser';
-export { guessGifticonFields, countCardFooterLabels } from './ocr/fieldGuess';
-export type { GuessedGifticonFields } from './ocr/fieldGuess';
-export { findKnownBrand } from './ocr/brands';
-export type { KnownBrand } from './ocr/brands';
+export { recognizeText } from './recognize';
+export type { RecognizedLine, RecognizedText } from './recognize';
+export type { ParseResult } from './nearbyKeyword';
+export { parseExpiryDateFromText, parseExpiryDateResult } from './dateParser';
+export { parseAmountFromText, parseAmountResult } from './amountParser';
+export { parseBarcodeFromText, parseBarcodeResult } from './barcodeParser';
+export { guessGifticonFields, countCardFooterLabels } from './fieldGuess';
+export type { GuessedGifticonFields } from './fieldGuess';
+export { findKnownBrand } from './brands';
+export type { KnownBrand } from './brands';
 export {
   assessGifticon,
   isItemCouponPrice,
   isRetryWorthwhile,
   resolveImportAmount,
-} from './ocr/gifticonScore';
-export type { GifticonAssessment } from './ocr/gifticonScore';
+} from './gifticonScore';
+export type { GifticonAssessment } from './gifticonScore';

@@ -7,9 +7,9 @@ import {
   parseBarcodeResult,
   parseExpiryDateResult,
   recognizeText,
-} from '../services/ocrService';
-import { recognizeBarcodeFromImage } from '../services/barcodeRecognition';
-import { ocrDebugLog } from '../services/ocr/debugLog';
+} from '../ocr/ocrService';
+import { recognizeBarcodeFromImage } from '../ocr/barcodeRecognition';
+import { ocrDebugLog } from '../ocr/debugLog';
 import { parseDate } from '../../../shared/utils/date';
 import { alertPermissionDenied } from '../../../shared/utils/permissionAlert';
 import type { AutofillField } from './useGifticonForm';

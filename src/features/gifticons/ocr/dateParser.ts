@@ -1,4 +1,4 @@
-import { toDateString } from '../../../../shared/utils/date';
+import { toDateString } from '../../../shared/utils/date';
 import { hasNearbyKeyword, pickUnambiguousMatch, type ParseResult } from './nearbyKeyword';
 
 const DATE_PREFIX_KEYWORDS = ['유효기간', '유효기한', '만료'];

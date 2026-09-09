@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as MediaLibrary from 'expo-media-library';
-import { recognizeText } from './ocrService';
-import { recognizeBarcodeFromImage } from './barcodeRecognition';
+import { recognizeText } from '../ocr/ocrService';
+import { recognizeBarcodeFromImage } from '../ocr/barcodeRecognition';
 import { newGifticonId } from './gifticonService';
 import { saveGifticon } from './saveGifticon';
 import { syncGifticonReminders } from './gifticonReminders';
@@ -43,11 +43,11 @@ jest.mock('expo-media-library', () => {
     requestPermissionsAsync: jest.fn(),
   };
 });
-jest.mock('./ocrService', () => ({
-  ...jest.requireActual('./ocrService'),
+jest.mock('../ocr/ocrService', () => ({
+  ...jest.requireActual('../ocr/ocrService'),
   recognizeText: jest.fn(),
 }));
-jest.mock('./barcodeRecognition', () => ({ recognizeBarcodeFromImage: jest.fn() }));
+jest.mock('../ocr/barcodeRecognition', () => ({ recognizeBarcodeFromImage: jest.fn() }));
 jest.mock('./gifticonService', () => ({ newGifticonId: jest.fn() }));
 jest.mock('./saveGifticon', () => ({ saveGifticon: jest.fn() }));
 jest.mock('./gifticonReminders', () => ({ syncGifticonReminders: jest.fn() }));

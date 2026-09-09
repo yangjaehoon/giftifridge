@@ -1,20 +1,20 @@
 import { act, renderHook, waitFor } from '@testing-library/react-native';
 import { Alert } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
-import { recognizeText } from '../services/ocrService';
-import type { RecognizedText } from '../services/ocrService';
-import { recognizeBarcodeFromImage } from '../services/barcodeRecognition';
+import { recognizeText } from '../ocr/ocrService';
+import type { RecognizedText } from '../ocr/ocrService';
+import { recognizeBarcodeFromImage } from '../ocr/barcodeRecognition';
 import { useGifticonImage } from './useGifticonImage';
 
 jest.mock('expo-image-picker', () => ({
   launchImageLibraryAsync: jest.fn(),
   launchCameraAsync: jest.fn(),
 }));
-jest.mock('../services/ocrService', () => ({
-  ...jest.requireActual('../services/ocrService'),
+jest.mock('../ocr/ocrService', () => ({
+  ...jest.requireActual('../ocr/ocrService'),
   recognizeText: jest.fn(),
 }));
-jest.mock('../services/barcodeRecognition', () => ({ recognizeBarcodeFromImage: jest.fn() }));
+jest.mock('../ocr/barcodeRecognition', () => ({ recognizeBarcodeFromImage: jest.fn() }));
 
 const mockedLibrary = ImagePicker.launchImageLibraryAsync as jest.Mock;
 const mockedCamera = ImagePicker.launchCameraAsync as jest.Mock;
