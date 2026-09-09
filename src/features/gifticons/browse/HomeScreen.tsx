@@ -80,6 +80,7 @@ export default function HomeScreen({ navigation }: Props) {
   const selectedItems = visible.filter((g) => selection.selectedIds.has(g.id));
   const batch = useGifticonBatchActions({
     selectedItems,
+    count: selection.count,
     uid: user?.uid,
     onDone: selection.clear,
   });

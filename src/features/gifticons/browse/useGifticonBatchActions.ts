@@ -7,6 +7,10 @@ import type { Gifticon } from '../domain/types';
 
 interface Options {
   selectedItems: Gifticon[];
+  /** Size of the selection, for the delete prompt — matches the count shown on
+   *  the selection bar (which can exceed selectedItems when a filter hides some
+   *  picked rows). */
+  count: number;
   uid: string | undefined;
   /** Clears the selection after a batch completes. */
   onDone: () => void;
@@ -17,7 +21,7 @@ interface Options {
  * shared busy flag, the partial-failure toast wording, and the delete
  * confirmation. The screen keeps only the selection state and the bar layout.
  */
-export function useGifticonBatchActions({ selectedItems, uid, onDone }: Options) {
+export function useGifticonBatchActions({ selectedItems, count, uid, onDone }: Options) {
   const showToast = useToast();
   const { busy, run } = useAsyncAction(getGifticonWriteErrorMessage);
 
@@ -35,7 +39,7 @@ export function useGifticonBatchActions({ selectedItems, uid, onDone }: Options)
     });
 
   const remove = () => {
-    Alert.alert('삭제', `선택한 ${selectedItems.length}개를 삭제할까요?`, [
+    Alert.alert('삭제', `선택한 ${count}개를 삭제할까요?`, [
       { text: '취소', style: 'cancel' },
       {
         text: '삭제',
