@@ -1,13 +1,13 @@
 import { renderHook, waitFor } from '@testing-library/react-native';
 import { useGeofenceSync } from './useGeofenceSync';
 import { ensureBackgroundLocationPermission } from '../../../shared/utils/location';
-import { clearGeofences, syncGeofences } from '../services/geofencing';
+import { clearGeofences, syncGeofences } from './geofencing';
 import type { Gifticon } from '../types';
 
 jest.mock('../../../shared/utils/location', () => ({
   ensureBackgroundLocationPermission: jest.fn(),
 }));
-jest.mock('../services/geofencing', () => ({
+jest.mock('./geofencing', () => ({
   syncGeofences: jest.fn(),
   clearGeofences: jest.fn(),
 }));

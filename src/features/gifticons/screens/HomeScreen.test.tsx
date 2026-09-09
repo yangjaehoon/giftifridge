@@ -5,7 +5,7 @@ import HomeScreen from './HomeScreen';
 import { useCurrentUser } from '../../../shared/auth/AuthContext';
 import { useGifticons } from '../hooks/useGifticons';
 import { useSpaceGifticons } from '../hooks/useSpaceGifticons';
-import { useNearbyGifticons } from '../hooks/useNearbyGifticons';
+import { useNearbyGifticons } from '../geofence/useNearbyGifticons';
 import { useMySpaces } from '../../spaces/hooks/useMySpaces';
 import { markGifticonsUsed, removeGifticons } from '../services/gifticonLifecycle';
 import type { Gifticon } from '../types';
@@ -13,8 +13,8 @@ import type { Gifticon } from '../types';
 jest.mock('../../../shared/auth/AuthContext', () => ({ useCurrentUser: jest.fn() }));
 jest.mock('../hooks/useGifticons', () => ({ useGifticons: jest.fn() }));
 jest.mock('../hooks/useSpaceGifticons', () => ({ useSpaceGifticons: jest.fn() }));
-jest.mock('../hooks/useNearbyGifticons', () => ({ useNearbyGifticons: jest.fn() }));
-jest.mock('../hooks/useGeofenceSync', () => ({ useGeofenceSync: jest.fn() }));
+jest.mock('../geofence/useNearbyGifticons', () => ({ useNearbyGifticons: jest.fn() }));
+jest.mock('../geofence/useGeofenceSync', () => ({ useGeofenceSync: jest.fn() }));
 jest.mock('../../spaces/hooks/useMySpaces', () => ({ useMySpaces: jest.fn() }));
 jest.mock('../services/gifticonLifecycle', () => ({
   markGifticonsUsed: jest.fn(),

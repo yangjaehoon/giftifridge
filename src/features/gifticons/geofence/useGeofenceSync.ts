@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef } from 'react';
 import type { Gifticon } from '../types';
 import { ensureBackgroundLocationPermission } from '../../../shared/utils/location';
-import { clearGeofences, syncGeofences } from '../services/geofencing';
+import { clearGeofences, syncGeofences } from './geofencing';
 
 /**
  * Keeps OS geofences in step with the user's located, unused gifticons so the
