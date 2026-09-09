@@ -27,7 +27,7 @@ jest.mock('../../gifticons/gallery/GalleryAutoImportSettings', () => ({
   __esModule: true,
   default: () => null,
 }));
-jest.mock('../../gifticons/components/ExportDataButton', () => ({
+jest.mock('../../gifticons/reporting/ExportDataButton', () => ({
   __esModule: true,
   default: () => null,
 }));

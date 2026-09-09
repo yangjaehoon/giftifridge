@@ -4,7 +4,7 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useCurrentUser } from '../../../shared/auth/AuthContext';
 import { useGifticons } from '../hooks/useGifticons';
 import GifticonCardSkeleton from '../components/GifticonCardSkeleton';
-import { buildSpendingReport } from '../gifticonReport';
+import { buildSpendingReport } from './gifticonReport';
 import { CATEGORY_LABELS } from '../types';
 import { formatCurrency } from '../../../shared/utils/currency';
 import type { RootStackParamList } from '../../../app/navigationTypes';

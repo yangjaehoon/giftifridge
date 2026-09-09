@@ -15,7 +15,7 @@ import NotificationOffsetSettings from '../components/NotificationOffsetSettings
 import ThemeSettings from '../components/ThemeSettings';
 import GalleryAutoImportSettings from '../../gifticons/gallery/GalleryAutoImportSettings';
 import DevSeedButton from '../../gifticons/components/DevSeedButton';
-import ExportDataButton from '../../gifticons/components/ExportDataButton';
+import ExportDataButton from '../../gifticons/reporting/ExportDataButton';
 import DeleteAccountButton from '../components/DeleteAccountButton';
 import AppInfo from '../components/AppInfo';
 import Button from '../../../shared/components/Button';

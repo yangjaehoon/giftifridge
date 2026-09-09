@@ -5,7 +5,7 @@ import { useCurrentUser } from '../../../shared/auth/AuthContext';
 import { useGifticons } from '../hooks/useGifticons';
 import GifticonCard from '../components/GifticonCard';
 import GifticonCardSkeleton from '../components/GifticonCardSkeleton';
-import { gifticonsByExpiryDate, monthMatrix, shiftMonth } from '../expiryCalendar';
+import { gifticonsByExpiryDate, monthMatrix, shiftMonth } from './expiryCalendar';
 import { todayDateString } from '../../../shared/utils/date';
 import type { Gifticon } from '../types';
 import type { RootStackParamList } from '../../../app/navigationTypes';

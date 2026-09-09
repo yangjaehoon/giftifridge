@@ -1,6 +1,6 @@
-import type { Gifticon, GifticonCategory } from './types';
-import { grossValue, spendableValue } from './gifticonValue';
-import { statusOf } from './gifticonFilters';
+import type { Gifticon, GifticonCategory } from '../types';
+import { grossValue, spendableValue } from '../gifticonValue';
+import { statusOf } from '../gifticonFilters';
 
 // A look-back over the whole collection (every tab), for the report screen.
 // All estimates: a product voucher's worth comes from the rough retail table,
