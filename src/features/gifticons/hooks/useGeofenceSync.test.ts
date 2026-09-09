@@ -67,6 +67,50 @@ describe('useGeofenceSync', () => {
     expect(mockedSync).not.toHaveBeenCalled();
   });
 
+  it('re-checks permission after a refusal (not cached), and syncs once it is granted', async () => {
+    mockedPermission.mockResolvedValueOnce(false).mockResolvedValue(true);
+    const { rerender } = await renderHook(
+      ({ items }: { items: Gifticon[] }) => useGeofenceSync(items, true),
+      { initialProps: { items: [g({ id: 'a' })] } },
+    );
+    await waitFor(() => expect(mockedPermission).toHaveBeenCalledTimes(1));
+    expect(mockedSync).not.toHaveBeenCalled();
+
+    rerender({ items: [g({ id: 'a' }), g({ id: 'b' })] });
+    await waitFor(() => expect(mockedSync).toHaveBeenCalledTimes(1));
+    expect(mockedPermission).toHaveBeenCalledTimes(2);
+  });
+
+  it('does not re-check permission once granted', async () => {
+    const { rerender } = await renderHook(
+      ({ items }: { items: Gifticon[] }) => useGeofenceSync(items, true),
+      { initialProps: { items: [g({ id: 'a' })] } },
+    );
+    await waitFor(() => expect(mockedSync).toHaveBeenCalledTimes(1));
+
+    rerender({ items: [g({ id: 'a' }), g({ id: 'b' })] });
+    await waitFor(() => expect(mockedSync).toHaveBeenCalledTimes(2));
+    expect(mockedPermission).toHaveBeenCalledTimes(1);
+  });
+
+  it('coalesces overlapping permission checks into one prompt', async () => {
+    let resolve!: (v: boolean) => void;
+    mockedPermission.mockReturnValue(new Promise<boolean>((r) => (resolve = r)));
+
+    const { rerender } = await renderHook(
+      ({ items }: { items: Gifticon[] }) => useGeofenceSync(items, true),
+      { initialProps: { items: [g({ id: 'a' })] } },
+    );
+    // Second located gifticon arrives while the disclosure is still pending.
+    rerender({ items: [g({ id: 'a' }), g({ id: 'b' })] });
+    await Promise.resolve();
+    expect(mockedPermission).toHaveBeenCalledTimes(1);
+
+    resolve(true);
+    await waitFor(() => expect(mockedSync).toHaveBeenCalled());
+    expect(mockedPermission).toHaveBeenCalledTimes(1);
+  });
+
   it('re-syncs when the located set changes but not on an unrelated re-render', async () => {
     const { rerender } = await renderHook(
       ({ items }: { items: Gifticon[] }) => useGeofenceSync(items, true),

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { DarkTheme, DefaultTheme, NavigationContainer, type Theme } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -43,7 +43,10 @@ export default function RootNavigator() {
   const { initializing, authError, retryAnonymousSignIn } = useAuthBootstrap();
   const { scheme, colors } = useTheme();
   const styles = useThemedStyles(makeStyles);
-  const navTheme = navigationTheme(scheme, colors);
+  // Memoised so NavigationContainer doesn't see a new `theme` object (and
+  // re-notify every navigation-tree consumer) on unrelated RootNavigator
+  // re-renders.
+  const navTheme = useMemo(() => navigationTheme(scheme, colors), [scheme, colors]);
 
   useDeepLinks();
   useFirstRunNotice();

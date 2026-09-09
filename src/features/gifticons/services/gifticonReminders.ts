@@ -25,10 +25,15 @@ interface SyncParams {
  * when this runs — a failure here must not surface as a save failure (which
  * would prompt a retry and create a duplicate), so everything is swallowed.
  *
- * Known limitation: a non-owner member marking a shared gifticon used can't
- * cancel the owner's already-scheduled local reminders, so the owner may still
- * get an "expires soon" alert for a gifticon someone else used. Fixing that
- * needs server-driven push, not local notifications.
+ * Known limitations:
+ *  - a non-owner member marking a shared gifticon used can't cancel the owner's
+ *    already-scheduled local reminders, so the owner may still get an "expires
+ *    soon" alert for a gifticon someone else used;
+ *  - changing the reminder offsets or hour in Settings only affects gifticons
+ *    saved/imported afterward — reminders already scheduled keep their original
+ *    times until that gifticon is edited and re-saved.
+ * Both need a rescheduling pass over every owned gifticon (or server-driven
+ * push) that doesn't exist yet.
  */
 export async function syncGifticonReminders({
   gifticon,

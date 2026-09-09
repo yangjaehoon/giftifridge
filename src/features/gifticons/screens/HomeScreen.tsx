@@ -83,16 +83,17 @@ export default function HomeScreen({ navigation }: Props) {
     (g: Gifticon) => navigation.navigate('GifticonDetail', { gifticonId: g.id }),
     [navigation],
   );
-  const toggleSelect = useCallback((g: Gifticon) => selection.toggle(g.id), [selection]);
-  const beginSelect = useCallback((g: Gifticon) => selection.begin(g.id), [selection]);
+  const { selecting, selectedIds, toggle, begin } = selection;
+  const toggleSelect = useCallback((g: Gifticon) => toggle(g.id), [toggle]);
+  const beginSelect = useCallback((g: Gifticon) => begin(g.id), [begin]);
 
-  const { selecting, selectedIds } = selection;
   const renderItem = useCallback(
     ({ item }: { item: Gifticon }) => (
       <GifticonCard
         gifticon={item}
         onPress={selecting ? toggleSelect : openDetail}
         onLongPress={beginSelect}
+        selecting={selecting}
         selected={selectedIds.has(item.id)}
       />
     ),

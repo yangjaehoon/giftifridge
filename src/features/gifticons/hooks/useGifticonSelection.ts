@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 
 /**
  * Multi-select state for the home list. A long-press calls `begin` to enter
@@ -31,5 +31,11 @@ export function useGifticonSelection() {
     setSelectedIds(new Set());
   }, []);
 
-  return { selecting, selectedIds, count: selectedIds.size, begin, toggle, clear };
+  // Memoised so the object identity only changes when the selection actually
+  // does — HomeScreen's renderItem depends on this, and a fresh literal every
+  // render would recreate renderItem and defeat React.memo on every list row.
+  return useMemo(
+    () => ({ selecting, selectedIds, count: selectedIds.size, begin, toggle, clear }),
+    [selecting, selectedIds, begin, toggle, clear],
+  );
 }

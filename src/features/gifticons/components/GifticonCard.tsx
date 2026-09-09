@@ -14,6 +14,7 @@ function GifticonCard({
   gifticon,
   onPress,
   onLongPress,
+  selecting = false,
   selected = false,
 }: {
   gifticon: Gifticon;
@@ -23,6 +24,10 @@ function GifticonCard({
   // Long-press enters the home list's multi-select mode. Omitted where there's
   // no selection (e.g. the calendar's day list).
   onLongPress?: (gifticon: Gifticon) => void;
+  // Whether multi-select mode is active — only then does the card read as a
+  // checkbox. A long-press handler alone doesn't change the role, so a plain
+  // tap still announces "button" and navigates.
+  selecting?: boolean;
   // Checked state while multi-select is active.
   selected?: boolean;
 }) {
@@ -47,8 +52,8 @@ function GifticonCard({
       onPress={() => onPress(gifticon)}
       onLongPress={onLongPress ? () => onLongPress(gifticon) : undefined}
       activeOpacity={0.75}
-      accessibilityRole={onLongPress ? 'checkbox' : 'button'}
-      accessibilityState={onLongPress ? { checked: selected } : undefined}
+      accessibilityRole={selecting ? 'checkbox' : 'button'}
+      accessibilityState={selecting ? { checked: selected } : undefined}
       accessibilityLabel={`${gifticon.brand} ${gifticon.name}${priceLabel}, 유효기한 ${formatDate(gifticon.expiresAt)}, ${status}`}
     >
       {selected && (

@@ -129,16 +129,29 @@ describe('GifticonCard', () => {
     expect(onLongPress).toHaveBeenCalledWith(gifticon);
   });
 
-  it('reads as a checkbox showing its checked state while selectable', async () => {
+  it('reads as a checkbox showing its checked state while selecting', async () => {
     const { getByRole } = await render(
       <GifticonCard
         gifticon={makeGifticon({ id: '1' })}
         onPress={jest.fn()}
         onLongPress={jest.fn()}
+        selecting
         selected
       />,
     );
     expect(getByRole('checkbox').props.accessibilityState).toEqual({ checked: true });
+  });
+
+  it('stays a button (not a checkbox) when a long-press handler is set but not selecting', async () => {
+    const { getByRole, queryByRole } = await render(
+      <GifticonCard
+        gifticon={makeGifticon({ id: '1' })}
+        onPress={jest.fn()}
+        onLongPress={jest.fn()}
+      />,
+    );
+    expect(queryByRole('checkbox')).toBeNull();
+    expect(getByRole('button')).toBeTruthy();
   });
 
   it('exposes a single spoken label summarising the card', async () => {

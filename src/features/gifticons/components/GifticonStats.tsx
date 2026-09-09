@@ -33,13 +33,19 @@ export default function GifticonStats({
   }, [items]);
 
   const Container = onPress ? TouchableOpacity : View;
+  // A pressable container is one a11y node, so spell the three values into its
+  // label — otherwise a screen reader announces only "소비 리포트 보기" and the
+  // numbers a sighted user sees are lost.
+  const summary =
+    `예상 보유액 ${formatCurrency(totalAmount)}, ` +
+    `7일 내 만료 ${expiringSoonCount}개, 보유 기프티콘 ${totalCount}개`;
 
   return (
     <Container
       style={styles.row}
       onPress={onPress}
       accessibilityRole={onPress ? 'button' : undefined}
-      accessibilityLabel={onPress ? '소비 리포트 보기' : undefined}
+      accessibilityLabel={onPress ? `${summary}. 소비 리포트 보기` : undefined}
     >
       <View style={styles.stat}>
         <Text style={styles.value}>{formatCurrency(totalAmount)}</Text>

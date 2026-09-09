@@ -97,14 +97,22 @@ describe('GifticonStats', () => {
 
   it('is a plain row with no button role when given no onPress', async () => {
     const { queryByLabelText } = await render(<GifticonStats items={[]} />);
-    expect(queryByLabelText('소비 리포트 보기')).toBeNull();
+    expect(queryByLabelText(/소비 리포트 보기/)).toBeNull();
   });
 
   it('becomes a link to the report when onPress is provided', async () => {
     const onPress = jest.fn();
     const { getByLabelText } = await render(<GifticonStats items={[]} onPress={onPress} />);
 
-    fireEvent.press(getByLabelText('소비 리포트 보기'));
+    fireEvent.press(getByLabelText(/소비 리포트 보기/));
     expect(onPress).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps the stat values in the pressable row's spoken label", async () => {
+    const { getByLabelText } = await render(<GifticonStats items={[]} onPress={jest.fn()} />);
+
+    expect(
+      getByLabelText(/예상 보유액 0원, 7일 내 만료 0개, 보유 기프티콘 0개\. 소비 리포트 보기/),
+    ).toBeTruthy();
   });
 });

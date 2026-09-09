@@ -1,6 +1,6 @@
 import type { Gifticon } from './types';
 import { statusOf } from './gifticonFilters';
-import { toDateString } from '../../shared/utils/date';
+import { parseDate, toDateString } from '../../shared/utils/date';
 
 // Pure helpers behind the expiry calendar screen: the month's day grid, and
 // the not-yet-used gifticons bucketed by the day they expire.
@@ -41,7 +41,11 @@ export function gifticonsByExpiryDate(items: Gifticon[]): Record<string, Giftico
   const byDate: Record<string, Gifticon[]> = {};
   for (const item of items) {
     if (statusOf(item) === 'used') continue;
-    (byDate[item.expiresAt] ??= []).push(item);
+    // Normalise to "YYYY-MM-DD" so a legacy full-ISO expiresAt (still tolerated
+    // by date.ts) matches the grid cells, which monthMatrix builds via
+    // toDateString.
+    const key = toDateString(parseDate(item.expiresAt));
+    (byDate[key] ??= []).push(item);
   }
   return byDate;
 }

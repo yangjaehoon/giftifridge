@@ -26,8 +26,17 @@ export function useGeofenceSync(items: Gifticon[], enabled: boolean) {
       .join('|');
   }, [items, enabled]);
 
-  // undefined = not asked yet, true/false = the answer we got and will reuse.
-  const granted = useRef<boolean | undefined>(undefined);
+  // Once we've been granted background permission it stays granted for the
+  // session — cache that so we don't re-check on every geofence sync. A *false*
+  // result is not cached: it can be false only because the foreground grant
+  // isn't in place yet, and re-calling ensureBackgroundLocationPermission is
+  // cheap and self-guarding (it won't re-prompt once the disclosure has been
+  // dismissed or the OS has locked further requests).
+  const grantedRef = useRef(false);
+  // A single in-flight permission check, shared by overlapping effect runs so a
+  // second `key` change while the disclosure dialog is open can't stack a
+  // second dialog / OS request.
+  const pendingRef = useRef<Promise<boolean> | null>(null);
 
   useEffect(() => {
     if (!enabled) return;
@@ -38,10 +47,17 @@ export function useGeofenceSync(items: Gifticon[], enabled: boolean) {
         await clearGeofences();
         return;
       }
-      if (granted.current === undefined) {
-        granted.current = await ensureBackgroundLocationPermission();
+      if (!grantedRef.current) {
+        pendingRef.current ??= ensureBackgroundLocationPermission();
+        let ok = false;
+        try {
+          ok = await pendingRef.current;
+        } finally {
+          pendingRef.current = null;
+        }
+        grantedRef.current = ok;
       }
-      if (cancelled || !granted.current) return;
+      if (cancelled || !grantedRef.current) return;
       await syncGeofences(items);
     })();
 
