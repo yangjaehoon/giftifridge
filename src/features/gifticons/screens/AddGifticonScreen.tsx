@@ -14,7 +14,7 @@ import {
 } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { useCurrentUser } from '../../auth/context/AuthContext';
+import { useCurrentUser } from '../../../shared/auth/AuthContext';
 import { newGifticonId } from '../services/gifticonService';
 import { submitGifticon } from '../services/submitGifticon';
 import { useGifticon } from '../hooks/useGifticon';

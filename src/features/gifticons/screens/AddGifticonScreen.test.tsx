@@ -3,7 +3,7 @@ import { Alert } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
 import AddGifticonScreen from './AddGifticonScreen';
-import { useCurrentUser } from '../../auth/context/AuthContext';
+import { useCurrentUser } from '../../../shared/auth/AuthContext';
 import { useGifticon } from '../hooks/useGifticon';
 import { useGifticons } from '../hooks/useGifticons';
 import { useSpaceGifticons } from '../hooks/useSpaceGifticons';
@@ -34,7 +34,7 @@ import type { Gifticon } from '../types';
 // locally, so give every test in this file more headroom.
 jest.setTimeout(15000);
 
-jest.mock('../../auth/context/AuthContext', () => ({ useCurrentUser: jest.fn() }));
+jest.mock('../../../shared/auth/AuthContext', () => ({ useCurrentUser: jest.fn() }));
 jest.mock('../hooks/useGifticon', () => ({ useGifticon: jest.fn() }));
 jest.mock('../hooks/useGifticons', () => ({ useGifticons: jest.fn() }));
 jest.mock('../hooks/useSpaceGifticons', () => ({ useSpaceGifticons: jest.fn() }));

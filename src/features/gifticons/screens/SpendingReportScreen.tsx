@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { useCurrentUser } from '../../auth/context/AuthContext';
+import { useCurrentUser } from '../../../shared/auth/AuthContext';
 import { useGifticons } from '../hooks/useGifticons';
 import GifticonCardSkeleton from '../components/GifticonCardSkeleton';
 import { buildSpendingReport } from '../gifticonReport';

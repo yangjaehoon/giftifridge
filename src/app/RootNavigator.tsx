@@ -4,7 +4,7 @@ import { DarkTheme, DefaultTheme, NavigationContainer, type Theme } from '@react
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useTheme, useThemedStyles } from '../shared/theme/ThemeProvider';
 import type { Palette } from '../shared/theme/colors';
-import { useCurrentUser, useAuthBootstrap } from '../features/auth/context/AuthContext';
+import { useCurrentUser, useAuthBootstrap } from '../shared/auth/AuthContext';
 import { isFirebaseConfigured } from '../lib/firebase/config';
 import HomeScreen from '../features/gifticons/screens/HomeScreen';
 import AddGifticonScreen from '../features/gifticons/screens/AddGifticonScreen';

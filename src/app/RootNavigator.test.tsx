@@ -4,7 +4,7 @@ import { Linking } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import { act, render, waitFor } from '@testing-library/react-native';
 import RootNavigator from './RootNavigator';
-import { useCurrentUser, useAuthBootstrap } from '../features/auth/context/AuthContext';
+import { useCurrentUser, useAuthBootstrap } from '../shared/auth/AuthContext';
 import { navigationRef } from './navigationRef';
 
 const configState = { isFirebaseConfigured: true };
@@ -14,7 +14,7 @@ jest.mock('../lib/firebase/config', () => ({
   },
 }));
 
-jest.mock('../features/auth/context/AuthContext', () => ({
+jest.mock('../shared/auth/AuthContext', () => ({
   useCurrentUser: jest.fn(),
   useAuthBootstrap: jest.fn(),
 }));

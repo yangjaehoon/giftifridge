@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Alert, StyleSheet, Text, TextInput, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { useCurrentUser } from '../../auth/context/AuthContext';
+import { useCurrentUser } from '../../../shared/auth/AuthContext';
 import { getSpacePreview, joinSpace } from '../services/spaceService';
 import { getSpaceErrorMessage, getSpaceWriteErrorMessage } from '../errors';
 import { extractSpaceCode } from '../inviteLink';

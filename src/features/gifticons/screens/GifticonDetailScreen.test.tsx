@@ -3,7 +3,7 @@ import { Alert } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
 import GifticonDetailScreen from './GifticonDetailScreen';
-import { useCurrentUser } from '../../auth/context/AuthContext';
+import { useCurrentUser } from '../../../shared/auth/AuthContext';
 import { useGifticon } from '../hooks/useGifticon';
 import {
   deleteGifticonUsageRecord,
@@ -14,7 +14,7 @@ import {
 import { TimeoutError } from '../../../shared/utils/withTimeout';
 import type { Gifticon } from '../types';
 
-jest.mock('../../auth/context/AuthContext', () => ({ useCurrentUser: jest.fn() }));
+jest.mock('../../../shared/auth/AuthContext', () => ({ useCurrentUser: jest.fn() }));
 jest.mock('../hooks/useGifticon', () => ({ useGifticon: jest.fn() }));
 jest.mock('../services/gifticonLifecycle', () => ({
   removeGifticon: jest.fn(),

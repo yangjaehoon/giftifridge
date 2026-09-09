@@ -20,9 +20,10 @@ module.exports = defineConfig([
     //   shared  -> may use shared, lib
     //   lib     -> may use lib only
     //
-    // Currently set to "warn": there is pre-existing cross-feature debt (mostly
-    // gifticons <-> auth for the current-user hook, and settings buttons that
-    // call gifticon services). Once those are resolved, bump this to "error".
+    // Currently set to "warn": ~9 pre-existing cross-feature imports remain
+    // (Settings screen buttons that call gifticon services, HomeScreen pulling
+    // in auth/spaces widgets, gifticons -> spaces in useHomeGifticonContext).
+    // Once those are resolved, bump this to "error".
     files: ['src/**/*.{ts,tsx}'],
     plugins: { boundaries },
     settings: {

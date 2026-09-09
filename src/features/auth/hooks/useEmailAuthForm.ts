@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Alert } from 'react-native';
-import { useAuthActions } from '../context/AuthContext';
+import { useAuthActions } from '../../../shared/auth/AuthContext';
 import { getAuthErrorMessage } from '../errors';
 
 type Mode = 'signIn' | 'signUp';

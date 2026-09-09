@@ -9,7 +9,7 @@ import {
   TextInput,
   TouchableOpacity,
 } from 'react-native';
-import { useAuthActions, useCurrentUser } from '../context/AuthContext';
+import { useAuthActions, useCurrentUser } from '../../../shared/auth/AuthContext';
 import { useEmailAuthForm } from '../hooks/useEmailAuthForm';
 import NotificationOffsetSettings from '../components/NotificationOffsetSettings';
 import ThemeSettings from '../components/ThemeSettings';

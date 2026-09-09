@@ -7,7 +7,7 @@ import React, {
   useRef,
   useState,
 } from 'react';
-import { isFirebaseConfigured } from '../../../lib/firebase/config';
+import { isFirebaseConfigured } from '../../lib/firebase/config';
 import {
   getCurrentAuthUser,
   linkEmailCredential,
@@ -16,8 +16,8 @@ import {
   signOut as authSignOut,
   subscribeToAuthState,
   type User,
-} from '../../../lib/firebase/auth';
-import type { AppUser } from '../types';
+} from '../../lib/firebase/auth';
+import type { AppUser } from './types';
 
 interface CurrentUser {
   user: AppUser | null;

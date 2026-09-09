@@ -2,12 +2,12 @@ import React from 'react';
 import { Alert } from 'react-native';
 import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
 import JoinSpaceScreen from './JoinSpaceScreen';
-import { useCurrentUser } from '../../auth/context/AuthContext';
+import { useCurrentUser } from '../../../shared/auth/AuthContext';
 import { getSpacePreview, joinSpace } from '../services/spaceService';
 import { TimeoutError } from '../../../shared/utils/withTimeout';
 import type { Space } from '../types';
 
-jest.mock('../../auth/context/AuthContext', () => ({ useCurrentUser: jest.fn() }));
+jest.mock('../../../shared/auth/AuthContext', () => ({ useCurrentUser: jest.fn() }));
 jest.mock('../services/spaceService', () => ({
   getSpacePreview: jest.fn(),
   joinSpace: jest.fn(),

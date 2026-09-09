@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Alert, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { useCurrentUser } from '../../auth/context/AuthContext';
+import { useCurrentUser } from '../../../shared/auth/AuthContext';
 import { removeGifticon, setGifticonUsed } from '../services/gifticonLifecycle';
 import { useGifticon } from '../hooks/useGifticon';
 import { useGifticonUsage } from '../hooks/useGifticonUsage';

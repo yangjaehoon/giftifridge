@@ -1,11 +1,11 @@
 import React from 'react';
 import { render } from '@testing-library/react-native';
 import SpendingReportScreen from './SpendingReportScreen';
-import { useCurrentUser } from '../../auth/context/AuthContext';
+import { useCurrentUser } from '../../../shared/auth/AuthContext';
 import { useGifticons } from '../hooks/useGifticons';
 import type { Gifticon } from '../types';
 
-jest.mock('../../auth/context/AuthContext', () => ({ useCurrentUser: jest.fn() }));
+jest.mock('../../../shared/auth/AuthContext', () => ({ useCurrentUser: jest.fn() }));
 jest.mock('../hooks/useGifticons', () => ({ useGifticons: jest.fn() }));
 
 const mockedUseCurrentUser = useCurrentUser as jest.Mock;

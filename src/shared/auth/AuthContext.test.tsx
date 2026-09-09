@@ -8,12 +8,12 @@ import {
   signInWithEmail,
   signOut as authSignOut,
   subscribeToAuthState,
-} from '../../../lib/firebase/auth';
+} from '../../lib/firebase/auth';
 import { AuthProvider, useAuthActions, useAuthBootstrap, useCurrentUser } from './AuthContext';
 
-jest.mock('../../../lib/firebase/config', () => ({ isFirebaseConfigured: true }));
+jest.mock('../../lib/firebase/config', () => ({ isFirebaseConfigured: true }));
 
-jest.mock('../../../lib/firebase/auth', () => ({
+jest.mock('../../lib/firebase/auth', () => ({
   subscribeToAuthState: jest.fn(),
   signInAnonymously: jest.fn(),
   signInWithEmail: jest.fn(),

@@ -2,7 +2,7 @@ import 'react-native-gesture-handler';
 import React, { useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { AuthProvider } from './src/features/auth/context/AuthContext';
+import { AuthProvider } from './src/shared/auth/AuthContext';
 import { ToastProvider } from './src/shared/components/ToastProvider';
 import { ThemeProvider } from './src/shared/theme/ThemeProvider';
 import ErrorBoundary from './src/app/ErrorBoundary';

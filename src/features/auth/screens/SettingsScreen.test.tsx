@@ -2,7 +2,7 @@ import React from 'react';
 import { Alert } from 'react-native';
 import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
 import SettingsScreen from './SettingsScreen';
-import { useAuthActions, useCurrentUser } from '../context/AuthContext';
+import { useAuthActions, useCurrentUser } from '../../../shared/auth/AuthContext';
 import { seedDummyGifticons } from '../../gifticons/services/devSeed';
 import {
   getNotificationHour,
@@ -11,7 +11,7 @@ import {
   setNotificationOffsets,
 } from '../../../shared/utils/notificationPrefs';
 
-jest.mock('../context/AuthContext', () => ({
+jest.mock('../../../shared/auth/AuthContext', () => ({
   useCurrentUser: jest.fn(),
   useAuthActions: jest.fn(),
 }));

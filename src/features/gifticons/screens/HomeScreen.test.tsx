@@ -2,7 +2,7 @@ import React from 'react';
 import { Alert } from 'react-native';
 import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
 import HomeScreen from './HomeScreen';
-import { useCurrentUser } from '../../auth/context/AuthContext';
+import { useCurrentUser } from '../../../shared/auth/AuthContext';
 import { useGifticons } from '../hooks/useGifticons';
 import { useSpaceGifticons } from '../hooks/useSpaceGifticons';
 import { useNearbyGifticons } from '../hooks/useNearbyGifticons';
@@ -10,7 +10,7 @@ import { useMySpaces } from '../../spaces/hooks/useMySpaces';
 import { markGifticonsUsed, removeGifticons } from '../services/gifticonLifecycle';
 import type { Gifticon } from '../types';
 
-jest.mock('../../auth/context/AuthContext', () => ({ useCurrentUser: jest.fn() }));
+jest.mock('../../../shared/auth/AuthContext', () => ({ useCurrentUser: jest.fn() }));
 jest.mock('../hooks/useGifticons', () => ({ useGifticons: jest.fn() }));
 jest.mock('../hooks/useSpaceGifticons', () => ({ useSpaceGifticons: jest.fn() }));
 jest.mock('../hooks/useNearbyGifticons', () => ({ useNearbyGifticons: jest.fn() }));

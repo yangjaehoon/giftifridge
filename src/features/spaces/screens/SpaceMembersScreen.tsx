@@ -1,7 +1,7 @@
 import React from 'react';
 import { Alert, FlatList, Share, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { useCurrentUser } from '../../auth/context/AuthContext';
+import { useCurrentUser } from '../../../shared/auth/AuthContext';
 import { useSpace } from '../hooks/useSpace';
 import SpaceMembersSkeleton from '../components/SpaceMembersSkeleton';
 import { deleteSpace, leaveSpace } from '../services/spaceService';

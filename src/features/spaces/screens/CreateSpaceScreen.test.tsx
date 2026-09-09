@@ -2,11 +2,11 @@ import React from 'react';
 import { Alert } from 'react-native';
 import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
 import CreateSpaceScreen from './CreateSpaceScreen';
-import { useCurrentUser } from '../../auth/context/AuthContext';
+import { useCurrentUser } from '../../../shared/auth/AuthContext';
 import { createSpace, newSpaceId } from '../services/spaceService';
 import { TimeoutError } from '../../../shared/utils/withTimeout';
 
-jest.mock('../../auth/context/AuthContext', () => ({ useCurrentUser: jest.fn() }));
+jest.mock('../../../shared/auth/AuthContext', () => ({ useCurrentUser: jest.fn() }));
 jest.mock('../services/spaceService', () => ({
   createSpace: jest.fn(),
   newSpaceId: jest.fn(() => 'draft-space-id'),

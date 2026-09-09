@@ -2,12 +2,12 @@ import React from 'react';
 import { Alert, Share } from 'react-native';
 import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
 import SpaceMembersScreen from './SpaceMembersScreen';
-import { useCurrentUser } from '../../auth/context/AuthContext';
+import { useCurrentUser } from '../../../shared/auth/AuthContext';
 import { useSpace } from '../hooks/useSpace';
 import { deleteSpace, leaveSpace } from '../services/spaceService';
 import type { Space, SpaceMember } from '../types';
 
-jest.mock('../../auth/context/AuthContext', () => ({ useCurrentUser: jest.fn() }));
+jest.mock('../../../shared/auth/AuthContext', () => ({ useCurrentUser: jest.fn() }));
 jest.mock('../hooks/useSpace', () => ({ useSpace: jest.fn() }));
 jest.mock('../services/spaceService', () => ({
   deleteSpace: jest.fn(),

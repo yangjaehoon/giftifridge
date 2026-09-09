@@ -11,7 +11,7 @@ import {
   View,
 } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { useCurrentUser } from '../../auth/context/AuthContext';
+import { useCurrentUser } from '../../../shared/auth/AuthContext';
 import { useLinkAccountPrompt } from '../../auth/hooks/useLinkAccountPrompt';
 import LinkAccountBanner from '../../auth/components/LinkAccountBanner';
 import { useNearbyGifticons } from '../hooks/useNearbyGifticons';

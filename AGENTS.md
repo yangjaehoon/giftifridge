@@ -8,7 +8,7 @@ Always commit when a task is finished — don't leave completed work uncommitted
 
 # Code conventions
 
-- **Folder structure**: `src/features/<domain>/` holds everything for one domain (e.g. `gifticons`, `auth`), split into `components/`, `hooks/`, `screens/`, `services/`, and (where needed) `context/`. Cross-feature code goes in `src/shared/{components,hooks,theme,utils}`. `src/app` holds root navigation/setup screens; `src/lib` holds external-service configuration (e.g. Firebase).
+- **Folder structure**: `src/features/<domain>/` holds everything for one domain (e.g. `gifticons`, `auth`), split into `components/`, `hooks/`, `screens/`, `services/`, and (where needed) `context/`. Cross-feature code goes in `src/shared/` — `{components,hooks,theme,utils}`, plus a module folder for a cross-cutting concern (e.g. `src/shared/auth/` holds the `AuthProvider` and the `useCurrentUser`/`useAuthActions`/`useAuthBootstrap` hooks that every feature and the root navigator consume). `src/app` holds root navigation/setup screens; `src/lib` holds external-service configuration (e.g. Firebase).
 - **Naming**: PascalCase for components/screens (`GifticonCard.tsx`), camelCase for hooks/services/utils (`useGifticons.ts`, `gifticonService.ts`).
 - **Per-feature files**: each feature gets its own `errors.ts` (domain error types) and `types.ts` (domain types) at the feature root rather than a shared global file.
 - **Tests**: colocate as `<name>.test.ts` next to the file under test, not in a separate `__tests__` tree.
