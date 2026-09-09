@@ -1,8 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
-  ActivityIndicator,
   Alert,
-  Image,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -12,7 +10,6 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import DateTimePicker from '@react-native-community/datetimepicker';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useCurrentUser } from '../../../shared/auth/AuthContext';
 import { newGifticonId } from '../domain/services/gifticonService';
@@ -31,10 +28,12 @@ import GifticonDetailSkeleton from '../domain/components/GifticonDetailSkeleton'
 import BarcodeScannerModal from './BarcodeScannerModal';
 import LocationSearchModal from './LocationSearchModal';
 import OcrHint from './OcrHint';
+import ImagePickerField from './ImagePickerField';
+import StoreLocationField from './StoreLocationField';
+import ExpiryDateField from './ExpiryDateField';
 import type { GifticonCategory } from '../domain/types';
 import { CATEGORY_LABELS } from '../domain/types';
 import Chip from '../../../shared/components/Chip';
-import { formatDate, toDateString } from '../../../shared/utils/date';
 import { formatCurrency, groupDigits } from '../../../shared/utils/currency';
 import { lookupEstimatedPrice } from '../domain/menuPrices';
 import { getCurrentLocation } from '../../../shared/utils/location';
@@ -43,7 +42,7 @@ import { alertPermissionDenied } from '../../../shared/utils/permissionAlert';
 import type { RootStackParamList } from '../../../app/navigationTypes';
 import { getGifticonErrorMessage, getGifticonWriteErrorMessage } from '../domain/errors';
 import type { Palette } from '../../../shared/theme/colors';
-import { useColors, useThemedStyles } from '../../../shared/theme/ThemeProvider';
+import { useThemedStyles } from '../../../shared/theme/ThemeProvider';
 import { useFormStyles } from '../../../shared/theme/forms';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'AddGifticon'>;
@@ -51,7 +50,6 @@ type Props = NativeStackScreenProps<RootStackParamList, 'AddGifticon'>;
 const CATEGORIES = Object.keys(CATEGORY_LABELS) as GifticonCategory[];
 
 export default function AddGifticonScreen({ navigation, route }: Props) {
-  const colors = useColors();
   const styles = useThemedStyles(makeStyles);
   const formStyles = useFormStyles();
   const spaceId = route.params?.spaceId;
@@ -88,7 +86,6 @@ export default function AddGifticonScreen({ navigation, route }: Props) {
   });
   const scanner = useBarcodeScanner(form.setBarcode);
   const locationSearch = useLocationSearch(form.setLocation);
-  const [showDatePicker, setShowDatePicker] = useState(false);
   const { busy: saving, run } = useAsyncAction(getGifticonWriteErrorMessage);
   const [locationSaving, setLocationSaving] = useState(false);
   const brandRef = useRef<TextInput>(null);
@@ -177,43 +174,13 @@ export default function AddGifticonScreen({ navigation, route }: Props) {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
-        <TouchableOpacity
-          testID="image-picker"
-          style={[
-            styles.imagePicker,
-            !form.imageUri && styles.imagePickerEmpty,
-            form.fieldErrors.image && formStyles.inputError,
-          ]}
-          onPress={image.pickFromLibrary}
-          accessibilityRole="button"
-          accessibilityLabel="앨범에서 기프티콘 사진 선택"
-        >
-          {form.imageUri ? (
-            <Image
-              source={{ uri: form.imageUri }}
-              style={styles.image}
-              accessibilityLabel="선택한 기프티콘 사진"
-            />
-          ) : (
-            <Text style={styles.imagePlaceholder}>앨범에서 사진 선택</Text>
-          )}
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.cameraLink}
-          onPress={image.takePhoto}
-          accessibilityRole="button"
-        >
-          <Text style={styles.cameraLinkText}>카메라로 촬영</Text>
-        </TouchableOpacity>
-        {form.fieldErrors.image && (
-          <Text style={formStyles.errorText}>{form.fieldErrors.image}</Text>
-        )}
-        {image.recognizing && (
-          <View style={styles.recognizingRow}>
-            <ActivityIndicator size="small" color={colors.primary} />
-            <Text style={styles.recognizingText}>사진에서 정보를 인식하는 중...</Text>
-          </View>
-        )}
+        <ImagePickerField
+          imageUri={form.imageUri}
+          error={form.fieldErrors.image}
+          recognizing={image.recognizing}
+          onPickFromLibrary={image.pickFromLibrary}
+          onTakePhoto={image.takePhoto}
+        />
 
         <Text style={formStyles.label}>상품명</Text>
         <TextInput
@@ -304,48 +271,19 @@ export default function AddGifticonScreen({ navigation, route }: Props) {
           subject="바코드를"
         />
 
-        <Text style={formStyles.label}>매장 위치 (선택)</Text>
-        <TouchableOpacity
-          style={styles.locationButton}
-          onPress={saveCurrentLocation}
-          disabled={locationSaving}
-        >
-          {locationSaving ? (
-            <ActivityIndicator size="small" color={colors.primary} />
-          ) : (
-            <Text style={styles.locationButtonText}>
-              {form.location ? '매장 위치가 저장됨 ✓' : '지금 여기를 매장 위치로 저장'}
-            </Text>
-          )}
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.locationSearchLink} onPress={locationSearch.open}>
-          <Text style={styles.locationSearchLinkText}>주소로 검색해서 선택</Text>
-        </TouchableOpacity>
-        {form.location && (
-          <Text style={styles.ocrHint}>근처에 다시 왔을 때 이 기프티콘을 알려드려요.</Text>
-        )}
-
-        <Text style={formStyles.label}>유효기한</Text>
-        <TouchableOpacity style={formStyles.input} onPress={() => setShowDatePicker(true)}>
-          <Text>{formatDate(toDateString(form.expiresAt))}</Text>
-        </TouchableOpacity>
-        <OcrHint
-          show={image.dateAutoDetected}
-          confident={image.dateConfident}
-          subject="유효기한을"
+        <StoreLocationField
+          hasLocation={Boolean(form.location)}
+          saving={locationSaving}
+          onSaveCurrent={saveCurrentLocation}
+          onSearchPress={locationSearch.open}
         />
-        {showDatePicker && (
-          <DateTimePicker
-            value={form.expiresAt}
-            mode="date"
-            display="default"
-            minimumDate={new Date()}
-            onChange={(_, selected) => {
-              setShowDatePicker(false);
-              if (selected) form.setExpiresAt(selected);
-            }}
-          />
-        )}
+
+        <ExpiryDateField
+          value={form.expiresAt}
+          onChange={form.setExpiresAt}
+          hintShow={image.dateAutoDetected}
+          hintConfident={image.dateConfident}
+        />
 
         <Text style={formStyles.label}>메모 (선택)</Text>
         <TextInput
@@ -387,29 +325,6 @@ const makeStyles = (colors: Palette) =>
   StyleSheet.create({
     flex: { flex: 1 },
     container: { padding: 20, paddingBottom: 60 },
-    imagePicker: {
-      aspectRatio: 3 / 4,
-      borderRadius: 12,
-      backgroundColor: colors.surfaceSubtle,
-      alignItems: 'center',
-      justifyContent: 'center',
-      marginBottom: 8,
-      overflow: 'hidden',
-    },
-    cameraLink: { alignSelf: 'center', paddingVertical: 8, paddingHorizontal: 12, marginBottom: 8 },
-    cameraLinkText: { color: colors.primary, fontSize: 13, fontWeight: '600' },
-    // Before a photo is chosen there's nothing to preview, so the picker is a
-    // compact tap target instead of a full 3:4 placeholder box.
-    imagePickerEmpty: {
-      aspectRatio: undefined,
-      height: 96,
-      borderWidth: 1,
-      borderColor: colors.border,
-    },
-    image: { width: '100%', height: '100%' },
-    imagePlaceholder: { color: colors.gray500, textAlign: 'center', fontSize: 13, lineHeight: 20 },
-    recognizingRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 10 },
-    recognizingText: { fontSize: 12, color: colors.gray500 },
     ocrHint: { fontSize: 12, color: colors.primary, marginTop: 6 },
     notFound: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 20 },
     chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
@@ -423,15 +338,5 @@ const makeStyles = (colors: Palette) =>
       borderRadius: 10,
     },
     scanButtonText: { color: colors.gray700, fontWeight: '600', fontSize: 13 },
-    locationButton: {
-      borderWidth: 1,
-      borderColor: colors.border,
-      borderRadius: 10,
-      paddingVertical: 12,
-      alignItems: 'center',
-    },
-    locationButtonText: { color: colors.gray700, fontSize: 14, fontWeight: '600' },
-    locationSearchLink: { alignSelf: 'center', paddingVertical: 8 },
-    locationSearchLinkText: { color: colors.primary, fontSize: 13, fontWeight: '600' },
     submit: { marginTop: 28 },
   });
