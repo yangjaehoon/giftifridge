@@ -32,6 +32,7 @@ export default function BarcodeCard({ value, onZoom }: Props) {
     await Clipboard.setStringAsync(value);
     haptics.selection();
     setCopied(true);
+    if (resetRef.current) clearTimeout(resetRef.current);
     resetRef.current = setTimeout(() => setCopied(false), 1500);
   };
 
